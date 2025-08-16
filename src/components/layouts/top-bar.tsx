@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { useLocation, Link } from "react-router-dom"
 import {
   Breadcrumb,
@@ -49,18 +50,18 @@ export function TopBar() {
       <Breadcrumb>
         <BreadcrumbList>
           {breadcrumbs.map((breadcrumb, index) => (
-            <BreadcrumbItem key={breadcrumb.path}>
-              {index === breadcrumbs.length - 1 ? (
-                <BreadcrumbPage>{breadcrumb.name}</BreadcrumbPage>
-              ) : (
-                <>
+            <React.Fragment key={breadcrumb.path}>
+              <BreadcrumbItem>
+                {index === breadcrumbs.length - 1 ? (
+                  <BreadcrumbPage>{breadcrumb.name}</BreadcrumbPage>
+                ) : (
                   <BreadcrumbLink asChild>
                     <Link to={breadcrumb.path}>{breadcrumb.name}</Link>
                   </BreadcrumbLink>
-                  <BreadcrumbSeparator />
-                </>
-              )}
-            </BreadcrumbItem>
+                )}
+              </BreadcrumbItem>
+              {index < breadcrumbs.length - 1 && <BreadcrumbSeparator />}
+            </React.Fragment>
           ))}
         </BreadcrumbList>
       </Breadcrumb>
