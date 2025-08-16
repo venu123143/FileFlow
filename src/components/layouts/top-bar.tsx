@@ -1,21 +1,69 @@
 "use client"
 
-import { ExternalLink } from "lucide-react"
+import { useLocation, Link } from "react-router-dom"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
 import { UserDropdown } from "@/components/user/user-dropdown"
 
 export function TopBar() {
+  const location = useLocation()
+
+  const generateBreadcrumbs = () => {
+    const pathnames = location.pathname.split('/').filter(x => x)
+
+    // Map route names to display names
+    const routeNames: Record<string, string> = {
+      '': 'Home',
+      'all-files': 'All Files',
+      'deleted-files': 'Deleted Files',
+      'private-files': 'Private Files',
+      'shared-files': 'Shared Files',
+      'settings': 'Settings'
+    }
+
+    const breadcrumbs = [
+      { name: 'Home', path: '/' }
+    ]
+
+    // Build breadcrumbs based on path
+    let currentPath = ''
+    pathnames.forEach((pathname) => {
+      currentPath += `/${pathname}`
+      const name = routeNames[pathname] || pathname.charAt(0).toUpperCase() + pathname.slice(1)
+      breadcrumbs.push({ name, path: currentPath })
+    })
+
+    return breadcrumbs
+  }
+
+  const breadcrumbs = generateBreadcrumbs()
+
   return (
     <div className="h-16 border-b border-border bg-background px-6 flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-          <div className="w-4 h-4 bg-white rounded-sm"></div>
-        </div>
-        <span className="font-semibold text-foreground">Untitled UI</span>
-        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-          <span>v4.0</span>
-          <ExternalLink className="w-3 h-3" />
-        </div>
-      </div>
+      <Breadcrumb>
+        <BreadcrumbList>
+          {breadcrumbs.map((breadcrumb, index) => (
+            <BreadcrumbItem key={breadcrumb.path}>
+              {index === breadcrumbs.length - 1 ? (
+                <BreadcrumbPage>{breadcrumb.name}</BreadcrumbPage>
+              ) : (
+                <>
+                  <BreadcrumbLink asChild>
+                    <Link to={breadcrumb.path}>{breadcrumb.name}</Link>
+                  </BreadcrumbLink>
+                  <BreadcrumbSeparator />
+                </>
+              )}
+            </BreadcrumbItem>
+          ))}
+        </BreadcrumbList>
+      </Breadcrumb>
 
       <UserDropdown />
     </div>

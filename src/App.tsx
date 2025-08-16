@@ -23,8 +23,8 @@ function App() {
       <Suspense fallback={<Loading />}>
         <Routes>
           <Route path='/' element={<Home />} />
-          <Route path='/deleted-files' element={<DeletedFiles />} />
           <Route path='/all-files' element={<AllFiles />} />
+          <Route path='/deleted-files' element={<DeletedFiles />} />
           <Route path='/private-files' element={<PrivateFiles />} />
           <Route path='/settings' element={<Settings />} />
           <Route path='/shared-files' element={<SharedFiles />} />
