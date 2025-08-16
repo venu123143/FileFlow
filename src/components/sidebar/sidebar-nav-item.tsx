@@ -10,13 +10,13 @@ interface SidebarNavItemProps {
   href: string
   badge?: number
   active?: boolean
-  onClick?: () => void
+  onClick: (href: string) => void
 }
 
 export function SidebarNavItem({ icon: Icon, label, href, badge, active, onClick }: SidebarNavItemProps) {
   return (
     <motion.button
-      onClick={onClick}
+      onClick={() => onClick(href)}
       className={cn(
         "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors relative",
         active

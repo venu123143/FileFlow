@@ -3,13 +3,14 @@
 import { useState } from "react"
 import { Home, FolderOpen, Lock, Users, Trash2, Palette, Bell, Settings } from "lucide-react"
 import { SidebarNavItem } from "./sidebar-nav-item"
+import { useNavigate } from "react-router-dom"
 
 const navigationItems = [
   { icon: Home, label: "Home", href: "/" },
-  { icon: FolderOpen, label: "All files", href: "/files" },
-  { icon: Lock, label: "Private files", href: "/private" },
-  { icon: Users, label: "Shared with me", href: "/shared" },
-  { icon: Trash2, label: "Deleted files", href: "/deleted" },
+  { icon: FolderOpen, label: "All files", href: "/all-files" },
+  { icon: Lock, label: "Private files", href: "/private-files" },
+  { icon: Users, label: "Shared with me", href: "/shared-files" },
+  { icon: Trash2, label: "Deleted files", href: "/deleted-files" },
   { icon: Palette, label: "Design", href: "/design" },
   { icon: Bell, label: "Notifications", href: "/notifications", badge: 6 },
   { icon: Settings, label: "Settings", href: "/settings", active: true },
@@ -17,6 +18,11 @@ const navigationItems = [
 
 export function SidebarNavigation() {
   const [activeItem, setActiveItem] = useState("/settings")
+  const navigate = useNavigate()
+  const navigationItemClick = (href: string) => {
+    setActiveItem(href);
+    navigate(href)
+  }
 
   return (
     <nav className="p-4 space-y-1">
@@ -28,7 +34,7 @@ export function SidebarNavigation() {
           href={item.href}
           badge={item.badge}
           active={activeItem === item.href}
-          onClick={() => setActiveItem(item.href)}
+          onClick={navigationItemClick}
         />
       ))}
     </nav>

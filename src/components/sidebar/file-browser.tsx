@@ -153,7 +153,7 @@ export function FileBrowser() {
   }
 
   return (
-    <div className="px-4 pb-4">
+    <div className="px-4 pb-4  ">
       <div className="border-t border-sidebar-border pt-4">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">FILE BROWSER</span>
