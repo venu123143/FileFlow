@@ -28,26 +28,26 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
+import { FileManager } from "@/components/file-manager/FileManager"
+import { privatePageConfig, defaultViewConfig } from "@/config/page-configs"
+import type { PrivateFileItem, FileActionHandlers } from "@/types/file-manager"
 
-const mockPrivateFiles = [
+const mockPrivateFiles: PrivateFileItem[] = [
   {
     id: "1",
     name: "Personal Journal.docx",
-    type: "document",
+    type: "file",
+    fileType: "document",
     size: "1.2 MB",
     modified: "1 hour ago",
     icon: FileText,
     thumbnail: null,
     starred: true,
+    shared: false,
+    parentPath: [],
+    variant: "private",
     encrypted: true,
     sensitive: true,
   },
@@ -55,81 +55,83 @@ const mockPrivateFiles = [
     id: "2",
     name: "Family Photos",
     type: "folder",
+    fileType: "folder",
     size: "234 MB",
     modified: "3 hours ago",
     icon: FolderIcon,
     thumbnail: null,
     starred: false,
+    shared: false,
+    parentPath: [],
+    variant: "private",
     encrypted: true,
     sensitive: false,
   },
   {
     id: "3",
     name: "Tax Documents 2024.pdf",
-    type: "pdf",
+    type: "file",
+    fileType: "pdf",
     size: "5.8 MB",
     modified: "2 days ago",
     icon: FileText,
     thumbnail: null,
     starred: true,
+    shared: false,
+    parentPath: [],
+    variant: "private",
     encrypted: true,
     sensitive: true,
   },
   {
     id: "4",
     name: "Private Notes.txt",
-    type: "text",
+    type: "file",
+    fileType: "text",
     size: "45 KB",
     modified: "1 week ago",
     icon: FileText,
     thumbnail: null,
     starred: false,
+    shared: false,
+    parentPath: [],
+    variant: "private",
     encrypted: false,
     sensitive: false,
   },
   {
     id: "5",
     name: "Confidential Recording.mp3",
-    type: "audio",
+    type: "file",
+    fileType: "audio",
     size: "23.4 MB",
     modified: "2 weeks ago",
     icon: Music,
     thumbnail: null,
     starred: false,
+    shared: false,
+    parentPath: [],
+    variant: "private",
     encrypted: true,
     sensitive: true,
   },
   {
     id: "6",
     name: "Personal Backup.zip",
-    type: "archive",
+    type: "file",
+    fileType: "archive",
     size: "156 MB",
     modified: "1 month ago",
     icon: Archive,
     thumbnail: null,
     starred: false,
+    shared: false,
+    parentPath: [],
+    variant: "private",
     encrypted: true,
     sensitive: false,
   },
 ]
-
-const getFileTypeColor = (type: string) => {
-  switch (type) {
-    case "pdf":
-    case "document":
-      return "bg-red-100 text-red-700"
-    case "image":
-      return "bg-green-100 text-green-700"
-    case "video":
-      return "bg-purple-100 text-purple-700"
-    case "audio":
-      return "bg-orange-100 text-orange-700"
-    case "folder":
-      return "bg-blue-100 text-blue-700"
-    default:
-      return "bg-gray-100 text-gray-700"
-  }
-}
 
 export function PrivateFilesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
@@ -153,6 +155,17 @@ export function PrivateFilesPage() {
 
   const encryptedCount = mockPrivateFiles.filter((f) => f.encrypted).length
   const sensitiveCount = mockPrivateFiles.filter((f) => f.sensitive).length
+
+  const actionHandlers: FileActionHandlers = {
+    onFileSelect: toggleFileSelection,
+    onItemClick: (item) => console.log("Clicked on private item:", item.name),
+    onDownload: (file) => console.log("Download file:", file.name),
+    onShare: (file) => console.log("Share file:", file.name),
+    onStar: (file) => console.log("Toggle star:", file.name),
+    onDelete: (file) => console.log("Delete file:", file.name),
+    onEncrypt: (file) => console.log("Encrypt file:", file.name),
+    onDecrypt: (file) => console.log("Decrypt file:", file.name),
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -314,185 +327,15 @@ export function PrivateFilesPage() {
         </motion.div>
       )}
 
-      {/* Files Grid/List */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.3 }}
-      >
-        {viewMode === "grid" ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {filteredFiles.map((file, index) => (
-              <motion.div
-                key={file.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.2, delay: index * 0.05 }}
-              >
-                <Card className="group hover:shadow-md transition-all duration-200 cursor-pointer">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <Checkbox
-                        checked={selectedFiles.includes(file.id)}
-                        onCheckedChange={() => toggleFileSelection(file.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                      />
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Download className="h-4 w-4 mr-2" />
-                            Download
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Share2 className="h-4 w-4 mr-2" />
-                            Share Privately
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Shield className="h-4 w-4 mr-2" />
-                            {file.encrypted ? "Decrypt" : "Encrypt"}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Star className="h-4 w-4 mr-2" />
-                            {file.starred ? "Unstar" : "Star"}
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600">
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-
-                    <div className="flex flex-col items-center text-center space-y-3">
-                      <div className="relative">
-                        <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center">
-                          <file.icon className="h-8 w-8 text-muted-foreground" />
-                        </div>
-                        {file.encrypted && (
-                          <div className="absolute -top-1 -right-1 h-5 w-5 bg-green-500 rounded-full flex items-center justify-center">
-                            <Lock className="h-3 w-3 text-white" />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="w-full">
-                        <p className="font-medium text-sm truncate" title={file.name}>
-                          {file.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{file.size}</p>
-                        <p className="text-xs text-muted-foreground">{file.modified}</p>
-                      </div>
-
-                      <div className="flex items-center gap-1 flex-wrap justify-center">
-                        {file.starred && <Star className="h-3 w-3 text-yellow-500 fill-current" />}
-                        {file.sensitive && (
-                          <Badge variant="secondary" className="text-xs bg-red-100 text-red-700">
-                            Sensitive
-                          </Badge>
-                        )}
-                        <Badge variant="secondary" className={`text-xs ${getFileTypeColor(file.type)}`}>
-                          {file.type}
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        ) : (
-          <Card>
-            <CardContent className="p-0">
-              <div className="divide-y">
-                {filteredFiles.map((file, index) => (
-                  <motion.div
-                    key={file.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.2, delay: index * 0.03 }}
-                    className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors group"
-                  >
-                    <Checkbox
-                      checked={selectedFiles.includes(file.id)}
-                      onCheckedChange={() => toggleFileSelection(file.id)}
-                    />
-                    <div className="relative">
-                      <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                        <file.icon className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      {file.encrypted && (
-                        <div className="absolute -top-1 -right-1 h-4 w-4 bg-green-500 rounded-full flex items-center justify-center">
-                          <Lock className="h-2.5 w-2.5 text-white" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{file.name}</p>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>{file.size}</span>
-                        <span>•</span>
-                        <span>{file.modified}</span>
-                        {file.starred && <Star className="h-3 w-3 text-yellow-500 fill-current" />}
-                        {file.sensitive && <Eye className="h-3 w-3 text-red-500" />}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {file.sensitive && (
-                        <Badge variant="secondary" className="bg-red-100 text-red-700">
-                          Sensitive
-                        </Badge>
-                      )}
-                      <Badge variant="secondary" className={`${getFileTypeColor(file.type)}`}>
-                        {file.type}
-                      </Badge>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Download className="h-4 w-4 mr-2" />
-                          Download
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Share2 className="h-4 w-4 mr-2" />
-                          Share Privately
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Shield className="h-4 w-4 mr-2" />
-                          {file.encrypted ? "Decrypt" : "Encrypt"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Star className="h-4 w-4 mr-2" />
-                          {file.starred ? "Unstar" : "Star"}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-600">
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </motion.div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </motion.div>
+      {/* Unified File Manager */}
+      <FileManager
+        files={filteredFiles}
+        selectedFiles={selectedFiles}
+        pageConfig={privatePageConfig}
+        viewConfig={defaultViewConfig}
+        actionHandlers={actionHandlers}
+        viewMode={viewMode}
+      />
     </div>
   )
 }
