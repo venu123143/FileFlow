@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useLocation, Link } from "react-router-dom"
+import { Menu } from "lucide-react"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -12,7 +13,11 @@ import {
 } from "@/components/ui/breadcrumb"
 import { UserDropdown } from "@/components/user/user-dropdown"
 
-export function TopBar() {
+interface TopBarProps {
+  onSidebarToggle: () => void
+}
+
+export function TopBar({ onSidebarToggle }: TopBarProps) {
   const location = useLocation()
 
   const generateBreadcrumbs = () => {
@@ -47,24 +52,35 @@ export function TopBar() {
 
   return (
     <div className="h-16 border-b border-border bg-background px-6 flex items-center justify-between">
-      <Breadcrumb>
-        <BreadcrumbList>
-          {breadcrumbs.map((breadcrumb, index) => (
-            <React.Fragment key={breadcrumb.path}>
-              <BreadcrumbItem>
-                {index === breadcrumbs.length - 1 ? (
-                  <BreadcrumbPage>{breadcrumb.name}</BreadcrumbPage>
-                ) : (
-                  <BreadcrumbLink asChild>
-                    <Link to={breadcrumb.path}>{breadcrumb.name}</Link>
-                  </BreadcrumbLink>
-                )}
-              </BreadcrumbItem>
-              {index < breadcrumbs.length - 1 && <BreadcrumbSeparator />}
-            </React.Fragment>
-          ))}
-        </BreadcrumbList>
-      </Breadcrumb>
+      <div className="flex items-center gap-4">
+        {/* Sidebar Toggle Button */}
+        <button
+          onClick={onSidebarToggle}
+          className="p-2 rounded-md hover:bg-accent transition-colors"
+          title="Toggle sidebar (Ctrl+B)"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        <Breadcrumb>
+          <BreadcrumbList>
+            {breadcrumbs.map((breadcrumb, index) => (
+              <React.Fragment key={breadcrumb.path}>
+                <BreadcrumbItem>
+                  {index === breadcrumbs.length - 1 ? (
+                    <BreadcrumbPage>{breadcrumb.name}</BreadcrumbPage>
+                  ) : (
+                    <BreadcrumbLink asChild>
+                      <Link to={breadcrumb.path}>{breadcrumb.name}</Link>
+                    </BreadcrumbLink>
+                  )}
+                </BreadcrumbItem>
+                {index < breadcrumbs.length - 1 && <BreadcrumbSeparator />}
+              </React.Fragment>
+            ))}
+          </BreadcrumbList>
+        </Breadcrumb>
+      </div>
 
       <UserDropdown />
     </div>
