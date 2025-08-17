@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import type { FileItem, FileManagerProps } from "@/types/file-manager"
+import type { FileManagerProps } from "@/types/file-manager"
 import { FileGrid } from "./FileGrid"
 import { FileList } from "./FileList"
 import { EmptyState } from "./EmptyState"
