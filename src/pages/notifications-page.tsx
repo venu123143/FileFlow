@@ -211,7 +211,7 @@ export default function NotificationsPage() {
 
     const unreadCount = mockNotifications.filter(n => !n.read).length
 
-    const getCategoryColor = (category: Notification["category"]) => {
+    const getCategoryColor = (): string => {
         return "bg-blue-100 text-blue-700"
     }
 
@@ -370,7 +370,7 @@ export default function NotificationsPage() {
                                                     </p>
                                                     <Badge
                                                         variant="secondary"
-                                                        className={`text-xs ${getCategoryColor(notification.category)}`}
+                                                        className={`text-xs ${getCategoryColor()}`}
                                                     >
                                                         {getCategoryLabel(notification.category)}
                                                     </Badge>

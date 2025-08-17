@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import { 
   User, 
   Shield, 
@@ -19,10 +18,8 @@ import {
   Eye, 
   Download,
   Upload,
-  Trash2,
   Settings,
-  Palette,
-  Languages
+  Palette
 } from "lucide-react"
 
 interface SettingsContentProps {

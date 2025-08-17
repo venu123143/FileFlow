@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, Upload, Plus } from "lucide-react";
+import { ArrowLeft, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddNewFolder } from "./AddNewFolder";
 

@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 
 export function PreferencesSection() {
   const [autoTimeZone, setAutoTimeZone] = useState(true)
-  const [selectedLanguage, setSelectedLanguage] = useState("English")
 
   return (
     <div className="space-y-6">

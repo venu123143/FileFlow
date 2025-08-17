@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Home, FolderOpen, Lock, Users, Trash2, Palette, Bell, Settings } from "lucide-react"
+import { Home, FolderOpen, Lock, Users, Trash2, Bell, Settings } from "lucide-react"
 import { SidebarNavItem } from "./sidebar-nav-item"
 import { useNavigate } from "react-router-dom"
 
@@ -11,7 +11,6 @@ const navigationItems = [
   { icon: Lock, label: "Private files", href: "/private-files" },
   { icon: Users, label: "Shared with me", href: "/shared-files" },
   { icon: Trash2, label: "Deleted files", href: "/deleted-files" },
-  { icon: Palette, label: "Design", href: "/design" },
   { icon: Bell, label: "Notifications", href: "/notifications", badge: 6 },
   { icon: Settings, label: "Settings", href: "/settings", active: true },
 ]

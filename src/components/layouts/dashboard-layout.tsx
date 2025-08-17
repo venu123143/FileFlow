@@ -38,7 +38,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             exit={{ x: -300, opacity: 0 }}
             transition={{ duration: 0.3, ease: [0.4, 0.0, 0.2, 1] }}
           >
-            <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(prev => !prev)} />
+            <Sidebar isOpen={sidebarOpen} />
           </motion.div>
         )}
       </AnimatePresence>

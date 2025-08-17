@@ -1,11 +1,11 @@
 import { motion } from "framer-motion";
 import { isDeletedFile, isPrivateFile, isSharedFile } from "@/types/file-manager";
-import type { FileItem, PageConfig, ViewConfig, FileActionHandlers } from "@/types/file-manager";
+import type { FileItem, PageConfig, FileActionHandlers } from "@/types/file-manager";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Download, Share2, Star, Trash2, RotateCcw, Lock, Unlock, Shield, Users } from "lucide-react";
+import { MoreHorizontal, Download, Share2, Star, Trash2, RotateCcw, Lock, Unlock, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface FileGridItemProps {
@@ -13,7 +13,6 @@ interface FileGridItemProps {
   index: number;
   isSelected: boolean;
   pageConfig: PageConfig;
-  viewConfig: ViewConfig;
   actionHandlers: FileActionHandlers;
 }
 
@@ -22,7 +21,6 @@ export function FileGridItem({
   index,
   isSelected,
   pageConfig,
-  viewConfig,
   actionHandlers
 }: FileGridItemProps) {
   const {

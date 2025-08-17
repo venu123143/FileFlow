@@ -4,7 +4,7 @@ import type { FileItem, PageConfig, ViewConfig, FileActionHandlers } from "@/typ
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Download, Share2, Star, Trash2, RotateCcw, Lock, Unlock, Shield, Users, Clock, User } from "lucide-react";
+import { MoreHorizontal, Download, Share2, Star, Trash2, RotateCcw, Lock, Unlock, Users, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface FileListItemProps {

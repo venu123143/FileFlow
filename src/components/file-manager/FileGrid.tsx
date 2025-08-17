@@ -66,7 +66,6 @@ export function FileGrid({ files, selectedFiles, pageConfig, viewConfig, actionH
           index={index}
           isSelected={selectedFiles.includes(file.id)}
           pageConfig={pageConfig}
-          viewConfig={viewConfig}
           actionHandlers={actionHandlers}
         />
       ))}
