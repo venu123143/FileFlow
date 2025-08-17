@@ -5,6 +5,7 @@ import type { FileManagerProps } from "@/types/file-manager"
 import { FileGrid } from "./FileGrid"
 import { FileList } from "./FileList"
 import { EmptyState } from "./EmptyState"
+import { AddNewFolder } from "./AddNewFolder"
 
 export function FileManager({
   files,
@@ -13,15 +14,29 @@ export function FileManager({
   viewConfig,
   actionHandlers,
   viewMode,
-  className = ""
-}: FileManagerProps) {
+  className = "",
+  onCreateFolder
+}: FileManagerProps & { onCreateFolder?: (folderName: string) => void }) {
   if (files.length === 0) {
     return (
-      <EmptyState
-        searchQuery=""
-        message={pageConfig.emptyStateMessage}
-        icon={pageConfig.emptyStateIcon}
-      />
+      <div className="space-y-6">
+        <EmptyState
+          searchQuery=""
+          message={pageConfig.emptyStateMessage}
+          icon={pageConfig.emptyStateIcon}
+        />
+        {onCreateFolder && (
+          <div className="flex justify-center">
+            <AddNewFolder
+              onAddFolder={onCreateFolder}
+              variant="card"
+              buttonText="Create New Folder"
+              placeholder="Enter folder name..."
+              className="max-w-sm"
+            />
+          </div>
+        )}
+      </div>
     )
   }
 
@@ -39,6 +54,7 @@ export function FileManager({
           pageConfig={pageConfig}
           viewConfig={viewConfig}
           actionHandlers={actionHandlers}
+          onCreateFolder={onCreateFolder}
         />
       ) : (
         <FileList

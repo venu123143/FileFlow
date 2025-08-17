@@ -1,14 +1,16 @@
 import { motion } from "framer-motion";
 import { ArrowLeft, Upload, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AddNewFolder } from "./AddNewFolder";
 
 interface FileManagerHeaderProps {
   currentPath: string[];
   filteredFilesCount: number;
   onBackClick: () => void;
+  onCreateFolder?: (folderName: string) => void;
 }
 
-export function FileManagerHeader({ currentPath, filteredFilesCount, onBackClick }: FileManagerHeaderProps) {
+export function FileManagerHeader({ currentPath, filteredFilesCount, onBackClick, onCreateFolder }: FileManagerHeaderProps) {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -30,10 +32,14 @@ export function FileManagerHeader({ currentPath, filteredFilesCount, onBackClick
             <Upload className="h-4 w-4 mr-1 sm:mr-2" />
             <span className="hidden sm:inline">Upload</span>
           </Button>
-          <Button size="sm" className="text-xs sm:text-sm">
-            <Plus className="h-4 w-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">New Folder</span>
-          </Button>
+          {onCreateFolder && (
+            <AddNewFolder
+              onAddFolder={onCreateFolder}
+              variant="button"
+              buttonText="New Folder"
+              className="shrink-0"
+            />
+          )}
         </div>
       </div>
     </motion.div>

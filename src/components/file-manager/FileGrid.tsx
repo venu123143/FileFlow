@@ -1,5 +1,6 @@
 import type { FileItem, PageConfig, ViewConfig, FileActionHandlers } from "@/types/file-manager";
 import { FileGridItem } from "./FileGridItem";
+import { AddNewFolder } from "./AddNewFolder";
 
 interface FileGridProps {
   files: FileItem[];
@@ -7,9 +8,10 @@ interface FileGridProps {
   pageConfig: PageConfig;
   viewConfig: ViewConfig;
   actionHandlers: FileActionHandlers;
+  onCreateFolder?: (folderName: string) => void;
 }
 
-export function FileGrid({ files, selectedFiles, pageConfig, viewConfig, actionHandlers }: FileGridProps) {
+export function FileGrid({ files, selectedFiles, pageConfig, viewConfig, actionHandlers, onCreateFolder }: FileGridProps) {
   const { columns, gap, itemHeight } = viewConfig.grid;
   
   // Use proper Tailwind classes instead of dynamic strings
@@ -68,6 +70,7 @@ export function FileGrid({ files, selectedFiles, pageConfig, viewConfig, actionH
           actionHandlers={actionHandlers}
         />
       ))}
+      {onCreateFolder && <AddNewFolder onAddFolder={onCreateFolder} variant="card" />}
     </div>
   );
 }

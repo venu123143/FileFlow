@@ -3,12 +3,13 @@ import { Routes, Route } from "react-router-dom";
 import { Suspense } from "react";
 import NotFound from "@/routes/Notfound";
 import Home from "@/routes/Home";
-import DeletedFiles from "./routes/DeletedFiles";
-import AllFiles from "./routes/AllFiles";
-import PrivateFiles from "./routes/PrivateFiles";
-import Settings from "./routes/Settings";
-import SharedFiles from "./routes/SharedFiles";
+import DeletedFiles from "@/routes/DeletedFiles";
+import AllFiles from "@/routes/AllFiles";
+import PrivateFiles from "@/routes/PrivateFiles";
+import Settings from "@/routes/Settings";
+import SharedFiles from "@/routes/SharedFiles";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
+import Notifications from "@/routes/Notifications";
 
 // Loading component for Suspense fallback
 const Loading = () => (
@@ -28,6 +29,7 @@ function App() {
           <Route path='/private-files' element={<PrivateFiles />} />
           <Route path='/settings' element={<Settings />} />
           <Route path='/shared-files' element={<SharedFiles />} />
+          <Route path='/notifications' element={<Notifications />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

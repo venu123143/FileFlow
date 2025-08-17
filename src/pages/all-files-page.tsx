@@ -1,8 +1,6 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { motion } from "framer-motion"
-
 import type { FileItem, FileActionHandlers } from "@/types/file-manager"
 import { mockFileSystem } from "@/data/mock-file-system"
 import { FileManagerHeader } from "@/components/file-manager/FileManagerHeader"
@@ -11,6 +9,7 @@ import { Toolbar } from "@/components/file-manager/Toolbar"
 import { BulkActionsBar } from "@/components/file-manager/BulkActionsBar"
 import { FileManager } from "@/components/file-manager/FileManager"
 import { standardPageConfig, defaultViewConfig } from "@/config/page-configs"
+import { FolderIcon } from "lucide-react"
 
 export default function AllFilesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
@@ -18,7 +17,7 @@ export default function AllFilesPage() {
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
   const [currentPath, setCurrentPath] = useState<string[]>([])
 
-  const currentItems = useMemo(() => {
+  let currentItems = useMemo(() => {
     let items: FileItem[] = mockFileSystem
     for (const folder of currentPath) {
       const foundFolder = items.find((item) => item.name === folder && item.type === "folder")
@@ -66,6 +65,35 @@ export default function AllFilesPage() {
     }
   }
 
+  const handleCreateFolder = (folderName: string) => {
+    // Create a new folder object
+    const newFolder: FileItem = {
+      id: `folder-${Date.now()}`,
+      name: folderName,
+      type: "folder",
+      variant: "standard",
+      icon: FolderIcon,
+      size: "0 items",
+      modified: "Just now",
+      parentPath: currentPath,
+      children: [],
+      starred: false,
+      shared: false,
+      fileType: undefined,
+      thumbnail: undefined
+    }
+
+    // Add the new folder to the current directory
+    const updatedItems = [...currentItems, newFolder]
+
+    // Update the mock file system (in a real app, this would be an API call)
+    // For now, we'll just update the local state
+    console.log("Created new folder:", newFolder)
+
+    // You would typically update the file system here
+    currentItems = updatedItems
+  }
+
   const actionHandlers: FileActionHandlers = {
     onFileSelect: toggleFileSelection,
     onItemClick: handleItemClick,
@@ -82,6 +110,7 @@ export default function AllFilesPage() {
           currentPath={currentPath}
           filteredFilesCount={filteredFiles.length}
           onBackClick={handleBackClick}
+          onCreateFolder={handleCreateFolder}
         />
 
         {currentPath.length > 0 && (
@@ -109,6 +138,7 @@ export default function AllFilesPage() {
           viewConfig={defaultViewConfig}
           actionHandlers={actionHandlers}
           viewMode={viewMode}
+          onCreateFolder={handleCreateFolder}
         />
       </div>
     </div>
