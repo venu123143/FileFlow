@@ -8,10 +8,7 @@ import {
   Search,
   Filter,
   SortAsc,
-  MoreHorizontal,
   Download,
-  Share2,
-  Star,
   Trash2,
   FileText,
   Music,
@@ -21,13 +18,11 @@ import {
   Upload,
   Lock,
   Shield,
-  Eye,
   EyeOff,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { FileManager } from "@/components/file-manager/FileManager"
@@ -194,53 +189,7 @@ export function PrivateFilesPage() {
         </div>
       </motion.div>
 
-      {/* Privacy Stats */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.1 }}
-        className="grid grid-cols-1 md:grid-cols-3 gap-4"
-      >
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <Shield className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Encrypted Files</p>
-                <p className="text-xl font-bold">{encryptedCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 bg-red-100 rounded-lg flex items-center justify-center">
-                <Eye className="h-5 w-5 text-red-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Sensitive Files</p>
-                <p className="text-xl font-bold">{sensitiveCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Lock className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Private</p>
-                <p className="text-xl font-bold">{mockPrivateFiles.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+
 
       {/* Toolbar */}
       <motion.div

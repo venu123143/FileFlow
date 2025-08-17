@@ -8,16 +8,12 @@ import {
   Search,
   Filter,
   SortAsc,
-  MoreHorizontal,
   Download,
-  Share2,
-  Star,
   Trash2,
   FileText,
   Video,
   FolderIcon,
   Users,
-  Clock,
   UserPlus,
   Link,
   Settings,
@@ -25,10 +21,8 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FileManager } from "@/components/file-manager/FileManager"
 import { sharedPageConfig, defaultViewConfig } from "@/config/page-configs"
@@ -87,7 +81,6 @@ const mockSharedFiles: SharedFileItem[] = [
     size: "89.2 MB",
     modified: "3 days ago",
     icon: Video,
-    thumbnail: "/demo-thumbnail.png",
     starred: false,
     shared: true,
     parentPath: [],
@@ -118,49 +111,6 @@ const mockSharedFiles: SharedFileItem[] = [
     isOwner: true,
   },
 ]
-
-const recentActivity = [
-  {
-    id: "1",
-    action: "shared",
-    file: "Marketing Campaign.pptx",
-    user: "John Doe",
-    time: "2 hours ago",
-    avatar: "/john-avatar.png",
-    initials: "JD",
-  },
-  {
-    id: "2",
-    action: "edited",
-    file: "Design Assets",
-    user: "Alice Smith",
-    time: "4 hours ago",
-    avatar: "/alice-avatar.png",
-    initials: "AS",
-  },
-  {
-    id: "3",
-    action: "viewed",
-    file: "Project Demo.mp4",
-    user: "Client Team",
-    time: "1 day ago",
-    avatar: null,
-    initials: "CT",
-  },
-]
-
-const getPermissionColor = (permission: string) => {
-  switch (permission) {
-    case "edit":
-      return "bg-green-100 text-green-700"
-    case "view":
-      return "bg-blue-100 text-blue-700"
-    case "admin":
-      return "bg-purple-100 text-purple-700"
-    default:
-      return "bg-gray-100 text-gray-700"
-  }
-}
 
 export function SharedFilesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
@@ -224,53 +174,6 @@ export function SharedFilesPage() {
         </div>
       </motion.div>
 
-      {/* Sharing Stats */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.1 }}
-        className="grid grid-cols-1 md:grid-cols-3 gap-4"
-      >
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Share2 className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Shared by Me</p>
-                <p className="text-xl font-bold">{sharedByMeCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <Users className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Shared with Me</p>
-                <p className="text-xl font-bold">{sharedWithMeCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Clock className="h-5 w-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Recent Activity</p>
-                <p className="text-xl font-bold">{recentActivity.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
 
       <div className="space-y-6">
         {/* Tabs */}

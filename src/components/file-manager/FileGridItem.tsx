@@ -188,20 +188,15 @@ export function FileGridItem({
               )}
 
               {pageConfig.variant === "shared" && isSharedFile(file) && (
-                <div className="absolute -top-1 -right-1 h-4 w-4 bg-blue-500 rounded-full flex items-center justify-center">
-                  <Users className="h-2.5 w-2.5 text-white" />
+                <div className="absolute -top-1 -right-1 h-5 w-5 bg-green-500 rounded-full flex items-center justify-center">
+                  <Users className="h-3 w-3 text-white" />
                 </div>
               )}
               {pageConfig.variant === "private" && isPrivateFile(file) && (
                 <>
                   {file.encrypted && (
-                    <div className="absolute -top-1 -right-1 h-4 w-4 bg-green-500 rounded-full flex items-center justify-center">
-                      <Lock className="h-2.5 w-2.5 text-white" />
-                    </div>
-                  )}
-                  {file.sensitive && (
-                    <div className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center">
-                      <Shield className="h-2.5 w-2.5 text-white" />
+                    <div className="absolute -top-1 -right-1 h-5 w-5 bg-green-500 rounded-full flex items-center justify-center">
+                      <Lock className="h-3 w-3 text-white" />
                     </div>
                   )}
                 </>
@@ -214,8 +209,8 @@ export function FileGridItem({
                     </div>
                   )}
                   {pageConfig.showShared && file.shared && (
-                    <div className="absolute -top-1 -right-1 h-4 w-4 bg-blue-500 rounded-full flex items-center justify-center">
-                      <Share2 className="h-2.5 w-2.5 text-white" />
+                    <div className="absolute -top-1 -right-1 h-5 w-5 bg-green-500 rounded-full flex items-center justify-center">
+                      <Share2 className="h-3 w-3 text-white" />
                     </div>
                   )}
                 </>
