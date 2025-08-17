@@ -3,15 +3,14 @@
 import { useState, useMemo } from "react"
 import { motion } from "framer-motion"
 
-import type { FileItem } from "@/types/file-manager"
+import type { FileItem, FileActionHandlers } from "@/types/file-manager"
 import { mockFileSystem } from "@/data/mock-file-system"
 import { FileManagerHeader } from "@/components/file-manager/FileManagerHeader"
 import { BreadcrumbNavigation } from "@/components/file-manager/BreadcrumbNavigation"
 import { Toolbar } from "@/components/file-manager/Toolbar"
 import { BulkActionsBar } from "@/components/file-manager/BulkActionsBar"
-import { FileGrid } from "@/components/file-manager/FileGrid"
-import { FileList } from "@/components/file-manager/FileList"
-import { EmptyState } from "@/components/file-manager/EmptyState"
+import { FileManager } from "@/components/file-manager/FileManager"
+import { standardPageConfig, defaultViewConfig } from "@/config/page-configs"
 
 export default function AllFilesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
@@ -67,6 +66,15 @@ export default function AllFilesPage() {
     }
   }
 
+  const actionHandlers: FileActionHandlers = {
+    onFileSelect: toggleFileSelection,
+    onItemClick: handleItemClick,
+    onDownload: (file) => console.log("Download", file.name),
+    onShare: (file) => console.log("Share", file.name),
+    onStar: (file) => console.log("Star", file.name),
+    onDelete: (file) => console.log("Delete", file.name),
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
@@ -94,31 +102,14 @@ export default function AllFilesPage() {
           onSelectAll={selectAllFiles}
         />
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
-        >
-          {filteredFiles.length > 0 ? (
-            viewMode === "grid" ? (
-              <FileGrid
-                files={filteredFiles}
-                selectedFiles={selectedFiles}
-                onFileSelect={toggleFileSelection}
-                onItemClick={handleItemClick}
-              />
-            ) : (
-              <FileList
-                files={filteredFiles}
-                selectedFiles={selectedFiles}
-                onFileSelect={toggleFileSelection}
-                onItemClick={handleItemClick}
-              />
-            )
-          ) : (
-            <EmptyState searchQuery={searchQuery} />
-          )}
-        </motion.div>
+        <FileManager
+          files={filteredFiles}
+          selectedFiles={selectedFiles}
+          pageConfig={standardPageConfig}
+          viewConfig={defaultViewConfig}
+          actionHandlers={actionHandlers}
+          viewMode={viewMode}
+        />
       </div>
     </div>
   )

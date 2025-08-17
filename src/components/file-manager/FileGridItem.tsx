@@ -1,22 +1,121 @@
 import { motion } from "framer-motion";
-import { getFileTypeColor } from "@/types/file-manager";
-import type { FileItem } from "@/types/file-manager";
+import { isDeletedFile, isPrivateFile, isSharedFile } from "@/types/file-manager";
+import type { FileItem, PageConfig, ViewConfig, FileActionHandlers } from "@/types/file-manager";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Download, Share2, Star, Trash2 } from "lucide-react";
+import { MoreHorizontal, Download, Share2, Star, Trash2, RotateCcw, Lock, Unlock, Shield, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface FileGridItemProps {
   file: FileItem;
   index: number;
   isSelected: boolean;
-  onFileSelect: (fileId: string) => void;
-  onItemClick: (item: FileItem) => void;
+  pageConfig: PageConfig;
+  viewConfig: ViewConfig;
+  actionHandlers: FileActionHandlers;
 }
 
-export function FileGridItem({ file, index, isSelected, onFileSelect, onItemClick }: FileGridItemProps) {
+export function FileGridItem({ 
+  file, 
+  index, 
+  isSelected, 
+  pageConfig, 
+  viewConfig, 
+  actionHandlers 
+}: FileGridItemProps) {
+  const {
+    onFileSelect,
+    onItemClick,
+    onDownload,
+    onShare,
+    onStar,
+    onDelete,
+    onRestore,
+    onEncrypt,
+    onDecrypt,
+    onCustomAction
+  } = actionHandlers;
+
+  const renderCustomActions = () => {
+    if (!pageConfig.customActions) return null;
+    
+    return pageConfig.customActions.map((action, idx) => (
+      <DropdownMenuItem
+        key={idx}
+        onClick={() => onCustomAction?.(action.label, file)}
+        className={action.variant === "destructive" ? "text-red-600" : ""}
+      >
+        <action.icon className="h-4 w-4 mr-2" />
+        {action.label}
+      </DropdownMenuItem>
+    ));
+  };
+
+  const renderPageSpecificInfo = () => {
+    switch (pageConfig.variant) {
+      case "deleted":
+        if (isDeletedFile(file)) {
+          return (
+            <div className="w-full h-9 flex items-center justify-center gap-1 flex-wrap">
+              <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700">
+                {file.daysLeft} days left
+              </Badge>
+            </div>
+          );
+        }
+        // Fallback for deleted files that don't match the type guard
+        return (
+          <div className="w-full h-9 flex items-center justify-center gap-1 flex-wrap">
+            {/* No badges for non-deleted files */}
+          </div>
+        );
+      
+      case "private":
+        if (isPrivateFile(file)) {
+          return (
+            <div className="w-full h-9 flex items-center justify-center gap-1 flex-wrap">
+              {file.encrypted && <Lock className="h-3 w-3 text-blue-500" />}
+              {file.sensitive && <Shield className="h-3 w-3 text-red-500" />}
+            </div>
+          );
+        }
+        // Fallback for private files that don't match the type guard
+        return (
+          <div className="w-full h-9 flex items-center justify-center gap-1 flex-wrap">
+            {/* No badges for non-private files */}
+          </div>
+        );
+      
+      case "shared":
+        if (isSharedFile(file)) {
+          return (
+            <div className="w-full h-9 flex items-center justify-center gap-1 flex-wrap">
+              <Users className="h-3 w-3 text-blue-500" />
+              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                {file.permission}
+              </Badge>
+            </div>
+          );
+        }
+        // Fallback for shared files that don't match the type guard
+        return (
+          <div className="w-full h-9 flex items-center justify-center gap-1 flex-wrap">
+            {/* No badges for non-shared files */}
+          </div>
+        );
+      
+      default:
+        return (
+          <div className="w-full h-9 flex items-center justify-center gap-1 flex-wrap">
+            {pageConfig.showStarred && file.starred && <Star className="h-3 w-3 text-yellow-500 fill-current" />}
+            {pageConfig.showShared && file.shared && <Share2 className="h-3 w-3 text-blue-500" />}
+          </div>
+        );
+    }
+  };
+
   return (
     <motion.div
       key={file.id}
@@ -27,7 +126,8 @@ export function FileGridItem({ file, index, isSelected, onFileSelect, onItemClic
     >
       <Card className="group px-0 py-1 hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col h-full">
         <CardContent className="p-2 flex flex-col flex-grow">
-          <div className="flex w-full items-start justify-between">
+          {/* Header with checkbox and menu */}
+          <div className="flex w-full items-start justify-between mb-2">
             <Checkbox
               checked={isSelected}
               onCheckedChange={() => onFileSelect(file.id)}
@@ -45,35 +145,69 @@ export function FileGridItem({ file, index, isSelected, onFileSelect, onItemClic
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Share
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Star className="h-4 w-4 mr-2" />
-                  {file.starred ? "Unstar" : "Star"}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-red-600">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
+                {onDownload && (
+                  <DropdownMenuItem onClick={() => onDownload(file)}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download
+                  </DropdownMenuItem>
+                )}
+                {onShare && (
+                  <DropdownMenuItem onClick={() => onShare(file)}>
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share
+                  </DropdownMenuItem>
+                )}
+                {onStar && (
+                  <DropdownMenuItem onClick={() => onStar(file)}>
+                    <Star className="h-4 w-4 mr-2" />
+                    {file.starred ? "Unstar" : "Star"}
+                  </DropdownMenuItem>
+                )}
+                {onRestore && isDeletedFile(file) && (
+                  <DropdownMenuItem onClick={() => onRestore(file)}>
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Restore
+                  </DropdownMenuItem>
+                )}
+                {onEncrypt && isPrivateFile(file) && !file.encrypted && (
+                  <DropdownMenuItem onClick={() => onEncrypt(file)}>
+                    <Lock className="h-4 w-4 mr-2" />
+                    Encrypt
+                  </DropdownMenuItem>
+                )}
+                {onDecrypt && isPrivateFile(file) && file.encrypted && (
+                  <DropdownMenuItem onClick={() => onDecrypt(file)}>
+                    <Unlock className="h-4 w-4 mr-2" />
+                    Decrypt
+                  </DropdownMenuItem>
+                )}
+                {renderCustomActions()}
+                {onDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={() => onDelete(file)}
+                      className="text-red-600"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
 
+          {/* Main content area */}
           <div
             className="flex flex-col items-center text-center space-y-2 flex-grow justify-between"
             onClick={() => onItemClick(file)}
           >
-            {file.thumbnail ? (
+            {/* Icon/Thumbnail */}
+            {pageConfig.showThumbnails && file.thumbnail ? (
               <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0">
                 <img
-                  src={file.thumbnail || "/placeholder.svg"}
+                  src={file.thumbnail}
                   alt={file.name}
                   className="w-full h-full object-cover"
                 />
@@ -84,23 +218,21 @@ export function FileGridItem({ file, index, isSelected, onFileSelect, onItemClic
               </div>
             )}
 
-            <div className="w-full h-10 flex flex-col justify-center">
+            {/* File name and metadata */}
+            <div className="w-full min-h-[2.5rem] flex flex-col justify-center">
               <p className="font-medium text-xs truncate" title={file.name}>
                 {file.name}
               </p>
-              <p className="text-xs text-muted-foreground">{file.size}</p>
+              {pageConfig.showSize && (
+                <p className="text-xs text-muted-foreground">{file.size}</p>
+              )}
+              {pageConfig.showModified && (
+                <p className="text-xs text-muted-foreground">{file.modified}</p>
+              )}
             </div>
 
-            <div className="w-full h-9 flex items-center justify-center gap-1 flex-wrap">
-              {file.starred && <Star className="h-3 w-3 text-yellow-500 fill-current" />}
-              {file.shared && <Share2 className="h-3 w-3 text-blue-500" />}
-              <Badge
-                variant="secondary"
-                className={`text-xs ${getFileTypeColor(file.fileType || file.type)}`}
-              >
-                {file.fileType || file.type}
-              </Badge>
-            </div>
+            {/* Page-specific badges and info */}
+            {renderPageSpecificInfo()}
           </div>
         </CardContent>
       </Card>

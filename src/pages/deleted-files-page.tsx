@@ -8,7 +8,6 @@ import {
   Search,
   Filter,
   SortAsc,
-  MoreHorizontal,
   RotateCcw,
   Trash2,
   FileText,
@@ -24,116 +23,123 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { FileManager } from "@/components/file-manager/FileManager"
+import { deletedPageConfig, defaultViewConfig } from "@/config/page-configs"
+import type { DeletedFileItem, FileActionHandlers } from "@/types/file-manager"
 
-const mockDeletedFiles = [
+const mockDeletedFiles: DeletedFileItem[] = [
   {
     id: "1",
     name: "Old Project Files",
     type: "folder",
+    fileType: "folder",
     size: "45.8 MB",
+    modified: "2024-01-10",
+    icon: FolderIcon,
+    thumbnail: null,
+    starred: false,
+    shared: false,
+    parentPath: [],
+    variant: "deleted",
     deletedDate: "2024-01-10",
     deletedBy: "Sophie Chamberlain",
     daysLeft: 25,
-    icon: FolderIcon,
-    thumbnail: null,
     originalLocation: "/Projects/Archive",
   },
   {
     id: "2",
     name: "Draft Presentation.pptx",
-    type: "presentation",
+    type: "file",
+    fileType: "presentation",
     size: "12.4 MB",
+    modified: "2024-01-12",
+    icon: FileText,
+    thumbnail: null,
+    starred: false,
+    shared: false,
+    parentPath: [],
+    variant: "deleted",
     deletedDate: "2024-01-12",
     deletedBy: "Sophie Chamberlain",
     daysLeft: 23,
-    icon: FileText,
-    thumbnail: null,
     originalLocation: "/Documents/Work",
   },
   {
     id: "3",
     name: "Unused Images",
     type: "folder",
+    fileType: "folder",
     size: "234 MB",
+    modified: "2024-01-08",
+    icon: FolderIcon,
+    thumbnail: null,
+    starred: false,
+    shared: false,
+    parentPath: [],
+    variant: "deleted",
     deletedDate: "2024-01-08",
     deletedBy: "Sophie Chamberlain",
     daysLeft: 27,
-    icon: FolderIcon,
-    thumbnail: null,
     originalLocation: "/Media/Archive",
   },
   {
     id: "4",
     name: "Recording_old.mp3",
-    type: "audio",
+    type: "file",
+    fileType: "audio",
     size: "23.4 MB",
+    modified: "2024-01-15",
+    icon: Music,
+    thumbnail: null,
+    starred: false,
+    shared: false,
+    parentPath: [],
+    variant: "deleted",
     deletedDate: "2024-01-15",
     deletedBy: "Sophie Chamberlain",
     daysLeft: 20,
-    icon: Music,
-    thumbnail: null,
     originalLocation: "/Audio/Recordings",
   },
   {
     id: "5",
     name: "Backup_2023.zip",
-    type: "archive",
+    type: "file",
+    fileType: "archive",
     size: "156 MB",
+    modified: "2024-01-05",
+    icon: Archive,
+    thumbnail: null,
+    starred: false,
+    shared: false,
+    parentPath: [],
+    variant: "deleted",
     deletedDate: "2024-01-05",
     deletedBy: "Sophie Chamberlain",
     daysLeft: 30,
-    icon: Archive,
-    thumbnail: null,
     originalLocation: "/Backups",
   },
   {
     id: "6",
     name: "Test_video.mp4",
-    type: "video",
+    type: "file",
+    fileType: "video",
     size: "89.2 MB",
+    modified: "2024-01-18",
+    icon: Video,
+    thumbnail: "/test-video-thumb.png",
+    starred: false,
+    shared: false,
+    parentPath: [],
+    variant: "deleted",
     deletedDate: "2024-01-18",
     deletedBy: "Sophie Chamberlain",
     daysLeft: 17,
-    icon: Video,
-    thumbnail: "/test-video-thumb.png",
     originalLocation: "/Videos/Tests",
   },
 ]
-
-const getDaysLeftColor = (days: number) => {
-  if (days <= 7) return "bg-red-100 text-red-700"
-  if (days <= 14) return "bg-orange-100 text-orange-700"
-  return "bg-green-100 text-green-700"
-}
-
-const getFileTypeColor = (type: string) => {
-  switch (type) {
-    case "presentation":
-      return "bg-red-100 text-red-700"
-    case "image":
-      return "bg-green-100 text-green-700"
-    case "video":
-      return "bg-purple-100 text-purple-700"
-    case "audio":
-      return "bg-orange-100 text-orange-700"
-    case "folder":
-      return "bg-blue-100 text-blue-700"
-    case "archive":
-      return "bg-gray-100 text-gray-700"
-    default:
-      return "bg-gray-100 text-gray-700"
-  }
-}
 
 export function DeletedFilesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
@@ -158,6 +164,13 @@ export function DeletedFilesPage() {
   }, 0)
 
   const expiringFiles = mockDeletedFiles.filter((f) => f.daysLeft <= 7).length
+
+  const actionHandlers: FileActionHandlers = {
+    onFileSelect: toggleFileSelection,
+    onItemClick: (item) => console.log("Clicked on deleted item:", item.name),
+    onRestore: (file) => console.log("Restore file:", file.name),
+    onDelete: (file) => console.log("Delete forever:", file.name),
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -324,168 +337,15 @@ export function DeletedFilesPage() {
         </motion.div>
       )}
 
-      {/* Files Grid/List */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.4 }}
-      >
-        {viewMode === "grid" ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {filteredFiles.map((file, index) => (
-              <motion.div
-                key={file.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.2, delay: index * 0.05 }}
-              >
-                <Card className="group hover:shadow-md transition-all duration-200 cursor-pointer">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <Checkbox
-                        checked={selectedFiles.includes(file.id)}
-                        onCheckedChange={() => toggleFileSelection(file.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                      />
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <RotateCcw className="h-4 w-4 mr-2" />
-                            Restore
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600">
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete Forever
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-
-                    <div className="flex flex-col items-center text-center space-y-3">
-                      <div className="relative">
-                        <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center opacity-60">
-                          <file.icon className="h-8 w-8 text-muted-foreground" />
-                        </div>
-                        <div className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full flex items-center justify-center">
-                          <Trash2 className="h-3 w-3 text-white" />
-                        </div>
-                      </div>
-
-                      <div className="w-full">
-                        <p className="font-medium text-sm truncate opacity-75" title={file.name}>
-                          {file.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{file.size}</p>
-                        <p className="text-xs text-muted-foreground">Deleted {file.deletedDate}</p>
-                      </div>
-
-                      <div className="flex items-center gap-1 flex-wrap justify-center">
-                        <Badge variant="secondary" className={`text-xs ${getDaysLeftColor(file.daysLeft)}`}>
-                          {file.daysLeft} days left
-                        </Badge>
-                        <Badge variant="secondary" className={`text-xs ${getFileTypeColor(file.type)}`}>
-                          {file.type}
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        ) : (
-          <Card>
-            <CardContent className="p-0">
-              <div className="divide-y">
-                {filteredFiles.map((file, index) => (
-                  <motion.div
-                    key={file.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.2, delay: index * 0.03 }}
-                    className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors group"
-                  >
-                    <Checkbox
-                      checked={selectedFiles.includes(file.id)}
-                      onCheckedChange={() => toggleFileSelection(file.id)}
-                    />
-                    <div className="relative">
-                      <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center opacity-60">
-                        <file.icon className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center">
-                        <Trash2 className="h-2.5 w-2.5 text-white" />
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate opacity-75">{file.name}</p>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>{file.size}</span>
-                        <span>•</span>
-                        <span>Deleted {file.deletedDate}</span>
-                        <span>•</span>
-                        <span className="truncate">From {file.originalLocation}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className={`${getDaysLeftColor(file.daysLeft)}`}>
-                        {file.daysLeft} days left
-                      </Badge>
-                      <Badge variant="secondary" className={`${getFileTypeColor(file.type)}`}>
-                        {file.type}
-                      </Badge>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <RotateCcw className="h-4 w-4 mr-2" />
-                          Restore
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-600">
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete Forever
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </motion.div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </motion.div>
-
-      {/* Empty State */}
-      {filteredFiles.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.5 }}
-          className="text-center py-12"
-        >
-          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-            <Trash2 className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-medium mb-2">No deleted files</h3>
-          <p className="text-muted-foreground">Your trash is empty. Deleted files will appear here.</p>
-        </motion.div>
-      )}
+      {/* Unified File Manager */}
+      <FileManager
+        files={filteredFiles}
+        selectedFiles={selectedFiles}
+        pageConfig={deletedPageConfig}
+        viewConfig={defaultViewConfig}
+        actionHandlers={actionHandlers}
+        viewMode={viewMode}
+      />
     </div>
   )
 }
