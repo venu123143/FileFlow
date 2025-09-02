@@ -7,7 +7,7 @@ import { UploadProvider } from "@/contexts/UploadContext";
 // import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/useAuth";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-
+import { FileProvider } from "@/contexts/fileContext";  
 
 const queryClient = new QueryClient();
 
@@ -24,6 +24,7 @@ const AppProviders = ({ children }: { children: ReactNode }) => {
             </>
         ),
         (children: ReactNode) => <AuthProvider>{children}</AuthProvider>,
+        (children: ReactNode) => <FileProvider>{children}</FileProvider>,
     ];
 
     return providers.reduceRight((acc, Provider) => Provider(acc), children);
