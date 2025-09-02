@@ -1,9 +1,10 @@
 import React, { useReducer, useContext, createContext, type ReactNode } from 'react';
 import { CONSTANTS } from '@/constants/constants';
 import { useAuthStore } from '@/store/auth.store';
-import { type IUser, type JwtToken } from '@/types/user.types';
+import { type IUser, type SignupDto } from '@/types/user.types';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import authApi from '@/api/auth.api';
+import { toast } from 'sonner';
 const userStr = localStorage.getItem(CONSTANTS.STORAGE_KEYS.USER_DATA);
 const user = userStr ? JSON.parse(userStr) as IUser : null;
 
@@ -41,10 +42,10 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
 }
 
 interface AuthContextType extends AuthState {
-    login: (email: string, password: string) => Promise<{ jwt: JwtToken; user: IUser } | undefined>;
-    register: (data: any) => Promise<IUser | undefined>;
+    login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+    register: (data: any) => Promise<{ success: boolean; error?: string }>;
     saveUser: (user: IUser) => void;
-    logout: () => void;
+    logout: () => Promise<void>;
     VerifyEmail: (token: string) => Promise<boolean | undefined>;
 }
 
@@ -70,20 +71,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 saveUser(data.user);
                 setToken(data.jwt);
                 dispatch({ type: 'LOGIN_SUCCESS', user: data.user });
+                toast.success("Login successful! Welcome back.");
             }
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
+
         },
     });
 
     const { mutateAsync: registerMutationFn } = useMutation({
-        mutationFn: async (data: any) => {
+        mutationFn: async (data: SignupDto) => {
+            console.log(data, "data.register");
             const result = await authApi.register(data);
             return result.data;
         },
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
+            toast.success("Account created successfully! Please check your email to verify your account.");
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
@@ -93,12 +98,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const { mutateAsync: verifyEmailMutationFn } = useMutation({
         mutationFn: async (token: string) => {
             const result = await authApi.verifyEmail(token);
+            console.log(result);
             return result.data;
         },
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
         },
-        onError: () => {
+        onError: (error) => {
+            console.log(error, "error.register");
             dispatch({ type: 'SET_LOADING', loading: false });
         },
     });
@@ -106,20 +113,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const login = async (email: string, password: string) => {
         try {
             dispatch({ type: 'LOGIN_START' });
-            const result = await loginMutationFn({ email, password });
-            return result;
-        } catch (error) {
+            await loginMutationFn({ email, password });
+            return { success: true };
+        } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
+            const errorMessage = error?.response?.data?.message || error?.message || "Login failed. Please check your credentials.";
+            return { success: false, error: errorMessage };
         }
     };
 
     const register = async (data: any) => {
         try {
             dispatch({ type: 'REGISTER_START' });
-            const result = await registerMutationFn(data);
-            return result;
-        } catch (error) {
+            await registerMutationFn(data);
+            return { success: true };
+        } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
+            const errorMessage = error?.response?.data?.message || error?.message || "Registration failed. Please try again.";
+            return { success: false, error: errorMessage };
         }
     };
 
@@ -133,11 +144,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
-    const logout = () => {
-        localStorage.removeItem(CONSTANTS.STORAGE_KEYS.USER_DATA);
-        removeToken();
-        dispatch({ type: 'LOGOUT' });
-        queryClient.clear();
+    const logout = async () => {
+        try {
+            // Call the logout API to invalidate the session on the server
+            await authApi.logout();
+        } catch (error) {
+            // Even if the API call fails, we should still clear local data
+            console.error('Logout API error:', error);
+        } finally {
+            // Always clear local data regardless of API call success/failure
+            localStorage.removeItem(CONSTANTS.STORAGE_KEYS.USER_DATA);
+            removeToken();
+            dispatch({ type: 'LOGOUT' });
+            queryClient.clear();
+            toast.success("Logged out successfully");
+        }
     };
 
     const value: AuthContextType = {

@@ -12,6 +12,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { UserDropdown } from "@/components/user/user-dropdown"
+import { useAuth } from '@/contexts/useAuth'
 
 interface TopBarProps {
   onSidebarToggle: () => void
@@ -19,7 +20,7 @@ interface TopBarProps {
 
 export function TopBar({ onSidebarToggle }: TopBarProps) {
   const location = useLocation()
-
+  const { user } = useAuth()
   const generateBreadcrumbs = () => {
     const pathnames = location.pathname.split('/').filter(x => x)
 
@@ -82,7 +83,7 @@ export function TopBar({ onSidebarToggle }: TopBarProps) {
         </Breadcrumb>
       </div>
 
-      <UserDropdown />
+      <UserDropdown name={user?.display_name} email={user?.email} />
     </div>
   )
 }

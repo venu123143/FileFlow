@@ -3,7 +3,6 @@
 import type React from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useState, useEffect } from "react"
-
 import { Sidebar } from "@/components/sidebar/sidebar"
 import { TopBar } from "@/components/layouts/top-bar"
 

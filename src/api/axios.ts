@@ -2,7 +2,6 @@
 import axios from 'axios';
 export const API_BASE_URL = import.meta.env.VITE_API_BACKEND_URL || 'http://localhost:3000/api/v1';
 import { getAuthState } from '@/store/auth.store';
-
 // Initialize the Axios client
 const apiClient = axios.create({
     baseURL: API_BASE_URL, // Replace with your API base URL
@@ -44,6 +43,7 @@ apiClient.interceptors.response.use(
         if (error.response && error.response.status === 401) {
             await logout();
         } else if (error.response) {
+            // Don't show toast here - let individual components handle their own error messages
             throw new Error(error.response.data.message || 'An error occurred');
         } else {
             console.error('Error setting up request:', error.message);

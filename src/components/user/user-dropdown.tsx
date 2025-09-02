@@ -5,7 +5,8 @@ import { ChevronDown, Settings, User, LogOut, Bell, HelpCircle } from "lucide-re
 import { motion, AnimatePresence } from "framer-motion"
 import { UserAvatar } from "./user-avatar"
 import { Button } from "@/components/ui/button"
-
+import { useAuth } from "@/contexts/useAuth"
+import { useNavigate } from "react-router-dom"
 interface UserDropdownProps {
   name?: string
   email?: string
@@ -14,7 +15,8 @@ interface UserDropdownProps {
 
 export function UserDropdown({ name = "Sophie Chamberlain", email = "hi@sophie.com", avatarSrc }: UserDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
-
+  const { logout } = useAuth()
+  const navigate = useNavigate()
   const menuItems = [
     { icon: User, label: "Profile", href: "/profile" },
     { icon: Settings, label: "Settings", href: "/settings" },
@@ -23,7 +25,19 @@ export function UserDropdown({ name = "Sophie Chamberlain", email = "hi@sophie.c
     { type: "divider" },
     { icon: LogOut, label: "Sign out", href: "/logout", variant: "destructive" },
   ]
+  const handleLogout = async () => {
+    await logout()
+    setIsOpen(false)
+    navigate("/login")
+  }
 
+  const onClick = async (href: string) => {
+    if (href === "/logout") {
+      await handleLogout()
+    } else {
+      setIsOpen(false)
+    }
+  }
   return (
     <div className="relative">
       <Button variant="ghost" className="flex items-center gap-3 px-3 py-2 h-auto" onClick={() => setIsOpen(!isOpen)}>
@@ -58,14 +72,13 @@ export function UserDropdown({ name = "Sophie Chamberlain", email = "hi@sophie.c
                   return (
                     <motion.button
                       key={item.href}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
-                        item.variant === "destructive"
-                          ? "text-destructive hover:bg-destructive/10"
-                          : "text-foreground hover:bg-accent"
-                      }`}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${item.variant === "destructive"
+                        ? "text-destructive hover:bg-destructive/10"
+                        : "text-foreground hover:bg-accent"
+                        }`}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => setIsOpen(false)}
+                      onClick={() => onClick(item.href ?? "")}
                     >
                       <Icon className="w-4 h-4" />
                       <span>{item.label}</span>

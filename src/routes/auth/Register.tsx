@@ -1,39 +1,37 @@
-import React, { useState } from 'react'
+import { z } from 'zod'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { Eye, EyeOff, Mail, Lock, User, Phone, FileText, Check, X } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, User, Phone, Check, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
+import { useAuth } from '@/contexts/useAuth'
+import type { SignupDto } from '@/types/user.types'
+import { useNavigate } from 'react-router-dom'
 
 const registerSchema = z.object({
-  firstName: z.string()
-    .min(2, 'First name must be at least 2 characters')
-    .max(50, 'First name must be less than 50 characters')
-    .regex(/^[a-zA-Z\s]+$/, 'First name can only contain letters and spaces'),
-  lastName: z.string()
-    .min(2, 'Last name must be at least 2 characters')
-    .max(50, 'Last name must be less than 50 characters')
-    .regex(/^[a-zA-Z\s]+$/, 'Last name can only contain letters and spaces'),
+  name: z.string()
+    .min(2, 'Name must be at least 2 characters')
+    .max(50, 'Name must be less than 50 characters')
+    .regex(/^[a-zA-Z\s]+$/, 'Name can only contain letters and spaces'),
   email: z.string()
     .email('Please enter a valid email address')
     .min(1, 'Email is required'),
   phone: z.string()
-    .regex(/^(\+\d{1,3}[- ]?)?\d{10}$/, 'Please enter a valid phone number')
-    .optional(),
+    .optional()
+    .refine((val) => !val || /^(\+\d{1,3}[- ]?)?\d{10}$/.test(val), {
+      message: 'Please enter a valid phone number'
+    }),
   password: z.string()
     .min(8, 'Password must be at least 8 characters')
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, 
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
       'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'),
   confirmPassword: z.string()
     .min(1, 'Please confirm your password'),
-  agreeToTerms: z.boolean().refine(val => val === true, {
-    message: 'You must agree to the terms and conditions',
-  }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -44,23 +42,21 @@ type RegisterFormData = z.infer<typeof registerSchema>
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-
+  const { register, loading: isLoading } = useAuth()
+  const navigate = useNavigate()
   const form = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      firstName: '',
-      lastName: '',
+      name: '',
       email: '',
       phone: '',
       password: '',
       confirmPassword: '',
-      agreeToTerms: false,
     },
   })
 
   const password = form.watch('password')
-  
+
   const passwordValidations = [
     { test: password.length >= 8, text: 'At least 8 characters' },
     { test: /[A-Z]/.test(password), text: 'One uppercase letter' },
@@ -70,76 +66,98 @@ const Register = () => {
   ]
 
   const onSubmit = async (data: RegisterFormData) => {
-    setIsLoading(true)
-    try {
-      console.log('Register data:', data)
-      // Add your registration logic here
-    } catch (error) {
-      console.error('Registration error:', error)
-    } finally {
-      setIsLoading(false)
+    const signupDto: SignupDto = {
+      email: data.email,
+      password: data.password,
+      display_name: data.name
+    }
+    
+    const result = await register(signupDto)
+    
+    if (result.success) {
+      // Navigate to login page after successful registration
+      navigate('/login')
+    } else if (result.error) {
+      // Set form error for the email field if it's an email-related error
+      if (result.error.toLowerCase().includes('email')) {
+        form.setError('email', { 
+          type: 'manual', 
+          message: result.error 
+        })
+      } else {
+        // Set a general form error
+        form.setError('root', { 
+          type: 'manual', 
+          message: result.error 
+        })
+      }
     }
   }
 
   return (
-    <div className="flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
-
-        <Card className="shadow-xl border-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
+      <div className="w-full max-w-lg">
+        <Card className="shadow-xl border-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm">
           <CardHeader className="text-center pb-4">
             <CardTitle className="text-xl text-gray-900 dark:text-white">Create Account</CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-400">
               Fill in your details to create a new account
             </CardDescription>
           </CardHeader>
-          
-          <CardContent className="">
+
+          <CardContent>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                {/* Name Fields */}
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                {/* Name and Phone Fields */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="firstName"
+                    name="name"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-700 dark:text-gray-300">First Name</FormLabel>
+                      <FormItem className="space-y-2">
+                        <FormLabel className="text-gray-700 dark:text-gray-300">
+                          Name <span className="text-red-500">*</span>
+                        </FormLabel>
                         <FormControl>
                           <div className="relative">
                             <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                             <Input
                               type="text"
-                              placeholder="First name"
-                              className="pl-10 bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 focus:border-purple-500 dark:focus:border-purple-400"
+                              placeholder="Enter your name"
+                              className="pl-10 bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 focus:border-purple-500 dark:focus:border-purple-400 focus:ring-1 focus:ring-purple-500/20"
                               {...field}
                             />
                           </div>
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="text-sm" />
+                      </FormItem>
+                    )}
+                  />
+                  {/* Phone Field */}
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700 dark:text-gray-300">
+                          Phone <span className="text-gray-500 dark:text-gray-400 text-sm">(Optional)</span>
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                            <Input
+                              type="tel"
+                              placeholder="+1234567890"
+                              className="pl-10 bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 focus:border-purple-500 dark:focus:border-purple-400 focus:ring-1 focus:ring-purple-500/20"
+                              {...field}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage className="text-sm" />
                       </FormItem>
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="lastName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-700 dark:text-gray-300">Last Name</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                            <Input
-                              type="text"
-                              placeholder="Last name"
-                              className="pl-10 bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 focus:border-purple-500 dark:focus:border-purple-400"
-                              {...field}
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
 
                 {/* Email Field */}
@@ -147,61 +165,44 @@ const Register = () => {
                   control={form.control}
                   name="email"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-700 dark:text-gray-300">Email</FormLabel>
+                    <FormItem className="space-y-2">
+                      <FormLabel className="text-gray-700 dark:text-gray-300">
+                        Email <span className="text-red-500">*</span>
+                      </FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                           <Input
                             type="email"
                             placeholder="Enter your email"
-                            className="pl-10 bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 focus:border-purple-500 dark:focus:border-purple-400"
+                            className="pl-10 bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 focus:border-purple-500 dark:focus:border-purple-400 focus:ring-1 focus:ring-purple-500/20"
                             {...field}
                           />
                         </div>
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage className="text-sm" />
                     </FormItem>
                   )}
                 />
 
-                {/* Phone Field */}
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-700 dark:text-gray-300">Phone (Optional)</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                          <Input
-                            type="tel"
-                            placeholder="+1234567890"
-                            className="pl-10 bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 focus:border-purple-500 dark:focus:border-purple-400"
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+
 
                 {/* Password Field */}
                 <FormField
                   control={form.control}
                   name="password"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-700 dark:text-gray-300">Password</FormLabel>
+                    <FormItem className="space-y-2">
+                      <FormLabel className="text-gray-700 dark:text-gray-300">
+                        Password <span className="text-red-500">*</span>
+                      </FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                           <Input
                             type={showPassword ? 'text' : 'password'}
                             placeholder="Create a password"
-                            className="pl-10 pr-10 bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 focus:border-purple-500 dark:focus:border-purple-400"
+                            className="pl-10 pr-10 bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 focus:border-purple-500 dark:focus:border-purple-400 focus:ring-1 focus:ring-purple-500/20"
                             {...field}
                           />
                           <button
@@ -213,8 +214,8 @@ const Register = () => {
                           </button>
                         </div>
                       </FormControl>
-                      <FormMessage />
-                      
+                      <FormMessage className="text-sm" />
+
                       {/* Password Requirements */}
                       {password && (
                         <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -244,15 +245,17 @@ const Register = () => {
                   control={form.control}
                   name="confirmPassword"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-700 dark:text-gray-300">Confirm Password</FormLabel>
+                    <FormItem className="space-y-2">
+                      <FormLabel className="text-gray-700 dark:text-gray-300">
+                        Confirm Password <span className="text-red-500">*</span>
+                      </FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                           <Input
                             type={showConfirmPassword ? 'text' : 'password'}
                             placeholder="Confirm your password"
-                            className="pl-10 pr-10 bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 focus:border-purple-500 dark:focus:border-purple-400"
+                            className="pl-10 pr-10 bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 focus:border-purple-500 dark:focus:border-purple-400 focus:ring-1 focus:ring-purple-500/20"
                             {...field}
                           />
                           <button
@@ -264,41 +267,19 @@ const Register = () => {
                           </button>
                         </div>
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage className="text-sm" />
                     </FormItem>
                   )}
                 />
 
-                {/* Terms and Conditions */}
-                <FormField
-                  control={form.control}
-                  name="agreeToTerms"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                      <FormControl>
-                        <input
-                          type="checkbox"
-                          className="rounded border-gray-300 text-purple-600 focus:ring-purple-500 mt-1"
-                          checked={field.value}
-                          onChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <label className="text-sm text-gray-600 dark:text-gray-400">
-                          I agree to the{' '}
-                          <Link to="/terms" className="text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300 underline">
-                            Terms of Service
-                          </Link>{' '}
-                          and{' '}
-                          <Link to="/privacy" className="text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300 underline">
-                            Privacy Policy
-                          </Link>
-                        </label>
-                        <FormMessage />
-                      </div>
-                    </FormItem>
-                  )}
-                />
+                {/* Display general form errors */}
+                {form.formState.errors.root && (
+                  <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                    <p className="text-sm text-red-600 dark:text-red-400">
+                      {form.formState.errors.root.message}
+                    </p>
+                  </div>
+                )}
 
                 <Button
                   type="submit"
@@ -321,8 +302,8 @@ const Register = () => {
           <CardFooter className="justify-center pt-4 border-t border-gray-100 dark:border-gray-700">
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Already have an account?{' '}
-              <Link 
-                to="/login" 
+              <Link
+                to="/login"
                 className="text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300 font-medium transition-colors"
               >
                 Sign in
@@ -330,7 +311,7 @@ const Register = () => {
             </p>
           </CardFooter>
         </Card>
-
+      </div>
     </div>
   )
 }

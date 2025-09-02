@@ -24,3 +24,11 @@ export interface IUser {
     two_factor_enabled: boolean;
     preferences: Record<string, any>;
 }
+
+export interface SignupDto {
+    email: string;
+    password: string;
+    display_name?: string;
+    avatar_url?: string;
+  }
+  
