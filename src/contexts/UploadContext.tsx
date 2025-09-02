@@ -91,7 +91,7 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         try {
             const response = await apiClient.delete(`/stream/upload/${fileName}`, {
                 headers: {
-                    Authorization: token?.token ? `Bearer ${token.token}` : undefined,
+                    Authorization: token?.jwt_token ? `Bearer ${token.jwt_token}` : undefined,
                 },
             });
 

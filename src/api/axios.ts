@@ -13,8 +13,8 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
     (config) => {
         const { token } = getAuthState();
-        if (token?.token) {
-            config.headers.Authorization = `Bearer ${token?.token}`;
+        if (token?.jwt_token) {
+            config.headers.Authorization = `Bearer ${token?.jwt_token}`;
         }
         return config;
     },

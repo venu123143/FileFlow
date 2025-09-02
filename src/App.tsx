@@ -1,6 +1,8 @@
 import "./css/App.css";
-import { Routes, Route } from "react-router-dom";
 import { Suspense } from "react";
+import { ProtectedRoute } from "@/components/layouts/index";
+import { USER_ROLES } from "@/types/user.types";
+import { Routes, Route } from "react-router-dom";
 import NotFound from "@/routes/Notfound";
 import Home from "@/routes/Home";
 import DeletedFiles from "@/routes/DeletedFiles";
@@ -8,8 +10,9 @@ import AllFiles from "@/routes/AllFiles";
 import PrivateFiles from "@/routes/PrivateFiles";
 import Settings from "@/routes/Settings";
 import SharedFiles from "@/routes/SharedFiles";
-import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import Notifications from "@/routes/Notifications";
+import Login from "@/routes/auth/Login";
+import Register from "@/routes/auth/Register";
 
 // Loading component for Suspense fallback
 const Loading = () => (
@@ -20,20 +23,24 @@ const Loading = () => (
 
 function App() {
   return (
-    <DashboardLayout>
+    <>
       <Suspense fallback={<Loading />}>
         <Routes>
-          <Route path='/' element={<Home />} />
-          <Route path='/all-files' element={<AllFiles />} />
-          <Route path='/deleted-files' element={<DeletedFiles />} />
-          <Route path='/private-files' element={<PrivateFiles />} />
-          <Route path='/settings' element={<Settings />} />
-          <Route path='/shared-files' element={<SharedFiles />} />
-          <Route path='/notifications' element={<Notifications />} />
-          <Route path="*" element={<NotFound />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route element={<ProtectedRoute roles={[USER_ROLES.USER]} />}>
+            <Route path='/' element={<Home />} />
+            <Route path='/all-files' element={<AllFiles />} />
+            <Route path='/deleted-files' element={<DeletedFiles />} />
+            <Route path='/private-files' element={<PrivateFiles />} />
+            <Route path='/settings' element={<Settings />} />
+            <Route path='/shared-files' element={<SharedFiles />} />
+            <Route path='/notifications' element={<Notifications />} />
+            <Route path="*" element={<NotFound />} />
+          </Route>
         </Routes>
       </Suspense>
-    </DashboardLayout>
+    </>
   )
 }
 

@@ -1,15 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-
-export type Jwt = {
-    expires_at: number;
-    token: string;
-};
+import { type JwtToken } from '@/types/user.types';
 // Define the interface for your Auth Store
 interface IAuthStore {
-    token: Jwt | null;
+    token: JwtToken | null;
     isAuthenticated: boolean;
-    setToken: (token: Jwt) => void;
+    setToken: (token: JwtToken) => void;
     removeToken: () => void;
 }
 
@@ -21,7 +17,7 @@ export const useAuthStore = create<IAuthStore>()(
             isAuthenticated: false,
 
             // Action to set the token
-            setToken: (token: Jwt) => set({
+            setToken: (token: JwtToken) => set({
                 token,
                 isAuthenticated: true
             }),

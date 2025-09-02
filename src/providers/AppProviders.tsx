@@ -5,10 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ErrorBoundary } from "@/components/error/ErrorBoundry";
 import { UploadProvider } from "@/contexts/UploadContext";
 // import { ThemeProvider } from "@/contexts/ThemeContext";
-// import { AuthProvider } from "@/contexts/useAuth";
-// import { ErrorBoundary } from "@/components/error/ErrorBoundry";
+import { AuthProvider } from "@/contexts/useAuth";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-// import { UploadProvider } from "@/contexts/UploadContext";
 
 
 const queryClient = new QueryClient();
@@ -25,7 +23,7 @@ const AppProviders = ({ children }: { children: ReactNode }) => {
                 {children}
             </>
         ),
-        // (children: ReactNode) => <AuthProvider>{children}</AuthProvider>,
+        (children: ReactNode) => <AuthProvider>{children}</AuthProvider>,
     ];
 
     return providers.reduceRight((acc, Provider) => Provider(acc), children);

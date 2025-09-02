@@ -56,7 +56,6 @@ const quickActions = [
 
 export function HomeDashboard() {
   const navigate = useNavigate()
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
       <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8">
