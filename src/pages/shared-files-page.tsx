@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import {
   Grid3X3,
@@ -27,6 +27,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FileManager } from "@/components/file-manager/FileManager"
 import { sharedPageConfig, defaultViewConfig } from "@/config/page-configs"
 import type { SharedFileItem, FileActionHandlers } from "@/types/file-manager"
+import { useFile } from "@/contexts/fileContext"
 
 const mockSharedFiles: SharedFileItem[] = [
   {
@@ -117,6 +118,13 @@ export function SharedFilesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState("all")
+  const { getAllSharedFilesWithMe, getAllSharedFilesByMe, getAllSharedFiles } = useFile()
+
+  useEffect(() => {
+    getAllSharedFilesWithMe()
+    getAllSharedFilesByMe()
+    getAllSharedFiles()
+  }, [])
 
   const filteredFiles = mockSharedFiles.filter((file) => {
     const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase())

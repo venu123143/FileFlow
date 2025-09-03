@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronDown, Settings, User, LogOut, Bell, HelpCircle } from "lucide-react"
+import { ChevronDown, Settings, User, LogOut, Bell, HelpCircle, Loader2 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { UserAvatar } from "./user-avatar"
 import { Button } from "@/components/ui/button"
@@ -15,7 +15,7 @@ interface UserDropdownProps {
 
 export function UserDropdown({ name = "Sophie Chamberlain", email = "hi@sophie.com", avatarSrc }: UserDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const { logout } = useAuth()
+  const { logout, logoutLoading } = useAuth()
   const navigate = useNavigate()
   const menuItems = [
     { icon: User, label: "Profile", href: "/profile" },
@@ -69,18 +69,26 @@ export function UserDropdown({ name = "Sophie Chamberlain", email = "hi@sophie.c
                   }
 
                   const Icon = item.icon!
+                  const isLogoutLoading = logoutLoading && item.href === "/logout"
+
                   return (
                     <motion.button
                       key={item.href}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${item.variant === "destructive"
-                        ? "text-destructive hover:bg-destructive/10"
-                        : "text-foreground hover:bg-accent"
-                        }`}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => onClick(item.href ?? "")}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                        item.variant === "destructive"
+                          ? "text-destructive hover:bg-destructive/10"
+                          : "text-foreground hover:bg-accent"
+                        } ${isLogoutLoading ? "cursor-not-allowed opacity-70" : ""}`}
+                      whileHover={isLogoutLoading ? {} : { scale: 1.02 }}
+                      whileTap={isLogoutLoading ? {} : { scale: 0.98 }}
+                      onClick={() => !isLogoutLoading && onClick(item.href ?? "")}
+                      disabled={isLogoutLoading}
                     >
-                      <Icon className="w-4 h-4" />
+                      {isLogoutLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Icon className="w-4 h-4" />
+                      )}
                       <span>{item.label}</span>
                     </motion.button>
                   )

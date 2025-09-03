@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import {
   Grid3X3,
@@ -29,7 +29,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { FileManager } from "@/components/file-manager/FileManager"
 import { deletedPageConfig, defaultViewConfig } from "@/config/page-configs"
 import type { DeletedFileItem, FileActionHandlers } from "@/types/file-manager"
-
+import { useFile } from "@/contexts/fileContext"
 const mockDeletedFiles: DeletedFileItem[] = [
   {
     id: "1",
@@ -145,6 +145,11 @@ export function DeletedFilesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
+  const { getTrash } = useFile()
+
+  useEffect(() => {
+    getTrash()
+  }, [])
 
   const filteredFiles = mockDeletedFiles.filter((file) => file.name.toLowerCase().includes(searchQuery.toLowerCase()))
 

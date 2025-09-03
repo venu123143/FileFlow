@@ -1,6 +1,5 @@
 "use client"
-
-import { useState, useMemo } from "react"
+import { useState, useEffect, useMemo } from "react"
 import type { FileItem, FileActionHandlers } from "@/types/file-manager"
 import { mockFileSystem } from "@/data/mock-file-system"
 import { FileManagerHeader } from "@/components/file-manager/FileManagerHeader"
@@ -10,12 +9,20 @@ import { BulkActionsBar } from "@/components/file-manager/BulkActionsBar"
 import { FileManager } from "@/components/file-manager/FileManager"
 import { standardPageConfig, defaultViewConfig } from "@/config/page-configs"
 import { FolderIcon } from "lucide-react"
+import { useFile } from "@/contexts/fileContext"
 
 export default function AllFilesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
   const [currentPath, setCurrentPath] = useState<string[]>([])
+
+  const { getFileSystemTree, createFolder } = useFile();
+
+  useEffect(() => {
+    getFileSystemTree()
+  }, [])
+
 
   let currentItems = useMemo(() => {
     let items: FileItem[] = mockFileSystem
@@ -65,33 +72,8 @@ export default function AllFilesPage() {
     }
   }
 
-  const handleCreateFolder = (folderName: string) => {
-    // Create a new folder object
-    const newFolder: FileItem = {
-      id: `folder-${Date.now()}`,
-      name: folderName,
-      type: "folder",
-      variant: "standard",
-      icon: FolderIcon,
-      size: "0 items",
-      modified: "Just now",
-      parentPath: currentPath,
-      children: [],
-      starred: false,
-      shared: false,
-      fileType: undefined,
-      thumbnail: undefined
-    }
-
-    // Add the new folder to the current directory
-    const updatedItems = [...currentItems, newFolder]
-
-    // Update the mock file system (in a real app, this would be an API call)
-    // For now, we'll just update the local state
-    console.log("Created new folder:", newFolder)
-
-    // You would typically update the file system here
-    currentItems = updatedItems
+  const handleCreateFolder = async (folderName: string) => {
+    await createFolder({ name: folderName })
   }
 
   const actionHandlers: FileActionHandlers = {

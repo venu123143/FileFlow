@@ -46,6 +46,7 @@ interface AuthContextType extends AuthState {
     register: (data: any) => Promise<{ success: boolean; error?: string }>;
     saveUser: (user: IUser) => void;
     logout: () => Promise<void>;
+    logoutLoading: boolean;
     VerifyEmail: (token: string) => Promise<boolean | undefined>;
 }
 
@@ -82,7 +83,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const { mutateAsync: registerMutationFn } = useMutation({
         mutationFn: async (data: SignupDto) => {
-            console.log(data, "data.register");
             const result = await authApi.register(data);
             return result.data;
         },
@@ -107,6 +107,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         onError: (error) => {
             console.log(error, "error.register");
             dispatch({ type: 'SET_LOADING', loading: false });
+        },
+    });
+
+    const { mutateAsync: logoutMutationFn, isPending: logoutLoading } = useMutation({
+        mutationFn: async () => {
+            const result = await authApi.logout();
+            return result.data;
+        },
+        onSuccess: () => {
+            // Clear all local data and state
+            localStorage.removeItem(CONSTANTS.STORAGE_KEYS.USER_DATA);
+            removeToken();
+            dispatch({ type: 'LOGOUT' });
+            queryClient.clear();
+            toast.success("Logged out successfully");
+        },
+        onError: (error) => {
+            console.error('Logout error:', error);
+            // Even if logout API fails, clear local data for security
+            localStorage.removeItem(CONSTANTS.STORAGE_KEYS.USER_DATA);
+            removeToken();
+            dispatch({ type: 'LOGOUT' });
+            queryClient.clear();
+            toast.success("Logged out successfully");
         },
     });
 
@@ -146,18 +170,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const logout = async () => {
         try {
-            // Call the logout API to invalidate the session on the server
-            await authApi.logout();
+            await logoutMutationFn();
         } catch (error) {
-            // Even if the API call fails, we should still clear local data
-            console.error('Logout API error:', error);
-        } finally {
-            // Always clear local data regardless of API call success/failure
-            localStorage.removeItem(CONSTANTS.STORAGE_KEYS.USER_DATA);
-            removeToken();
-            dispatch({ type: 'LOGOUT' });
-            queryClient.clear();
-            toast.success("Logged out successfully");
+            // Error handling is already done in the mutation's onError callback
+            console.error('Logout mutation error:', error);
         }
     };
 
@@ -167,6 +183,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         register,
         saveUser,
         logout,
+        logoutLoading,
         VerifyEmail,
     };
 

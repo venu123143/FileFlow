@@ -2,25 +2,54 @@ import React, { useReducer, useContext, createContext, type ReactNode } from 're
 import { useMutation } from '@tanstack/react-query';
 import fileApi from '@/api/file.api';
 import { toast } from 'sonner';
+import type {
+    CreateFolderInput,
+    RenameFolderInput,
+    MoveFileOrFolderInput,
+    CreateFileInput,
+    ShareFileOrFolderInput,
+    FileSystemNode,
+    SharedFileSystemNode,
+} from '@/types/file.types';
 
 interface FileState {
-    files: any[];
+    fileSystemTree: FileSystemNode[];
+    trash: FileSystemNode[];
+    sharedFiles: SharedFileSystemNode[];
+    sharedFilesByMe: SharedFileSystemNode[];
+    sharedFilesWithMe: SharedFileSystemNode[];
     loading: boolean;
 }
 
 type FileAction =
-    | { type: 'SET_FILES'; files: any[] }
+    | { type: 'SET_FILE_SYSTEM_TREE'; fileSystemTree: FileSystemNode[] }
+    | { type: 'SET_TRASH'; trash: FileSystemNode[] }
+    | { type: 'SET_SHARED_FILES'; sharedFiles: SharedFileSystemNode[] }
+    | { type: 'SET_SHARED_FILES_BY_ME'; sharedFilesByMe: SharedFileSystemNode[] }
+    | { type: 'SET_SHARED_FILES_WITH_ME'; sharedFilesWithMe: SharedFileSystemNode[] }
     | { type: 'SET_LOADING'; loading: boolean };
 
 const initialState: FileState = {
-    files: [],
+    fileSystemTree: [],
+    trash: [],
+    sharedFiles: [],
+    sharedFilesByMe: [],
+    sharedFilesWithMe: [],
     loading: false,
 };
 
 function fileReducer(state: FileState, action: FileAction): FileState {
     switch (action.type) {
-        case 'SET_FILES':
-            return { ...state, files: action.files };
+        case 'SET_FILE_SYSTEM_TREE':
+            return { ...state, fileSystemTree: action.fileSystemTree };
+        case 'SET_TRASH':
+            return { ...state, trash: action.trash };
+        case 'SET_SHARED_FILES':
+            return { ...state, sharedFiles: action.sharedFiles };
+        case 'SET_SHARED_FILES_BY_ME':
+            return { ...state, sharedFilesByMe: action.sharedFilesByMe };
+        case 'SET_SHARED_FILES_WITH_ME':
+            return { ...state, sharedFilesWithMe: action.sharedFilesWithMe };
         case 'SET_LOADING':
             return { ...state, loading: action.loading };
         default:
@@ -28,36 +57,38 @@ function fileReducer(state: FileState, action: FileAction): FileState {
     }
 }
 
+type MutationResult = Promise<{ success: boolean; error?: string }>;
+
 interface FileContextType extends FileState {
-    createFolder: (data: any) => Promise<{ success: boolean; error?: string }>;
-    renameFolder: (id: string, data: any) => Promise<{ success: boolean; error?: string }>;
-    moveFileOrFolder: (id: string, data: any) => Promise<{ success: boolean; error?: string }>;
-    createFile: (data: any) => Promise<{ success: boolean; error?: string }>;
-    shareFileOrFolder: (id: string, data: any) => Promise<{ success: boolean; error?: string }>;
-    getAllSharedFiles: () => Promise<any>;
-    getAllSharedFilesByMe: () => Promise<any>;
-    getAllSharedFilesWithMe: () => Promise<any>;
-    getFileSystemTree: () => Promise<any>;
-    getTrash: () => Promise<any>;
-    deleteFileOrFolder: (id: string) => Promise<{ success: boolean; error?: string }>;
-    restoreFileOrFolder: (id: string) => Promise<{ success: boolean; error?: string }>;
-    emptyTrash: () => Promise<{ success: boolean; error?: string }>;
+    createFolder: (data: CreateFolderInput) => MutationResult;
+    renameFolder: (id: string, data: RenameFolderInput) => MutationResult;
+    moveFileOrFolder: (id: string, data: MoveFileOrFolderInput) => MutationResult;
+    createFile: (data: CreateFileInput) => MutationResult;
+    shareFileOrFolder: (id: string, data: ShareFileOrFolderInput) => MutationResult;
+    getAllSharedFiles: () => Promise<SharedFileSystemNode[]>;
+    getAllSharedFilesByMe: () => Promise<SharedFileSystemNode[]>;
+    getAllSharedFilesWithMe: () => Promise<SharedFileSystemNode[]>;
+    getFileSystemTree: () => Promise<FileSystemNode[]>;
+    getTrash: () => Promise<FileSystemNode[]>;
+    deleteFileOrFolder: (id: string) => MutationResult;
+    restoreFileOrFolder: (id: string) => MutationResult;
+    emptyTrash: () => MutationResult;
 }
 
 const FileContext = createContext<FileContextType | undefined>(undefined);
 
 export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [state, dispatch] = useReducer(fileReducer, initialState);
-    //   const queryClient = useQueryClient();
 
+    // 🔹 Mutations
     const { mutateAsync: createFolderMutationFn } = useMutation({
-        mutationFn: async (data: any) => {
+        mutationFn: async (data: CreateFolderInput) => {
             const result = await fileApi.createFolder(data);
             return result.data;
         },
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success("Folder created successfully!");
+            toast.success('Folder created successfully!');
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
@@ -65,13 +96,13 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
 
     const { mutateAsync: renameFolderMutationFn } = useMutation({
-        mutationFn: async ({ id, data }: { id: string; data: any }) => {
+        mutationFn: async ({ id, data }: { id: string; data: RenameFolderInput }) => {
             const result = await fileApi.renameFolder(id, data);
             return result.data;
         },
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success("Folder renamed successfully!");
+            toast.success('Folder renamed successfully!');
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
@@ -79,13 +110,13 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
 
     const { mutateAsync: moveFileOrFolderMutationFn } = useMutation({
-        mutationFn: async ({ id, data }: { id: string; data: any }) => {
+        mutationFn: async ({ id, data }: { id: string; data: MoveFileOrFolderInput }) => {
             const result = await fileApi.moveFileOrFolder(id, data);
             return result.data;
         },
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success("File or folder moved successfully!");
+            toast.success('File or folder moved successfully!');
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
@@ -93,13 +124,13 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
 
     const { mutateAsync: createFileMutationFn } = useMutation({
-        mutationFn: async (data: any) => {
+        mutationFn: async (data: CreateFileInput) => {
             const result = await fileApi.createFile(data);
             return result.data;
         },
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success("File created successfully!");
+            toast.success('File created successfully!');
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
@@ -107,13 +138,13 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
 
     const { mutateAsync: shareFileOrFolderMutationFn } = useMutation({
-        mutationFn: async ({ id, data }: { id: string; data: any }) => {
+        mutationFn: async ({ id, data }: { id: string; data: ShareFileOrFolderInput }) => {
             const result = await fileApi.shareFileOrFolder(id, data);
             return result.data;
         },
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success("File or folder shared successfully!");
+            toast.success('File or folder shared successfully!');
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
@@ -127,7 +158,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         },
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success("File or folder deleted successfully!");
+            toast.success('File or folder deleted successfully!');
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
@@ -141,7 +172,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         },
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success("File or folder restored successfully!");
+            toast.success('File or folder restored successfully!');
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
@@ -155,69 +186,72 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         },
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success("Trash emptied successfully!");
+            toast.success('Trash emptied successfully!');
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
         },
     });
 
-    const createFolder = async (data: any) => {
+    // 🔹 Wrapped Actions
+    const createFolder = async (data: CreateFolderInput) => {
         try {
             dispatch({ type: 'SET_LOADING', loading: true });
             await createFolderMutationFn(data);
             return { success: true };
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage = error?.response?.data?.message || error?.message || "Failed to create folder.";
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to create folder.';
             return { success: false, error: errorMessage };
         }
     };
 
-    const renameFolder = async (id: string, data: any) => {
+    const renameFolder = async (id: string, data: RenameFolderInput) => {
         try {
             dispatch({ type: 'SET_LOADING', loading: true });
             await renameFolderMutationFn({ id, data });
             return { success: true };
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage = error?.response?.data?.message || error?.message || "Failed to rename folder.";
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to rename folder.';
             return { success: false, error: errorMessage };
         }
     };
 
-    const moveFileOrFolder = async (id: string, data: any) => {
+    const moveFileOrFolder = async (id: string, data: MoveFileOrFolderInput) => {
         try {
             dispatch({ type: 'SET_LOADING', loading: true });
             await moveFileOrFolderMutationFn({ id, data });
             return { success: true };
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage = error?.response?.data?.message || error?.message || "Failed to move file or folder.";
+            const errorMessage =
+                error?.response?.data?.message || error?.message || 'Failed to move file or folder.';
             return { success: false, error: errorMessage };
         }
     };
 
-    const createFile = async (data: any) => {
+    const createFile = async (data: CreateFileInput) => {
         try {
             dispatch({ type: 'SET_LOADING', loading: true });
             await createFileMutationFn(data);
             return { success: true };
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage = error?.response?.data?.message || error?.message || "Failed to create file.";
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to create file.';
             return { success: false, error: errorMessage };
         }
     };
 
-    const shareFileOrFolder = async (id: string, data: any) => {
+    const shareFileOrFolder = async (id: string, data: ShareFileOrFolderInput) => {
         try {
             dispatch({ type: 'SET_LOADING', loading: true });
             await shareFileOrFolderMutationFn({ id, data });
             return { success: true };
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage = error?.response?.data?.message || error?.message || "Failed to share file or folder.";
+            const errorMessage =
+                error?.response?.data?.message || error?.message || 'Failed to share file or folder.';
             return { success: false, error: errorMessage };
         }
     };
@@ -226,11 +260,13 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         try {
             dispatch({ type: 'SET_LOADING', loading: true });
             const result = await fileApi.getAllSharedFiles();
+            dispatch({ type: 'SET_SHARED_FILES', sharedFiles: result.data });
             dispatch({ type: 'SET_LOADING', loading: false });
             return result.data;
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage = error?.response?.data?.message || error?.message || "Failed to get all shared files.";
+            const errorMessage =
+                error?.response?.data?.message || error?.message || 'Failed to get all shared files.';
             throw new Error(errorMessage);
         }
     };
@@ -239,11 +275,13 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         try {
             dispatch({ type: 'SET_LOADING', loading: true });
             const result = await fileApi.getAllSharedFilesByMe();
+            dispatch({ type: 'SET_SHARED_FILES_BY_ME', sharedFilesByMe: result.data });
             dispatch({ type: 'SET_LOADING', loading: false });
             return result.data;
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage = error?.response?.data?.message || error?.message || "Failed to get all shared files by me.";
+            const errorMessage =
+                error?.response?.data?.message || error?.message || 'Failed to get all shared files by me.';
             throw new Error(errorMessage);
         }
     };
@@ -252,11 +290,13 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         try {
             dispatch({ type: 'SET_LOADING', loading: true });
             const result = await fileApi.getAllSharedFilesWithMe();
+            dispatch({ type: 'SET_SHARED_FILES_WITH_ME', sharedFilesWithMe: result.data });
             dispatch({ type: 'SET_LOADING', loading: false });
             return result.data;
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage = error?.response?.data?.message || error?.message || "Failed to get all shared files with me.";
+            const errorMessage =
+                error?.response?.data?.message || error?.message || 'Failed to get all shared files with me.';
             throw new Error(errorMessage);
         }
     };
@@ -265,11 +305,13 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         try {
             dispatch({ type: 'SET_LOADING', loading: true });
             const result = await fileApi.getFileSystemTree();
+            dispatch({ type: 'SET_FILE_SYSTEM_TREE', fileSystemTree: result.data });
             dispatch({ type: 'SET_LOADING', loading: false });
             return result.data;
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage = error?.response?.data?.message || error?.message || "Failed to get file system tree.";
+            const errorMessage =
+                error?.response?.data?.message || error?.message || 'Failed to get file system tree.';
             throw new Error(errorMessage);
         }
     };
@@ -278,11 +320,12 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         try {
             dispatch({ type: 'SET_LOADING', loading: true });
             const result = await fileApi.getTrash();
+            dispatch({ type: 'SET_TRASH', trash: result.data });
             dispatch({ type: 'SET_LOADING', loading: false });
             return result.data;
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage = error?.response?.data?.message || error?.message || "Failed to get trash.";
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to get trash.';
             throw new Error(errorMessage);
         }
     };
@@ -294,7 +337,8 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return { success: true };
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage = error?.response?.data?.message || error?.message || "Failed to delete file or folder.";
+            const errorMessage =
+                error?.response?.data?.message || error?.message || 'Failed to delete file or folder.';
             return { success: false, error: errorMessage };
         }
     };
@@ -306,7 +350,8 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return { success: true };
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage = error?.response?.data?.message || error?.message || "Failed to restore file or folder.";
+            const errorMessage =
+                error?.response?.data?.message || error?.message || 'Failed to restore file or folder.';
             return { success: false, error: errorMessage };
         }
     };
@@ -318,7 +363,8 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return { success: true };
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage = error?.response?.data?.message || error?.message || "Failed to empty trash.";
+            const errorMessage =
+                error?.response?.data?.message || error?.message || 'Failed to empty trash.';
             return { success: false, error: errorMessage };
         }
     };
