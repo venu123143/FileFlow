@@ -1,41 +1,47 @@
 "use client"
 import { useState, useEffect, useMemo } from "react"
 import type { FileItem, FileActionHandlers } from "@/types/file-manager"
-import { mockFileSystem } from "@/data/mock-file-system"
 import { FileManagerHeader } from "@/components/file-manager/FileManagerHeader"
 import { BreadcrumbNavigation } from "@/components/file-manager/BreadcrumbNavigation"
 import { Toolbar } from "@/components/file-manager/Toolbar"
 import { BulkActionsBar } from "@/components/file-manager/BulkActionsBar"
 import { FileManager } from "@/components/file-manager/FileManager"
 import { standardPageConfig, defaultViewConfig } from "@/config/page-configs"
-import { FolderIcon } from "lucide-react"
+
 import { useFile } from "@/contexts/fileContext"
+import { transformFileSystemNodesToFileItems } from "@/lib/utils"
 
 export default function AllFilesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
-  const [currentPath, setCurrentPath] = useState<string[]>([])
+  const [currentPath, setCurrentPath] = useState<Array<{id: string, name: string}>>([])
 
-  const { getFileSystemTree, createFolder } = useFile();
+  const { getFileSystemTree, createFolder, fileSystemTree } = useFile();
 
   useEffect(() => {
     getFileSystemTree()
   }, [])
 
 
+  // Transform dynamic data to FileItem format
+  const transformedFileSystem = useMemo(() => {
+    return transformFileSystemNodesToFileItems(fileSystemTree)
+  }, [fileSystemTree])
+
   let currentItems = useMemo(() => {
-    let items: FileItem[] = mockFileSystem
+    let items: FileItem[] = transformedFileSystem
     for (const folder of currentPath) {
-      const foundFolder = items.find((item) => item.name === folder && item.type === "folder")
+      const foundFolder = items.find((item) => item.id === folder.id && item.type === "folder")
       if (foundFolder?.children) {
         items = foundFolder.children
       }
     }
     return items
-  }, [currentPath])
+  }, [currentPath, transformedFileSystem])
 
   const filteredFiles = useMemo(() => {
+    // search filter 
     return currentItems.filter((file) => file.name.toLowerCase().includes(searchQuery.toLowerCase()))
   }, [currentItems, searchQuery])
 
@@ -49,7 +55,7 @@ export default function AllFilesPage() {
 
   const handleItemClick = (item: FileItem) => {
     if (item.type === "folder") {
-      setCurrentPath([...currentPath, item.name])
+      setCurrentPath([...currentPath, {id: item.id, name: item.name}])
       setSelectedFiles([])
       setSearchQuery("")
     }
@@ -73,7 +79,19 @@ export default function AllFilesPage() {
   }
 
   const handleCreateFolder = async (folderName: string) => {
-    await createFolder({ name: folderName })
+    // Find the parent folder ID based on current path
+    let parentId: string | undefined = undefined
+
+    if (currentPath.length > 0) {
+      // Get the last folder in the current path as the parent
+      const lastFolder = currentPath[currentPath.length - 1]
+      parentId = lastFolder.id
+    }
+
+    await createFolder({
+      name: folderName,
+      parent_id: parentId
+    })
   }
 
   const actionHandlers: FileActionHandlers = {

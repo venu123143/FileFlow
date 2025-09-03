@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Breadcrumb } from "@/components/custom/breadcrumb";
 
 interface BreadcrumbNavigationProps {
-  currentPath: string[];
+  currentPath: Array<{id: string, name: string}>;
   onNavigate: (index: number) => void;
 }
 
@@ -16,7 +16,7 @@ export function BreadcrumbNavigation({ currentPath, onNavigate }: BreadcrumbNavi
       transition={{ duration: 0.2 }}
       className="bg-muted/50 rounded-lg p-3"
     >
-      <Breadcrumb path={currentPath} onNavigate={onNavigate} />
+      <Breadcrumb path={currentPath.map(folder => folder.name)} onNavigate={onNavigate} />
     </motion.div>
   );
 }

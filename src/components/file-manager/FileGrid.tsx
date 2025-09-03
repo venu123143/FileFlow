@@ -14,7 +14,7 @@ interface FileGridProps {
 export function FileGrid({ files, selectedFiles, pageConfig, viewConfig, actionHandlers, onCreateFolder }: FileGridProps) {
   const { columns, gap, itemHeight } = viewConfig.grid;
   
-  // Use proper Tailwind classes instead of dynamic strings
+  // Use proper Tailwind classes with responsive breakpoints
   const getGridColsClass = () => {
     const smCols = columns.sm;
     const mdCols = columns.md;
@@ -38,7 +38,14 @@ export function FileGrid({ files, selectedFiles, pageConfig, viewConfig, actionH
       12: "grid-cols-12"
     };
     
-    return `${colMap[smCols] || 'grid-cols-2'} ${colMap[mdCols] || 'sm:grid-cols-3'} ${colMap[lgCols] || 'md:grid-cols-4'} ${colMap[xlCols] || 'lg:grid-cols-5'} ${colMap[twoXlCols] || '2xl:grid-cols-6'}`;
+    // Build responsive classes with proper breakpoint prefixes
+    const baseClass = colMap[smCols] || 'grid-cols-2';
+    const mdClass = colMap[mdCols] ? `md:${colMap[mdCols]}` : '';
+    const lgClass = colMap[lgCols] ? `lg:${colMap[lgCols]}` : '';
+    const xlClass = colMap[xlCols] ? `xl:${colMap[xlCols]}` : '';
+    const twoXlClass = colMap[twoXlCols] ? `2xl:${colMap[twoXlCols]}` : '';
+    
+    return [baseClass, mdClass, lgClass, xlClass, twoXlClass].filter(Boolean).join(' ');
   };
   
   const getGapClass = () => {

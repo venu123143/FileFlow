@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { AddNewFolder } from "./AddNewFolder";
 
 interface FileManagerHeaderProps {
-  currentPath: string[];
+  currentPath: Array<{id: string, name: string}>;
   filteredFilesCount: number;
   onBackClick: () => void;
   onCreateFolder?: (folderName: string) => void;
@@ -22,7 +22,7 @@ export function FileManagerHeader({ currentPath, filteredFilesCount, onBackClick
           )}
           <div>
             <h1 className="text-xl sm:text-2xl font-semibold text-foreground">
-              {currentPath.length > 0 ? currentPath[currentPath.length - 1] : "All Files"}
+              {currentPath.length > 0 ? currentPath[currentPath.length - 1]?.name : "All Files"}
             </h1>
             <p className="text-sm text-muted-foreground">{filteredFilesCount} items</p>
           </div>
