@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -20,7 +20,7 @@ type LoginFormData = z.infer<typeof loginSchema>
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false)
-  const { login, loading: isLoading } = useAuth()
+  const { login, loading: isLoading, user } = useAuth()
   const navigate = useNavigate()
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -29,6 +29,12 @@ const Login = () => {
       password: '',
     },
   })
+
+  useEffect(() => {
+    if (user?.id) {
+      navigate('/')
+    }
+  }, [])
 
   const onSubmit = async (data: LoginFormData) => {
     const result = await login(data.email, data.password)

@@ -1,5 +1,5 @@
 "use client"
-
+import { useEffect } from "react"
 import { motion } from "framer-motion"
 import {
   Clock,
@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { useFile } from "@/contexts/fileContext"
 
 const recentFiles = [
   { name: "Project Proposal.pdf", type: "pdf", size: "2.4 MB", modified: "2 hours ago", icon: FileText, color: "text-red-500", bgColor: "bg-red-50" },
@@ -55,7 +56,13 @@ const quickActions = [
 ]
 
 export function HomeDashboard() {
+  const { getFileSystemTree } = useFile();
   const navigate = useNavigate()
+
+  useEffect(() => {
+    getFileSystemTree()
+  }, [])
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
       <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8">
