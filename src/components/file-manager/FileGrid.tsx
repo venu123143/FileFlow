@@ -8,7 +8,7 @@ interface FileGridProps {
   pageConfig: PageConfig;
   viewConfig: ViewConfig;
   actionHandlers: FileActionHandlers;
-  onCreateFolder?: (folderName: string) => void;
+  onCreateFolder?: (folderName: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 export function FileGrid({ files, selectedFiles, pageConfig, viewConfig, actionHandlers, onCreateFolder }: FileGridProps) {

@@ -74,20 +74,29 @@ export default function AllFilesPage() {
     }
   }
 
-  const handleCreateFolder = async (folderName: string) => {
-    // Find the parent folder ID based on current path
-    let parentId: string | undefined = undefined
+  const handleCreateFolder = async (folderName: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      // Find the parent folder ID based on current path
+      let parentId: string | undefined = undefined
 
-    if (currentPath.length > 0) {
-      // Get the last folder in the current path as the parent
-      const lastFolder = currentPath[currentPath.length - 1]
-      parentId = lastFolder.id
+      if (currentPath.length > 0) {
+        // Get the last folder in the current path as the parent
+        const lastFolder = currentPath[currentPath.length - 1]
+        parentId = lastFolder.id
+      }
+
+      const result = await createFolder({
+        name: folderName,
+        parent_id: parentId
+      })
+
+      return result
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error?.message || 'Failed to create folder'
+      }
     }
-
-    await createFolder({
-      name: folderName,
-      parent_id: parentId
-    })
   }
 
   const actionHandlers: FileActionHandlers = {

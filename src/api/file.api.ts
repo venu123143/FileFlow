@@ -6,6 +6,7 @@ const createFolder = async (data: any) => {
         const response = await apiClient.post('/file-flow/folder', data);
         return response.data;
     } catch (error) {
+        console.log(error, "error.createFolder---------------createFolder")
         throw error;
     }
 };
@@ -78,6 +79,7 @@ const getFileSystemTree = async () => {
         const response = await apiClient.get('/file-flow/file/all');
         return response.data;
     } catch (error) {
+        console.log(error, "error.getFileSystemTree---------------getFileSystemTree")
         throw error;
     }
 };

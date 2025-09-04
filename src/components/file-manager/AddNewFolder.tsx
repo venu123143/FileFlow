@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 
 interface AddNewFolderProps {
-  onAddFolder: (folderName: string) => void
+  onAddFolder: (folderName: string) => Promise<{ success: boolean; error?: string }>
   className?: string
   variant?: "button" | "card"
   placeholder?: string
@@ -25,36 +25,61 @@ export function AddNewFolder({
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [folderName, setFolderName] = useState("")
   const [isError, setIsError] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleCreateClick = () => {
     setIsModalOpen(true)
     setFolderName("")
     setIsError(false)
+    setErrorMessage("")
+    setIsLoading(false)
   }
 
   const handleClose = () => {
     setIsModalOpen(false)
     setFolderName("")
     setIsError(false)
+    setErrorMessage("")
+    setIsLoading(false)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     const trimmedName = folderName.trim()
     
     if (!trimmedName) {
       setIsError(true)
+      setErrorMessage("Folder name is required")
       return
     }
 
     if (trimmedName.includes("/") || trimmedName.includes("\\")) {
       setIsError(true)
+      setErrorMessage("Invalid folder name")
       return
     }
 
-    onAddFolder(trimmedName)
-    handleClose()
+    setIsLoading(true)
+    setIsError(false)
+    setErrorMessage("")
+
+    try {
+      const result = await onAddFolder(trimmedName)
+      
+      if (result.success) {
+        handleClose()
+      } else {
+        setIsError(true)
+        setErrorMessage(result.error || "Failed to create folder")
+      }
+    } catch (error) {
+      setIsError(true)
+      setErrorMessage("An unexpected error occurred")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -158,7 +183,7 @@ export function AddNewFolder({
                     <div className="flex items-center justify-between mt-2">
                       {isError && (
                         <p className="text-xs text-red-500">
-                          {!folderName.trim() ? "Folder name is required" : "Invalid folder name"}
+                          {errorMessage}
                         </p>
                       )}
                       <p className={`text-xs ml-auto ${folderName.length > 40 ? 'text-orange-500' : 'text-muted-foreground'}`}>
@@ -178,8 +203,9 @@ export function AddNewFolder({
                     </Button>
                     <Button 
                       type="submit"
+                      disabled={isLoading}
                     >
-                      Create Folder
+                      {isLoading ? "Creating..." : "Create Folder"}
                     </Button>
                   </div>
                 </form>

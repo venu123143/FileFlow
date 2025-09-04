@@ -106,14 +106,13 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const result = await fileApi.createFolder(data);
             return result.data;
         },
-        onSuccess: (data) => {
+        onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
+            toast.success('Folder created successfully!');
             // Invalidate and refetch file system tree
             queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
-            // Also try refetching directly
-            queryClient.refetchQueries({ queryKey: ['fileSystemTree'] });
         },
-        onError: (error) => {
+        onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
         },
     });
@@ -125,6 +124,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         },
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
+            toast.success('Folder renamed successfully!');
             // Invalidate and refetch file system tree
             queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
         },
@@ -229,7 +229,21 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return { success: true };
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to create folder.';
+
+            // Handle different error structures
+            let errorMessage = 'Failed to create folder.';
+
+            if (error?.response?.data?.errors && Array.isArray(error.response.data.errors) && error.response.data.errors.length > 0) {
+                // API returned errors array
+                errorMessage = error.response.data.errors[0];
+            } else if (error?.response?.data?.message) {
+                // API returned message field
+                errorMessage = error.response.data.message;
+            } else if (error?.message) {
+                // Standard error message
+                errorMessage = error.message;
+            }
+
             return { success: false, error: errorMessage };
         }
     };
@@ -253,8 +267,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return { success: true };
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage =
-                error?.response?.data?.message || error?.message || 'Failed to move file or folder.';
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to move file or folder.';
             return { success: false, error: errorMessage };
         }
     };
@@ -278,8 +291,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return { success: true };
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage =
-                error?.response?.data?.message || error?.message || 'Failed to share file or folder.';
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to share file or folder.';
             return { success: false, error: errorMessage };
         }
     };
@@ -293,8 +305,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return result.data;
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage =
-                error?.response?.data?.message || error?.message || 'Failed to get all shared files.';
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to get all shared files.';
             throw new Error(errorMessage);
         }
     };
@@ -308,8 +319,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return result.data;
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage =
-                error?.response?.data?.message || error?.message || 'Failed to get all shared files by me.';
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to get all shared files by me.';
             throw new Error(errorMessage);
         }
     };
@@ -323,8 +333,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return result.data;
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage =
-                error?.response?.data?.message || error?.message || 'Failed to get all shared files with me.';
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to get all shared files with me.';
             throw new Error(errorMessage);
         }
     };
@@ -345,8 +354,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return data;
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage =
-                error?.response?.data?.message || error?.message || 'Failed to get file system tree.';
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to get file system tree.';
             throw new Error(errorMessage);
         }
     };
@@ -372,8 +380,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return { success: true };
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage =
-                error?.response?.data?.message || error?.message || 'Failed to delete file or folder.';
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to delete file or folder.';
             return { success: false, error: errorMessage };
         }
     };
@@ -385,8 +392,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return { success: true };
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage =
-                error?.response?.data?.message || error?.message || 'Failed to restore file or folder.';
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to restore file or folder.';
             return { success: false, error: errorMessage };
         }
     };
@@ -398,8 +404,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return { success: true };
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage =
-                error?.response?.data?.message || error?.message || 'Failed to empty trash.';
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to empty trash.';
             return { success: false, error: errorMessage };
         }
     };
