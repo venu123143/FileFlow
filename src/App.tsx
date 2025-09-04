@@ -14,7 +14,7 @@ import Notifications from "@/routes/Notifications";
 import Login from "@/routes/auth/Login";
 import Register from "@/routes/auth/Register";
 import Unauthorized from "@/routes/Unauthorized";
-
+import Upload from "@/routes/Upload";
 // Loading component for Suspense fallback
 const Loading = () => (
   <div className="flex items-center justify-center h-screen">
@@ -37,6 +37,7 @@ function App() {
             <Route path='/settings' element={<Settings />} />
             <Route path='/shared-files' element={<SharedFiles />} />
             <Route path='/notifications' element={<Notifications />} />
+            <Route path='/all-files/:folder_id' element={<Upload />} />
             <Route path="*" element={<NotFound />} />
           </Route>
           <Route path="/unauthorized" element={<Unauthorized />} />

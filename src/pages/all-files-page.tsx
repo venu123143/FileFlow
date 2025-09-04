@@ -10,6 +10,7 @@ import { standardPageConfig, defaultViewConfig } from "@/config/page-configs"
 
 import { useFile } from "@/contexts/fileContext"
 import { transformFileSystemNodesToFileItems } from "@/lib/utils"
+import { useNavigate } from "react-router-dom"
 
 export default function AllFilesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
@@ -18,7 +19,7 @@ export default function AllFilesPage() {
   const [currentPath, setCurrentPath] = useState<Array<{ id: string, name: string }>>([])
 
   const { createFolder, fileSystemTree } = useFile();
-
+  const navigate = useNavigate();
 
   // Transform dynamic data to FileItem format
   const transformedFileSystem = useMemo(() => {
@@ -98,7 +99,15 @@ export default function AllFilesPage() {
       }
     }
   }
-
+  const handleUploadClick = () => {
+    const lastItem = currentPath[currentPath.length - 1];
+    // If currentPath is empty → fallback to root
+    const folderId = lastItem?.id ?? "root";
+    const folderName = lastItem?.name ?? "root";
+    navigate(`/all-files/${folderId}`, {
+      state: { folder_id: folderId, folder_name: folderName }
+    });
+  }
   const actionHandlers: FileActionHandlers = {
     onFileSelect: toggleFileSelection,
     onItemClick: handleItemClick,
@@ -116,6 +125,7 @@ export default function AllFilesPage() {
           filteredFilesCount={filteredFiles.length}
           onBackClick={handleBackClick}
           onCreateFolder={handleCreateFolder}
+          onUploadClick={handleUploadClick}
         />
 
         {currentPath.length > 0 && (
