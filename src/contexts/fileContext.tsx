@@ -2,6 +2,7 @@ import React, { useReducer, useContext, createContext, type ReactNode } from 're
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import fileApi from '@/api/file.api';
 import { toast } from 'sonner';
+import { useAuth } from './useAuth';
 import type {
     CreateFolderInput,
     RenameFolderInput,
@@ -80,6 +81,7 @@ const FileContext = createContext<FileContextType | undefined>(undefined);
 export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [state, dispatch] = useReducer(fileReducer, initialState);
     const queryClient = useQueryClient();
+    const { user } = useAuth();
 
     // 🔹 Queries
     const { data: fileSystemTreeData, isLoading: fileSystemTreeLoading } = useQuery<FileSystemNode[]>({
@@ -90,7 +92,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
         gcTime: 10 * 60 * 1000, // 10 minutes
-        enabled: true, // Explicitly enable the query
+        enabled: !!user, // Only enable the query when user is authenticated
     });
 
     // Update fileSystemTree in state when query data changes

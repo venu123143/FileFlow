@@ -1,4 +1,3 @@
-import React from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import FileUploader, { type FileConfig } from '@/components/upload/FIleUploader';

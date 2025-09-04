@@ -135,7 +135,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         if (result) {
             await createFile({
                 name: file.name,
-                parent_id: folderId,
+                parent_id: folderId === "root" ? null : folderId,
                 file_info: result
             })
             updateFileState(file.name, {
@@ -253,7 +253,24 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                     </div>
                 </div>
             </div>
-
+            {/* Close Button - Show when all files are completed */}
+            {allFilesCompleted && (
+                <div className="p-6 bg-green-50 border-t border-green-200">
+                    <div className="flex items-center justify-center space-x-3">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                        <span className="text-sm font-medium text-green-800">
+                            All files uploaded successfully!
+                        </span>
+                        <button
+                            onClick={handleClose}
+                            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200"
+                        >
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Close & Return to Files
+                        </button>
+                    </div>
+                </div>
+            )}
             {/* File List */}
             {selectedFiles.length > 0 && (
                 <div className="p-6 bg-gray-50">
@@ -371,24 +388,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                 </div>
             )}
 
-            {/* Close Button - Show when all files are completed */}
-            {allFilesCompleted && (
-                <div className="p-6 bg-green-50 border-t border-green-200">
-                    <div className="flex items-center justify-center space-x-3">
-                        <CheckCircle className="w-5 h-5 text-green-600" />
-                        <span className="text-sm font-medium text-green-800">
-                            All files uploaded successfully!
-                        </span>
-                        <button
-                            onClick={handleClose}
-                            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200"
-                        >
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Close & Return to Files
-                        </button>
-                    </div>
-                </div>
-            )}
+
         </>
     );
 };

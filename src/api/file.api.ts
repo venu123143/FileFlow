@@ -79,7 +79,6 @@ const getFileSystemTree = async () => {
         const response = await apiClient.get('/file-flow/file/all');
         return response.data;
     } catch (error) {
-        console.log(error, "error.getFileSystemTree---------------getFileSystemTree")
         throw error;
     }
 };
