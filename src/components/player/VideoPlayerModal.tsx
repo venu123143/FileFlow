@@ -24,11 +24,11 @@ export function VideoPlayerModal({ isOpen, onClose, videoUrl, videoName }: Video
             onClick={onClose}
             className="text-white hover:bg-white/20 p-2 ml-4"
           >
-            <X className="w-4 h-4" />
+            {/* <X className="w-4 h-4" /> */}
           </Button>
         </DialogHeader>
 
-          <div className="relative rounded-lg overflow-hidden px-4 pb-4">
+        <div className="relative rounded-lg overflow-hidden px-4 pb-4">
           <VideoPlayer url={videoUrl} />
         </div>
       </DialogContent>

@@ -1,7 +1,7 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import type { FileSystemNode } from "@/types/file.types"
-import type { FileItem, StandardFileItem } from "@/types/file-manager"
+import type { FileItem, StandardFileItem, DeletedFileItem } from "@/types/file-manager"
 import {
   FileText,
   FolderIcon,
@@ -110,4 +110,52 @@ export function transformFileSystemNodeToFileItem(
 // Transform FileSystemNode array to FileItem array
 export function transformFileSystemNodesToFileItems(nodes: FileSystemNode[]): StandardFileItem[] {
   return nodes.map(node => transformFileSystemNodeToFileItem(node))
+}
+
+// Transform FileSystemNode to DeletedFileItem
+export function transformFileSystemNodeToDeletedFileItem(
+  node: FileSystemNode,
+  parentPath: string[] = []
+): DeletedFileItem {
+  const isFolder = node.is_folder
+  const fileType = node.file_info?.file_type || null
+  const size = node.file_info?.file_size || 0
+  const thumbnail = node.file_info?.thumbnail_path || null
+
+  // Handle potential null updated_at
+  const modifiedDate = node.updated_at || node.created_at
+
+  // Calculate days left (assuming 30 days retention period)
+  const deletedDate = new Date(modifiedDate)
+  const now = new Date()
+  const daysSinceDeleted = Math.floor((now.getTime() - deletedDate.getTime()) / (1000 * 60 * 60 * 24))
+  const daysLeft = Math.max(0, 30 - daysSinceDeleted)
+
+  return {
+    id: node.id,
+    name: node.name,
+    type: isFolder ? "folder" : "file",
+    fileType: isFolder ? "folder" : getFileTypeCategory(fileType),
+    size: isFolder ? "—" : formatFileSize(size),
+    modified: formatRelativeTime(modifiedDate),
+    icon: isFolder ? FolderIcon : getFileIcon(fileType),
+    thumbnail,
+    file_info: node.file_info || undefined,
+    starred: false,
+    shared: false,
+    parentPath,
+    variant: "deleted",
+    deletedDate: deletedDate.toLocaleDateString(),
+    deletedBy: "System", // This would need to be fetched from the API
+    daysLeft,
+    originalLocation: parentPath.length > 0 ? `/${parentPath.join('/')}` : "/",
+    children: node.children ? node.children.map(child =>
+      transformFileSystemNodeToDeletedFileItem(child, [...parentPath, node.name])
+    ) : undefined,
+  }
+}
+
+// Transform FileSystemNode array to DeletedFileItem array
+export function transformFileSystemNodesToDeletedFileItems(nodes: FileSystemNode[]): DeletedFileItem[] {
+  return nodes.map(node => transformFileSystemNodeToDeletedFileItem(node))
 }

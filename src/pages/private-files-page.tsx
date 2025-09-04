@@ -27,7 +27,9 @@ import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { FileManager } from "@/components/file-manager/FileManager"
 import { privatePageConfig, defaultViewConfig } from "@/config/page-configs"
-import type { PrivateFileItem, FileActionHandlers } from "@/types/file-manager"
+import { useFile } from "@/contexts/fileContext"
+import { toast } from "sonner"
+import type { PrivateFileItem, FileActionHandlers, FileItem } from "@/types/file-manager"
 
 const mockPrivateFiles: PrivateFileItem[] = [
   {
@@ -133,6 +135,8 @@ export function PrivateFilesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
   const [showSensitiveOnly, setShowSensitiveOnly] = useState(false)
+  
+  const { deleteFileOrFolder } = useFile()
 
   const filteredFiles = mockPrivateFiles.filter((file) => {
     const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -151,13 +155,29 @@ export function PrivateFilesPage() {
   const encryptedCount = mockPrivateFiles.filter((f) => f.encrypted).length
   const sensitiveCount = mockPrivateFiles.filter((f) => f.sensitive).length
 
+  const handleDeleteFile = async (file: FileItem) => {
+    try {
+      const result = await deleteFileOrFolder(file.id);
+      if (result.success) {
+        toast.success(`${file.type === 'folder' ? 'Folder' : 'File'} deleted successfully!`);
+        // Remove from selected files if it was selected
+        setSelectedFiles(prev => prev.filter(id => id !== file.id));
+      } else {
+        toast.error(result.error || 'Failed to delete item');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('An error occurred while deleting the item');
+    }
+  }
+
   const actionHandlers: FileActionHandlers = {
     onFileSelect: toggleFileSelection,
     onItemClick: (item) => console.log("Clicked on private item:", item.name),
     onDownload: (file) => console.log("Download file:", file.name),
     onShare: (file) => console.log("Share file:", file.name),
     onStar: (file) => console.log("Toggle star:", file.name),
-    onDelete: (file) => console.log("Delete file:", file.name),
+    onDelete: handleDeleteFile,
     onEncrypt: (file) => console.log("Encrypt file:", file.name),
     onDecrypt: (file) => console.log("Decrypt file:", file.name),
   }

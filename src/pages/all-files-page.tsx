@@ -11,6 +11,7 @@ import { standardPageConfig, defaultViewConfig } from "@/config/page-configs"
 import { useFile } from "@/contexts/fileContext"
 import { transformFileSystemNodesToFileItems } from "@/lib/utils"
 import { useNavigate } from "react-router-dom"
+import { toast } from "sonner"
 
 export default function AllFilesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
@@ -18,7 +19,7 @@ export default function AllFilesPage() {
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
   const [currentPath, setCurrentPath] = useState<Array<{ id: string, name: string }>>([])
 
-  const { createFolder, fileSystemTree } = useFile();
+  const { createFolder, fileSystemTree, deleteFileOrFolder } = useFile();
   const navigate = useNavigate();
 
   // Transform dynamic data to FileItem format
@@ -108,13 +109,30 @@ export default function AllFilesPage() {
       state: { folder_id: folderId, folder_name: folderName }
     });
   }
+
+  const handleDeleteFile = async (file: FileItem) => {
+    try {
+      const result = await deleteFileOrFolder(file.id);
+      if (result.success) {
+        toast.success(`${file.type === 'folder' ? 'Folder' : 'File'} deleted successfully!`);
+        // Remove from selected files if it was selected
+        setSelectedFiles(prev => prev.filter(id => id !== file.id));
+      } else {
+        toast.error(result.error || 'Failed to delete item');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('An error occurred while deleting the item');
+    }
+  }
+
   const actionHandlers: FileActionHandlers = {
     onFileSelect: toggleFileSelection,
     onItemClick: handleItemClick,
     onDownload: (file) => console.log("Download", file.name),
     onShare: (file) => console.log("Share", file.name),
     onStar: (file) => console.log("Star", file.name),
-    onDelete: (file) => console.log("Delete", file.name),
+    onDelete: handleDeleteFile,
   }
 
   return (

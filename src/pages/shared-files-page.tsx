@@ -26,8 +26,9 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FileManager } from "@/components/file-manager/FileManager"
 import { sharedPageConfig, defaultViewConfig } from "@/config/page-configs"
-import type { SharedFileItem, FileActionHandlers } from "@/types/file-manager"
 import { useFile } from "@/contexts/fileContext"
+import { toast } from "sonner"
+import type { SharedFileItem, FileActionHandlers, FileItem } from "@/types/file-manager"
 
 const mockSharedFiles: SharedFileItem[] = [
   {
@@ -118,7 +119,7 @@ export function SharedFilesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState("all")
-  const { getAllSharedFilesWithMe, getAllSharedFilesByMe, getAllSharedFiles } = useFile()
+  const { getAllSharedFilesWithMe, getAllSharedFilesByMe, getAllSharedFiles, deleteFileOrFolder } = useFile()
 
   useEffect(() => {
     getAllSharedFilesWithMe()
@@ -146,13 +147,29 @@ export function SharedFilesPage() {
   const sharedByMeCount = mockSharedFiles.filter((f) => f.isOwner).length
   const sharedWithMeCount = mockSharedFiles.filter((f) => !f.isOwner).length
 
+  const handleDeleteFile = async (file: FileItem) => {
+    try {
+      const result = await deleteFileOrFolder(file.id);
+      if (result.success) {
+        toast.success(`${file.type === 'folder' ? 'Folder' : 'File'} deleted successfully!`);
+        // Remove from selected files if it was selected
+        setSelectedFiles(prev => prev.filter(id => id !== file.id));
+      } else {
+        toast.error(result.error || 'Failed to delete item');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('An error occurred while deleting the item');
+    }
+  }
+
   const actionHandlers: FileActionHandlers = {
     onFileSelect: toggleFileSelection,
     onItemClick: (item) => console.log("Clicked on shared item:", item.name),
     onDownload: (file) => console.log("Download file:", file.name),
     onShare: (file) => console.log("Share file:", file.name),
     onStar: (file) => console.log("Toggle star:", file.name),
-    onDelete: (file) => console.log("Remove access:", file.name),
+    onDelete: handleDeleteFile,
   }
 
   return (

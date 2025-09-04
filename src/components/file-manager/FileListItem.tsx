@@ -1,11 +1,14 @@
 import { motion } from "framer-motion";
+import { useState } from "react";
 import { isDeletedFile, isPrivateFile, isSharedFile } from "@/types/file-manager";
 import type { FileItem, PageConfig, ViewConfig, FileActionHandlers } from "@/types/file-manager";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Download, Share2, Star, Trash2, RotateCcw, Lock, Unlock, Users, Shield } from "lucide-react";
+import { MoreHorizontal, Download, Share2, Star, Trash2, RotateCcw, Lock, Unlock, Users, Shield, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { VideoPlayerModal } from "@/components/player/VideoPlayerModal";
+import { isVideoFile, getVideoFileUrl } from "@/lib/video-utils";
 
 interface FileListItemProps {
   file: FileItem;
@@ -24,6 +27,8 @@ export function FileListItem({
   viewConfig, 
   actionHandlers 
 }: FileListItemProps) {
+  const [isVideoPlayerOpen, setIsVideoPlayerOpen] = useState(false);
+  
   const {
     onFileSelect,
     onItemClick,
@@ -36,6 +41,23 @@ export function FileListItem({
     onDecrypt,
     onCustomAction
   } = actionHandlers;
+
+  const isVideo = isVideoFile(file);
+
+  const handleItemClick = (file: FileItem, event: React.MouseEvent) => {
+    // Only open video player if clicking directly on the file item, not on child elements
+    if (event.target === event.currentTarget || (event.target as HTMLElement).closest('.file-item-content')) {
+      if (isVideo) {
+        setIsVideoPlayerOpen(true);
+      } else {
+        onItemClick(file);
+      }
+    }
+  };
+
+  const handleVideoPlayerClose = () => {
+    setIsVideoPlayerOpen(false);
+  };
 
   const { itemHeight } = viewConfig.list;
 
@@ -169,7 +191,7 @@ export function FileListItem({
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.2, delay: index * 0.03 }}
       className={`flex items-center gap-3 p-2 sm:p-3 hover:bg-muted/50 transition-colors group cursor-pointer ${itemHeight}`}
-      onClick={() => onItemClick(file)}
+      onClick={(e) => handleItemClick(file, e)}
     >
       <Checkbox
         checked={isSelected}
@@ -178,20 +200,30 @@ export function FileListItem({
       />
       
       {pageConfig.showThumbnails && file.thumbnail ? (
-        <div className="w-8 h-8 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+        <div className="w-8 h-8 rounded-lg overflow-hidden bg-muted flex-shrink-0 relative">
           <img
             src={file.thumbnail}
             alt={file.name}
             className="w-full h-full object-cover"
           />
+          {isVideo && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+              <Play className="h-3 w-3 text-white" />
+            </div>
+          )}
         </div>
       ) : (
-        <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+        <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0 relative">
           <file.icon className="h-4 w-4 text-muted-foreground" />
+          {isVideo && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg">
+              <Play className="h-2 w-2 text-white" />
+            </div>
+          )}
         </div>
       )}
       
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 file-item-content">
         <p className="font-medium truncate text-sm whitespace-nowrap">{file.name}</p>
         {renderPageSpecificInfo()}
       </div>
@@ -210,6 +242,12 @@ export function FileListItem({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {isVideo && (
+            <DropdownMenuItem onClick={() => setIsVideoPlayerOpen(true)}>
+              <Play className="h-4 w-4 mr-2" />
+              Play Video
+            </DropdownMenuItem>
+          )}
           {onDownload && (
             <DropdownMenuItem onClick={() => onDownload(file)}>
               <Download className="h-4 w-4 mr-2" />
@@ -261,6 +299,16 @@ export function FileListItem({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Video Player Modal */}
+      {isVideo && (
+        <VideoPlayerModal
+          isOpen={isVideoPlayerOpen}
+          onClose={handleVideoPlayerClose}
+          videoUrl={getVideoFileUrl(file.file_info?.storage_path || "")}
+          videoName={file.name}
+        />
+      )}
     </motion.div>
   );
 }

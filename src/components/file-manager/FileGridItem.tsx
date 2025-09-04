@@ -43,11 +43,14 @@ export function FileGridItem({
 
   const isVideo = isVideoFile(file);
 
-  const handleItemClick = (file: FileItem) => {
-    if (isVideo) {
-      setIsVideoPlayerOpen(true);
-    } else {
-      onItemClick(file);
+  const handleItemClick = (file: FileItem, event: React.MouseEvent) => {
+    // Only open video player if clicking directly on the file item content, not on child elements
+    if (event.target === event.currentTarget || (event.target as HTMLElement).closest('.file-item-content')) {
+      if (isVideo) {
+        setIsVideoPlayerOpen(true);
+      } else {
+        onItemClick(file);
+      }
     }
   };
 
@@ -191,8 +194,8 @@ export function FileGridItem({
 
           {/* Main content area */}
           <div
-            className="flex flex-col items-center text-center space-y-2 flex-grow justify-between"
-            onClick={() => handleItemClick(file)}
+            className="flex flex-col items-center text-center space-y-2 flex-grow justify-between file-item-content"
+            onClick={(e) => handleItemClick(file, e)}
           >
             {/* Icon/Thumbnail with status overlay */}
             <div className="relative">
