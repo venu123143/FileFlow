@@ -96,6 +96,7 @@ export function transformFileSystemNodeToFileItem(
     modified: formatRelativeTime(modifiedDate),
     icon: isFolder ? FolderIcon : getFileIcon(fileType),
     thumbnail,
+    file_info: node.file_info || undefined,
     starred: false, // This would need to be fetched from favorites API
     shared: node.access_level === "public", // Simplified assumption
     parentPath,

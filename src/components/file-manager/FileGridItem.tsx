@@ -1,12 +1,15 @@
 import { motion } from "framer-motion";
+import { useState } from "react";
 import { isDeletedFile, isPrivateFile, isSharedFile } from "@/types/file-manager";
 import type { FileItem, PageConfig, FileActionHandlers } from "@/types/file-manager";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Download, Share2, Star, Trash2, RotateCcw, Lock, Unlock, Users } from "lucide-react";
+import { MoreHorizontal, Download, Share2, Star, Trash2, RotateCcw, Lock, Unlock, Users, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { VideoPlayerModal } from "@/components/player/VideoPlayerModal";
+import { isVideoFile, getVideoFileUrl } from "@/lib/video-utils";
 
 interface FileGridItemProps {
   file: FileItem;
@@ -23,6 +26,8 @@ export function FileGridItem({
   pageConfig,
   actionHandlers
 }: FileGridItemProps) {
+  const [isVideoPlayerOpen, setIsVideoPlayerOpen] = useState(false);
+  
   const {
     onFileSelect,
     onItemClick,
@@ -35,6 +40,20 @@ export function FileGridItem({
     onDecrypt,
     onCustomAction
   } = actionHandlers;
+
+  const isVideo = isVideoFile(file);
+
+  const handleItemClick = (file: FileItem) => {
+    if (isVideo) {
+      setIsVideoPlayerOpen(true);
+    } else {
+      onItemClick(file);
+    }
+  };
+
+  const handleVideoPlayerClose = () => {
+    setIsVideoPlayerOpen(false);
+  };
 
   const renderCustomActions = () => {
     if (!pageConfig.customActions) return null;
@@ -110,6 +129,12 @@ export function FileGridItem({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  {isVideo && (
+                    <DropdownMenuItem onClick={() => setIsVideoPlayerOpen(true)}>
+                      <Play className="h-4 w-4 mr-2" />
+                      Play Video
+                    </DropdownMenuItem>
+                  )}
                   {onDownload && (
                     <DropdownMenuItem onClick={() => onDownload(file)}>
                       <Download className="h-4 w-4 mr-2" />
@@ -167,21 +192,31 @@ export function FileGridItem({
           {/* Main content area */}
           <div
             className="flex flex-col items-center text-center space-y-2 flex-grow justify-between"
-            onClick={() => onItemClick(file)}
+            onClick={() => handleItemClick(file)}
           >
             {/* Icon/Thumbnail with status overlay */}
             <div className="relative">
               {pageConfig.showThumbnails && file.thumbnail ? (
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0 relative">
                   <img
                     src={file.thumbnail}
                     alt={file.name}
                     className="w-full h-full object-cover"
                   />
+                  {isVideo && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                      <Play className="h-4 w-4 text-white" />
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 relative">
                   <file.icon className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
+                  {isVideo && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg">
+                      <Play className="h-3 w-3 text-white" />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -231,6 +266,17 @@ export function FileGridItem({
           </div>
         </CardContent>
       </Card>
+
+      {/* Video Player Modal */}
+      {isVideo && (
+        <VideoPlayerModal
+          isOpen={isVideoPlayerOpen}
+          onClose={handleVideoPlayerClose}
+          videoUrl={getVideoFileUrl(file.file_info?.storage_path|| "")}
+          videoName={file.name}
+
+        />
+      )}
     </motion.div>
   );
 }

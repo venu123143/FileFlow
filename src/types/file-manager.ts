@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import type { FileInfo } from "./file.types";
 
 // Base file item interface
 export interface BaseFileItem {
@@ -14,6 +15,7 @@ export interface BaseFileItem {
   shared: boolean;
   parentPath: string[];
   children?: FileItem[];
+  file_info?: FileInfo;
 }
 
 // Extended interfaces for different page types
