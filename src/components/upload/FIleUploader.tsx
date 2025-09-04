@@ -11,8 +11,10 @@ import {
     File,
     Play,
     Pause,
-    RotateCcw
+    RotateCcw,
+    CheckCircle
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import useFileUpload, { type FileUploadState } from '@/hooks/useFileUpload';
 import { useFile } from '@/contexts/fileContext';
 
@@ -44,6 +46,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     folderId,
 }) => {
     const { createFile } = useFile();
+    const navigate = useNavigate();
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [isDragOver, setIsDragOver] = useState(false);
     const { fileStates, handleUpload, abortUpload, removeFile, updateFileState } = useFileUpload();
@@ -188,6 +191,16 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         if (fileState?.url) {
             window.open(`${baseUrl}/${fileState.url}`, '_blank');
         }
+    };
+
+    // Check if all uploaded files are completed
+    const allFilesCompleted = selectedFiles.length > 0 && selectedFiles.every(file => {
+        const fileState = fileStates[file.name];
+        return fileState?.status === 'completed';
+    });
+
+    const handleClose = () => {
+        navigate('/all-files');
     };
 
     return (
@@ -354,6 +367,25 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                                 </div>
                             );
                         })}
+                    </div>
+                </div>
+            )}
+
+            {/* Close Button - Show when all files are completed */}
+            {allFilesCompleted && (
+                <div className="p-6 bg-green-50 border-t border-green-200">
+                    <div className="flex items-center justify-center space-x-3">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                        <span className="text-sm font-medium text-green-800">
+                            All files uploaded successfully!
+                        </span>
+                        <button
+                            onClick={handleClose}
+                            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200"
+                        >
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Close & Return to Files
+                        </button>
                     </div>
                 </div>
             )}
