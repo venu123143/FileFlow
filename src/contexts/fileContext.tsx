@@ -187,6 +187,8 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return result.data;
         },
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
+            queryClient.invalidateQueries({ queryKey: ['trash'] });
             dispatch({ type: 'SET_LOADING', loading: false });
             toast.success('File or folder deleted successfully!');
         },
