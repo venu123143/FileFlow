@@ -1,5 +1,5 @@
 import React, { useReducer, useContext, createContext, type ReactNode } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import fileApi from '@/api/file.api';
 import { toast } from 'sonner';
 import type {
@@ -79,6 +79,26 @@ const FileContext = createContext<FileContextType | undefined>(undefined);
 
 export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [state, dispatch] = useReducer(fileReducer, initialState);
+    const queryClient = useQueryClient();
+
+    // 🔹 Queries
+    const { data: fileSystemTreeData, isLoading: fileSystemTreeLoading } = useQuery<FileSystemNode[]>({
+        queryKey: ['fileSystemTree'],
+        queryFn: async () => {
+            const result = await fileApi.getFileSystemTree();
+            return result.data;
+        },
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        gcTime: 10 * 60 * 1000, // 10 minutes
+        enabled: true, // Explicitly enable the query
+    });
+
+    // Update fileSystemTree in state when query data changes
+    React.useEffect(() => {
+        if (fileSystemTreeData) {
+            dispatch({ type: 'SET_FILE_SYSTEM_TREE', fileSystemTree: fileSystemTreeData });
+        }
+    }, [fileSystemTreeData]);
 
     // 🔹 Mutations
     const { mutateAsync: createFolderMutationFn } = useMutation({
@@ -86,11 +106,14 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const result = await fileApi.createFolder(data);
             return result.data;
         },
-        onSuccess: () => {
+        onSuccess: (data) => {
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success('Folder created successfully!');
+            // Invalidate and refetch file system tree
+            queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
+            // Also try refetching directly
+            queryClient.refetchQueries({ queryKey: ['fileSystemTree'] });
         },
-        onError: () => {
+        onError: (error) => {
             dispatch({ type: 'SET_LOADING', loading: false });
         },
     });
@@ -102,7 +125,8 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         },
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success('Folder renamed successfully!');
+            // Invalidate and refetch file system tree
+            queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
@@ -117,6 +141,8 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
             toast.success('File or folder moved successfully!');
+            // Invalidate and refetch file system tree
+            queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
@@ -131,6 +157,8 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
             toast.success('File created successfully!');
+            // Invalidate and refetch file system tree
+            queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
@@ -304,10 +332,17 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const getFileSystemTree = async () => {
         try {
             dispatch({ type: 'SET_LOADING', loading: true });
-            const result = await fileApi.getFileSystemTree();
-            dispatch({ type: 'SET_FILE_SYSTEM_TREE', fileSystemTree: result.data });
+            // Refetch the query to get fresh data
+            const data = await queryClient.fetchQuery({
+                queryKey: ['fileSystemTree'],
+                queryFn: async () => {
+                    const result = await fileApi.getFileSystemTree();
+                    return result.data;
+                },
+            });
+            dispatch({ type: 'SET_FILE_SYSTEM_TREE', fileSystemTree: data });
             dispatch({ type: 'SET_LOADING', loading: false });
-            return result.data;
+            return data;
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
             const errorMessage =
@@ -371,6 +406,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const value: FileContextType = {
         ...state,
+        loading: state.loading || fileSystemTreeLoading,
         createFolder,
         renameFolder,
         moveFileOrFolder,

@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect, useMemo } from "react"
+import { useState, useMemo } from "react"
 import type { FileItem, FileActionHandlers } from "@/types/file-manager"
 import { FileManagerHeader } from "@/components/file-manager/FileManagerHeader"
 import { BreadcrumbNavigation } from "@/components/file-manager/BreadcrumbNavigation"
@@ -15,13 +15,9 @@ export default function AllFilesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
-  const [currentPath, setCurrentPath] = useState<Array<{id: string, name: string}>>([])
+  const [currentPath, setCurrentPath] = useState<Array<{ id: string, name: string }>>([])
 
-  const { getFileSystemTree, createFolder, fileSystemTree } = useFile();
-
-  useEffect(() => {
-    getFileSystemTree()
-  }, [])
+  const { createFolder, fileSystemTree } = useFile();
 
 
   // Transform dynamic data to FileItem format
@@ -55,7 +51,7 @@ export default function AllFilesPage() {
 
   const handleItemClick = (item: FileItem) => {
     if (item.type === "folder") {
-      setCurrentPath([...currentPath, {id: item.id, name: item.name}])
+      setCurrentPath([...currentPath, { id: item.id, name: item.name }])
       setSelectedFiles([])
       setSearchQuery("")
     }

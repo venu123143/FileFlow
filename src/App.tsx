@@ -13,6 +13,7 @@ import SharedFiles from "@/routes/SharedFiles";
 import Notifications from "@/routes/Notifications";
 import Login from "@/routes/auth/Login";
 import Register from "@/routes/auth/Register";
+import Unauthorized from "@/routes/Unauthorized";
 
 // Loading component for Suspense fallback
 const Loading = () => (
@@ -38,6 +39,8 @@ function App() {
             <Route path='/notifications' element={<Notifications />} />
             <Route path="*" element={<NotFound />} />
           </Route>
+          <Route path="/unauthorized" element={<Unauthorized />} />
+
         </Routes>
       </Suspense>
     </>
