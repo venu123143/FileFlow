@@ -15,9 +15,15 @@ export function VideoPlayerModal({ isOpen, onClose, videoUrl, videoName }: Video
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent showCloseButton={false} className="min-w-[60vw] w-full min-h-[40vh] p-0 bg-black border-gray-800">
-        <DialogHeader className="p-4 pb-2 flex flex-row items-center justify-between">
-          <DialogTitle className="text-white text-lg truncate flex-1" title={videoName}>
-            {videoName}
+        <DialogHeader className="p-4 pb-2 flex flex-row items-center justify-between gap-2 relative z-10 bg-black/80 backdrop-blur-sm">
+          <DialogTitle
+            className="text-white text-sm truncate flex-1 whitespace-nowrap overflow-hidden text-ellipsis pr-2"
+            title={videoName}
+          >
+            <span className='text-white text-sm truncate flex-1 whitespace-nowrap overflow-hidden text-ellipsis pr-2'>
+              {videoName.slice(0, 80)}
+              {videoName.length > 80 && '...'}
+            </span>
           </DialogTitle>
           <DialogClose asChild>
             <Button

@@ -11,7 +11,6 @@ import { standardPageConfig, defaultViewConfig } from "@/config/page-configs"
 import { useFile } from "@/contexts/fileContext"
 import { transformFileSystemNodesToFileItems } from "@/lib/utils"
 import { useNavigate } from "react-router-dom"
-import { toast } from "sonner"
 
 export default function AllFilesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")

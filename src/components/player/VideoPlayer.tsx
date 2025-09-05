@@ -27,10 +27,8 @@ export default function Player({ url }: { url: string }) {
       style={{
         width: "100%",
         aspectRatio: "16/9",
-      }}
-    >
+      }}>
       <ReactPlayer slot="media" src={url} controls={false} style={playerStyle} />;
-
       <MediaControlBar className="flex gap-3 p-2 bg-transparent [&>*]:bg-transparent [&>*]:border-0 [&>*]:shadow-none">
         <MediaPlayButton />
         <MediaSeekBackwardButton seekOffset={10} />
@@ -42,8 +40,6 @@ export default function Player({ url }: { url: string }) {
         <MediaPlaybackRateButton />
         <MediaFullscreenButton />
       </MediaControlBar>
-
-
 
     </MediaController>
   );
