@@ -75,10 +75,7 @@ export function getFileTypeCategory(fileType: string | null): string {
 }
 
 // Transform FileSystemNode to FileItem
-export function transformFileSystemNodeToFileItem(
-  node: FileSystemNode,
-  parentPath: string[] = []
-): StandardFileItem {
+export function transformFileSystemNodeToFileItem(node: FileSystemNode, parentPath: string[] = []): StandardFileItem {
   const isFolder = node.is_folder
   const fileType = node.file_info?.file_type || null
   const size = node.file_info?.file_size || 0
@@ -92,7 +89,7 @@ export function transformFileSystemNodeToFileItem(
     name: node.name,
     type: isFolder ? "folder" : "file",
     fileType: isFolder ? "folder" : getFileTypeCategory(fileType),
-    size: isFolder ? "—" : formatFileSize(size),
+    size: formatFileSize(size),
     modified: formatRelativeTime(modifiedDate),
     icon: isFolder ? FolderIcon : getFileIcon(fileType),
     thumbnail,
@@ -101,9 +98,7 @@ export function transformFileSystemNodeToFileItem(
     shared: node.access_level === "public", // Simplified assumption
     parentPath,
     variant: "standard",
-    children: node.children ? node.children.map(child =>
-      transformFileSystemNodeToFileItem(child, [...parentPath, node.name])
-    ) : undefined,
+    children: node.children ? node.children.map(child => transformFileSystemNodeToFileItem(child, [...parentPath, node.name])) : undefined,
   }
 }
 
@@ -113,10 +108,7 @@ export function transformFileSystemNodesToFileItems(nodes: FileSystemNode[]): St
 }
 
 // Transform FileSystemNode to DeletedFileItem
-export function transformFileSystemNodeToDeletedFileItem(
-  node: FileSystemNode,
-  parentPath: string[] = []
-): DeletedFileItem {
+export function transformFileSystemNodeToDeletedFileItem(node: FileSystemNode, parentPath: string[] = []): DeletedFileItem {
   const isFolder = node.is_folder
   const fileType = node.file_info?.file_type || null
   const size = node.file_info?.file_size || 0
@@ -136,7 +128,7 @@ export function transformFileSystemNodeToDeletedFileItem(
     name: node.name,
     type: isFolder ? "folder" : "file",
     fileType: isFolder ? "folder" : getFileTypeCategory(fileType),
-    size: isFolder ? "—" : formatFileSize(size),
+    size: formatFileSize(size),
     modified: formatRelativeTime(modifiedDate),
     icon: isFolder ? FolderIcon : getFileIcon(fileType),
     thumbnail,

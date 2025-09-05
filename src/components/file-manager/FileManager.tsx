@@ -16,7 +16,7 @@ export function FileManager({
   viewMode,
   className = "",
   onCreateFolder
-}: FileManagerProps & { onCreateFolder?: (folderName: string) => Promise<{ success: boolean; error?: string }> }) {
+}: FileManagerProps) {
   if (files.length === 0) {
     return (
       <div className="space-y-6">

@@ -107,8 +107,8 @@ export interface FileActionHandlers {
   onItemClick: (item: FileItem) => void;
   onDownload?: (file: FileItem) => void;
   onShare?: (file: FileItem) => void;
-  onStar?: (file: FileItem) => void;
   onDelete?: (file: FileItem) => void;
+  onRename?: (file: FileItem) => void;
   onRestore?: (file: FileItem) => void;
   onEncrypt?: (file: FileItem) => void;
   onDecrypt?: (file: FileItem) => void;
@@ -125,6 +125,7 @@ export interface FileManagerProps {
   actionHandlers: FileActionHandlers;
   viewMode: "grid" | "list";
   className?: string;
+  onCreateFolder?: (folderName: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 export const getFileTypeColor = (type?: string) => {

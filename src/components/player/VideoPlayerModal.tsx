@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import VideoPlayer from './VideoPlayer';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
+import { DialogClose } from '@radix-ui/react-dialog';
 
 interface VideoPlayerModalProps {
   isOpen: boolean;
@@ -13,19 +14,20 @@ interface VideoPlayerModalProps {
 export function VideoPlayerModal({ isOpen, onClose, videoUrl, videoName }: VideoPlayerModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="min-w-[60vw] w-full min-h-[40vh] p-0 bg-black border-gray-800">
+      <DialogContent showCloseButton={false} className="min-w-[60vw] w-full min-h-[40vh] p-0 bg-black border-gray-800">
         <DialogHeader className="p-4 pb-2 flex flex-row items-center justify-between">
           <DialogTitle className="text-white text-lg truncate flex-1" title={videoName}>
             {videoName}
           </DialogTitle>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            className="text-white hover:bg-white/20 p-2 ml-4"
-          >
-            {/* <X className="w-4 h-4" /> */}
-          </Button>
+          <DialogClose asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-white hover:bg-white cursor-pointer p-2 ml-4"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </DialogClose>
         </DialogHeader>
 
         <div className="relative rounded-lg overflow-hidden px-4 pb-4">

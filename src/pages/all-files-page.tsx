@@ -19,7 +19,7 @@ export default function AllFilesPage() {
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
   const [currentPath, setCurrentPath] = useState<Array<{ id: string, name: string }>>([])
 
-  const { createFolder, fileSystemTree, deleteFileOrFolder } = useFile();
+  const { createFolder, fileSystemTree, deleteFileOrFolder, renameFolder } = useFile();
   const navigate = useNavigate();
 
   // Transform dynamic data to FileItem format
@@ -81,8 +81,8 @@ export default function AllFilesPage() {
       // Find the parent folder ID based on current path
       let parentId: string | undefined = undefined
 
+      // Get the last folder in the current path as the parent
       if (currentPath.length > 0) {
-        // Get the last folder in the current path as the parent
         const lastFolder = currentPath[currentPath.length - 1]
         parentId = lastFolder.id
       }
@@ -100,6 +100,7 @@ export default function AllFilesPage() {
       }
     }
   }
+
   const handleUploadClick = () => {
     const lastItem = currentPath[currentPath.length - 1];
     // If currentPath is empty → fallback to root
@@ -111,18 +112,10 @@ export default function AllFilesPage() {
   }
 
   const handleDeleteFile = async (file: FileItem) => {
-    try {
-      const result = await deleteFileOrFolder(file.id);
-      if (result.success) {
-        toast.success(`${file.type === 'folder' ? 'Folder' : 'File'} deleted successfully!`);
-        // Remove from selected files if it was selected
-        setSelectedFiles(prev => prev.filter(id => id !== file.id));
-      } else {
-        toast.error(result.error || 'Failed to delete item');
-      }
-    } catch (error) {
-      console.error('Delete error:', error);
-      toast.error('An error occurred while deleting the item');
+    // Remove from selected files if it was selected
+    const result = await deleteFileOrFolder(file.id);
+    if (result.success) {
+      setSelectedFiles(prev => prev.filter(id => id !== file.id));
     }
   }
 
@@ -131,7 +124,7 @@ export default function AllFilesPage() {
     onItemClick: handleItemClick,
     onDownload: (file) => console.log("Download", file.name),
     onShare: (file) => console.log("Share", file.name),
-    onStar: (file) => console.log("Star", file.name),
+    onRename: (file) => renameFolder(file.id, { name: file.name }),
     onDelete: handleDeleteFile,
   }
 

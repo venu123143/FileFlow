@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Download, Share2, Star, Trash2, RotateCcw, Lock, Unlock, Users, Play } from "lucide-react";
+import { MoreHorizontal, Download, Share2, Edit, Trash2, RotateCcw, Lock, Unlock, Users, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { VideoPlayerModal } from "@/components/player/VideoPlayerModal";
 import { isVideoFile, getVideoFileUrl } from "@/lib/video-utils";
@@ -27,13 +27,13 @@ export function FileGridItem({
   actionHandlers
 }: FileGridItemProps) {
   const [isVideoPlayerOpen, setIsVideoPlayerOpen] = useState(false);
-  
+
   const {
     onFileSelect,
     onItemClick,
     onDownload,
     onShare,
-    onStar,
+    onRename,
     onDelete,
     onRestore,
     onEncrypt,
@@ -95,7 +95,6 @@ export function FileGridItem({
       default:
         return (
           <div className="w-full h-9 flex items-center justify-center gap-1 flex-wrap">
-            {pageConfig.showStarred && file.starred && <Star className="h-3 w-3 text-yellow-500 fill-current" />}
             {pageConfig.showShared && file.shared && <Share2 className="h-3 w-3 text-blue-500" />}
           </div>
         );
@@ -150,10 +149,10 @@ export function FileGridItem({
                       Share
                     </DropdownMenuItem>
                   )}
-                  {onStar && (
-                    <DropdownMenuItem onClick={() => onStar(file)}>
-                      <Star className="h-4 w-4 mr-2" />
-                      {file.starred ? "Unstar" : "Star"}
+                  {onRename && (
+                    <DropdownMenuItem onClick={() => onRename(file)}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Rename
                     </DropdownMenuItem>
                   )}
                   {onRestore && isDeletedFile(file) && (
@@ -239,11 +238,6 @@ export function FileGridItem({
               )}
               {pageConfig.variant === "standard" && (
                 <>
-                  {pageConfig.showStarred && file.starred && (
-                    <div className="absolute -top-1 -right-1 h-4 w-4 bg-yellow-500 rounded-full flex items-center justify-center">
-                      <Star className="h-2.5 w-2.5 text-white fill-current" />
-                    </div>
-                  )}
                   {pageConfig.showShared && file.shared && (
                     <div className="absolute -top-1 -right-1 h-5 w-5 bg-green-500 rounded-full flex items-center justify-center">
                       <Share2 className="h-3 w-3 text-white" />
@@ -275,7 +269,7 @@ export function FileGridItem({
         <VideoPlayerModal
           isOpen={isVideoPlayerOpen}
           onClose={handleVideoPlayerClose}
-          videoUrl={getVideoFileUrl(file.file_info?.storage_path|| "")}
+          videoUrl={getVideoFileUrl(file.file_info?.storage_path || "")}
           videoName={file.name}
 
         />
