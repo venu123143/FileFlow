@@ -6,7 +6,7 @@ import { getAuthState } from '@/store/auth.store';
 const apiClient = axios.create({
     baseURL: API_BASE_URL, // Replace with your API base URL
     headers: { 'Content-Type': 'application/json' },
-    timeout: 10000,
+    timeout: 100000,
 });
 
 apiClient.interceptors.request.use(

@@ -1,0 +1,37 @@
+/* Mobile sidebar improvements */
+@media (max-width: 767px) {
+  .dashboard-layout {
+    /* Prevent body scroll when sidebar is open on mobile */
+    overflow: hidden;
+  }
+  
+  /* Improve touch targets for mobile */
+  .sidebar-nav-item {
+    min-height: 44px; /* iOS recommended touch target size */
+    padding: 12px 16px;
+  }
+  
+  /* Better scrolling on mobile */
+  .sidebar-scroll {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  
+  /* Prevent zoom on double tap for mobile */
+  .sidebar-nav-item button {
+    touch-action: manipulation;
+  }
+}
+
+/* Smooth transitions for all sidebar states */
+.sidebar-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+/* Mobile-specific backdrop blur */
+@media (max-width: 767px) {
+  .mobile-backdrop {
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+}

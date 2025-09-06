@@ -15,12 +15,18 @@ const navigationItems = [
   { icon: Settings, label: "Settings", href: "/settings", active: true },
 ]
 
-export function SidebarNavigation() {
+interface SidebarNavigationProps {
+  onNavigate?: () => void
+}
+
+export function SidebarNavigation({ onNavigate }: SidebarNavigationProps) {
   const [activeItem, setActiveItem] = useState("/settings")
   const navigate = useNavigate()
   const navigationItemClick = (href: string) => {
     setActiveItem(href);
     navigate(href)
+    // Close sidebar on mobile after navigation
+    onNavigate?.()
   }
 
   return (

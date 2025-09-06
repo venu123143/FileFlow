@@ -12,6 +12,24 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Handle responsive behavior
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768) // md breakpoint
+      // Auto-close sidebar on mobile by default
+      if (window.innerWidth < 768) {
+        setSidebarOpen(false)
+      } else {
+        setSidebarOpen(true)
+      }
+    }
+
+    checkIsMobile()
+    window.addEventListener('resize', checkIsMobile)
+    return () => window.removeEventListener('resize', checkIsMobile)
+  }, [])
 
   // Handle Ctrl+B shortcut at layout level
   useEffect(() => {
@@ -26,18 +44,41 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  // Close sidebar when clicking outside on mobile
+  const handleBackdropClick = () => {
+    if (isMobile && sidebarOpen) {
+      setSidebarOpen(false)
+    }
+  }
+
   return (
-    <div className="dashboard-layout flex h-screen bg-background overflow-hidden">
+    <div className="dashboard-layout flex h-screen bg-background overflow-hidden relative">
+      {/* Mobile backdrop */}
+      {isMobile && sidebarOpen && (
+        <motion.div
+          className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm mobile-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3, ease: [0.4, 0.0, 0.2, 1] }}
+          onClick={handleBackdropClick}
+        />
+      )}
+
       <AnimatePresence mode="wait">
         {sidebarOpen && (
           <motion.div
             key="sidebar"
-            initial={{ x: -300, opacity: 0 }}
+            className={`${isMobile ? 'fixed inset-y-0 left-0 z-50' : 'relative'}`}
+            initial={{ x: isMobile ? -320 : -300, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -300, opacity: 0 }}
-            transition={{ duration: 0.3, ease: [0.4, 0.0, 0.2, 1] }}
+            exit={{ x: isMobile ? -320 : -300, opacity: 0 }}
+            transition={{ 
+              duration: isMobile ? 0.25 : 0.3, 
+              ease: [0.4, 0.0, 0.2, 1] 
+            }}
           >
-            <Sidebar isOpen={sidebarOpen} />
+            <Sidebar isOpen={sidebarOpen} isMobile={isMobile} onClose={() => setSidebarOpen(false)} />
           </motion.div>
         )}
       </AnimatePresence>
