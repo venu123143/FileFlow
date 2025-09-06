@@ -1,0 +1,75 @@
+name: CI/CD Pipeline - FileFlow
+
+on:
+  push:
+    branches: [development]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout repository
+      - uses: actions/checkout@v4
+
+      # Step 2: Install Bun
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      # Step 3: Cache bun dependencies
+      - name: Cache bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build project
+        env:
+          VITE_API_BACKEND_URL: ${{ secrets.VITE_API_BACKEND_URL || 'http://localhost:7000/api/v1' }}
+          VITE_API_CDN_URL: ${{ secrets.VITE_API_CDN_URL || 'https://cdn.nerchuko.in' }}
+        run: bun run build
+
+      # Step 4: Deploy to server
+      - name: Deploy to server
+        env:
+          HOST: ${{ secrets.HOST }}
+          USER: ${{ secrets.USER }}
+          KEY: ${{ secrets.SERVER_SSH_KEY }}
+        run: |
+          # Setup SSH
+          mkdir -p ~/.ssh
+          echo "$KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H $HOST >> ~/.ssh/known_hosts
+
+          # Upload static build files
+          echo "Uploading build with rsync..."
+          rsync -avz dist/ $USER@$HOST:/var/www/html/FileFlow/dist/
+
+          # Reload Nginx (optional if not auto-reloading)
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $USER@$HOST \
+            'sudo systemctl reload nginx'
+
+          # Cleanup
+          rm -f ~/.ssh/id_rsa
+
+      # Step 5: Purge Cloudflare Cache
+      - name: Purge Cloudflare Cache (Everything)
+        if: success()
+        env:
+          CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
+          CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
+          ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+        run: |
+          curl -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/purge_cache" \
+            -H "X-Auth-Email: $CLOUDFLARE_EMAIL" \
+            -H "X-Auth-Key: $CLOUDFLARE_API_KEY" \
+            -H "Content-Type: application/json" \
+            --data '{"purge_everything":true}'
