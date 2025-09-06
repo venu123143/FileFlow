@@ -24,14 +24,6 @@ export const deletedPageConfig: PageConfig = {
   showDeletedInfo: true,
   emptyStateMessage: "No deleted files found",
   emptyStateIcon: Trash2,
-  customActions: [
-    {
-      label: "Restore",
-      icon: FolderIcon,
-      action: () => {},
-      variant: "default",
-    },
-  ],
 };
 
 // Private files page configuration

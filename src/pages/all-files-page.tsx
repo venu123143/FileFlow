@@ -6,6 +6,7 @@ import { BreadcrumbNavigation } from "@/components/file-manager/BreadcrumbNaviga
 import { Toolbar } from "@/components/file-manager/Toolbar"
 import { BulkActionsBar } from "@/components/file-manager/BulkActionsBar"
 import { FileManager } from "@/components/file-manager/FileManager"
+import { AddNewFolder } from "@/components/file-manager/AddNewFolder"
 import { standardPageConfig, defaultViewConfig } from "@/config/page-configs"
 
 import { useFile } from "@/contexts/fileContext"
@@ -17,6 +18,9 @@ export default function AllFilesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
   const [currentPath, setCurrentPath] = useState<Array<{ id: string, name: string }>>([])
+  // Rename popup state
+  const [isRenameModalOpen, setIsRenameModalOpen] = useState(false)
+  const [fileToRename, setFileToRename] = useState<FileItem | null>(null)
 
   const { createFolder, fileSystemTree, deleteFileOrFolder, renameFolder } = useFile();
   const navigate = useNavigate();
@@ -118,12 +122,38 @@ export default function AllFilesPage() {
     }
   }
 
+  const handleRenameFile = (file: FileItem) => {
+    setFileToRename(file);
+    setIsRenameModalOpen(true);
+  }
+
+  const handleRenameFolder = async (folderId: string, folderName: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const result = await renameFolder(folderId, { name: folderName });
+      if (result.success) {
+        setIsRenameModalOpen(false);
+        setFileToRename(null);
+      }
+      return result;
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error?.message || 'Failed to rename folder'
+      };
+    }
+  }
+
+  const handleCloseRenameModal = () => {
+    setIsRenameModalOpen(false);
+    setFileToRename(null);
+  }
+
   const actionHandlers: FileActionHandlers = {
     onFileSelect: toggleFileSelection,
     onItemClick: handleItemClick,
     onDownload: (file) => console.log("Download", file.name),
     onShare: (file) => console.log("Share", file.name),
-    onRename: (file) => renameFolder(file.id, { name: file.name }),
+    onRename: handleRenameFile,
     onDelete: handleDeleteFile,
   }
 
@@ -165,6 +195,19 @@ export default function AllFilesPage() {
           viewMode={viewMode}
           onCreateFolder={handleCreateFolder}
         />
+
+        {/* Rename Modal */}
+        {fileToRename && (
+          <AddNewFolder
+            isEditMode={true}
+            initialName={fileToRename.name}
+            folderId={fileToRename.id}
+            onEditFolder={handleRenameFolder}
+            isOpen={isRenameModalOpen}
+            onClose={handleCloseRenameModal}
+            onAddFolder={async () => ({ success: false, error: "Not used in edit mode" })}
+          />
+        )}
       </div>
     </div>
   )

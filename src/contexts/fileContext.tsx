@@ -95,12 +95,30 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         enabled: !!user, // Only enable the query when user is authenticated
     });
 
+    const { data: trashData, isLoading: trashLoading } = useQuery<FileSystemNode[]>({
+        queryKey: ['trash'],
+        queryFn: async () => {
+            const result = await fileApi.getTrash();
+            return result.data;
+        },
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        gcTime: 10 * 60 * 1000, // 10 minutes
+        enabled: !!user, // Only enable the query when user is authenticated
+    });
+
     // Update fileSystemTree in state when query data changes
     React.useEffect(() => {
         if (fileSystemTreeData) {
             dispatch({ type: 'SET_FILE_SYSTEM_TREE', fileSystemTree: fileSystemTreeData });
         }
     }, [fileSystemTreeData]);
+
+    // Update trash in state when query data changes
+    React.useEffect(() => {
+        if (trashData) {
+            dispatch({ type: 'SET_TRASH', trash: trashData });
+        }
+    }, [trashData]);
 
     // 🔹 Mutations
     const { mutateAsync: createFolderMutationFn } = useMutation({
@@ -203,6 +221,8 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return result.data;
         },
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
+            queryClient.invalidateQueries({ queryKey: ['trash'] });
             dispatch({ type: 'SET_LOADING', loading: false });
             toast.success('File or folder restored successfully!');
         },
@@ -217,6 +237,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return result.data;
         },
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['trash'] });
             dispatch({ type: 'SET_LOADING', loading: false });
             toast.success('Trash emptied successfully!');
         },
@@ -366,10 +387,17 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const getTrash = async () => {
         try {
             dispatch({ type: 'SET_LOADING', loading: true });
-            const result = await fileApi.getTrash();
-            dispatch({ type: 'SET_TRASH', trash: result.data });
+            // Refetch the query to get fresh data
+            const data = await queryClient.fetchQuery({
+                queryKey: ['trash'],
+                queryFn: async () => {
+                    const result = await fileApi.getTrash();
+                    return result.data;
+                },
+            });
+            dispatch({ type: 'SET_TRASH', trash: data });
             dispatch({ type: 'SET_LOADING', loading: false });
-            return result.data;
+            return data;
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
             const errorMessage = error?.response?.data?.message || error?.message || 'Failed to get trash.';
@@ -415,7 +443,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const value: FileContextType = {
         ...state,
-        loading: state.loading || fileSystemTreeLoading,
+        loading: state.loading || fileSystemTreeLoading || trashLoading,
         createFolder,
         renameFolder,
         moveFileOrFolder,

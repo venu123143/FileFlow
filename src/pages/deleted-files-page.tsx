@@ -10,11 +10,7 @@ import {
   SortAsc,
   RotateCcw,
   Trash2,
-  FileText,
-  Video,
-  Music,
   Archive,
-  FolderIcon,
   AlertTriangle,
   Clock,
   RefreshCw,
@@ -38,11 +34,7 @@ export function DeletedFilesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
-  const { getTrash, deleteFileOrFolder, trash, restoreFileOrFolder, emptyTrash } = useFile()
-
-  useEffect(() => {
-    getTrash()
-  }, [])
+  const { deleteFileOrFolder, trash, restoreFileOrFolder, emptyTrash } = useFile()
 
   // Transform dynamic data to DeletedFileItem format
   const transformedTrash = useMemo(() => {

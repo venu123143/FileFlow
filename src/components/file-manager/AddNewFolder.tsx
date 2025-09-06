@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Plus, FolderPlus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,13 @@ interface AddNewFolderProps {
   variant?: "button" | "card"
   placeholder?: string
   buttonText?: string
+  // Edit mode props
+  isEditMode?: boolean
+  initialName?: string
+  onEditFolder?: (folderId: string, folderName: string) => Promise<{ success: boolean; error?: string }>
+  folderId?: string
+  isOpen?: boolean
+  onClose?: () => void
 }
 
 export function AddNewFolder({
@@ -20,13 +27,29 @@ export function AddNewFolder({
   className = "",
   variant = "button",
   placeholder = "Enter folder name...",
-  buttonText = "New Folder"
+  buttonText = "New Folder",
+  // Edit mode props
+  isEditMode = false,
+  initialName = "",
+  onEditFolder,
+  folderId,
+  isOpen = false,
+  onClose
 }: AddNewFolderProps) {
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [folderName, setFolderName] = useState("")
+  const [isModalOpen, setIsModalOpen] = useState(isOpen)
+  const [folderName, setFolderName] = useState(initialName)
   const [isError, setIsError] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+
+  // Handle external open/close state
+  useEffect(() => {
+    setIsModalOpen(isOpen)
+  }, [isOpen])
+
+  useEffect(() => {
+    setFolderName(initialName)
+  }, [initialName])
 
   const handleCreateClick = () => {
     setIsModalOpen(true)
@@ -38,10 +61,15 @@ export function AddNewFolder({
 
   const handleClose = () => {
     setIsModalOpen(false)
-    setFolderName("")
+    if (!isEditMode) {
+      setFolderName("")
+    } else {
+      setFolderName(initialName)
+    }
     setIsError(false)
     setErrorMessage("")
     setIsLoading(false)
+    onClose?.()
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,18 +89,30 @@ export function AddNewFolder({
       return
     }
 
+    // Check if name changed in edit mode
+    if (isEditMode && trimmedName === initialName) {
+      handleClose()
+      return
+    }
+
     setIsLoading(true)
     setIsError(false)
     setErrorMessage("")
 
     try {
-      const result = await onAddFolder(trimmedName)
+      let result: { success: boolean; error?: string }
+      
+      if (isEditMode && onEditFolder && folderId) {
+        result = await onEditFolder(folderId, trimmedName)
+      } else {
+        result = await onAddFolder(trimmedName)
+      }
       
       if (result.success) {
         handleClose()
       } else {
         setIsError(true)
-        setErrorMessage(result.error || "Failed to create folder")
+        setErrorMessage(result.error || `Failed to ${isEditMode ? 'rename' : 'create'} folder`)
       }
     } catch (error) {
       setIsError(true)
@@ -90,8 +130,8 @@ export function AddNewFolder({
 
   return (
     <>
-      {/* Trigger Button/Card */}
-      {variant === "card" ? (
+      {/* Trigger Button/Card - Only show when not in edit mode */}
+      {!isEditMode && variant === "card" ? (
         <div className={className}>
           <Card 
             className="group cursor-pointer hover:shadow-md transition-all duration-200 border-dashed border-2 border-muted-foreground/30 hover:border-muted-foreground/50"
@@ -108,7 +148,7 @@ export function AddNewFolder({
             </CardContent>
           </Card>
         </div>
-      ) : (
+      ) : !isEditMode ? (
         <div className={className}>
           <Button
             onClick={handleCreateClick}
@@ -120,7 +160,7 @@ export function AddNewFolder({
             {buttonText}
           </Button>
         </div>
-      )}
+      ) : null}
 
       {/* Modal Popup */}
       <AnimatePresence>
@@ -147,7 +187,9 @@ export function AddNewFolder({
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                     <FolderPlus className="h-4 w-4 text-primary" />
                   </div>
-                  <h3 className="text-lg font-semibold">Create New Folder</h3>
+                  <h3 className="text-lg font-semibold">
+                    {isEditMode ? "Rename Folder" : "Create New Folder"}
+                  </h3>
                 </div>
                 <Button
                   variant="ghost"
@@ -164,7 +206,7 @@ export function AddNewFolder({
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <label htmlFor="folderName" className="block text-sm font-medium text-foreground mb-2">
-                      Folder Name
+                      {isEditMode ? "New Folder Name" : "Folder Name"}
                     </label>
                     <Input
                       id="folderName"
@@ -205,7 +247,7 @@ export function AddNewFolder({
                       type="submit"
                       disabled={isLoading}
                     >
-                      {isLoading ? "Creating..." : "Create Folder"}
+                      {isLoading ? (isEditMode ? "Renaming..." : "Creating...") : (isEditMode ? "Rename Folder" : "Create Folder")}
                     </Button>
                   </div>
                 </form>
