@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Download, Share2, Edit, Trash2, RotateCcw, Lock, Unlock, Users, Play } from "lucide-react";
+import { MoreHorizontal, Download, Share2, Edit, Trash2, RotateCcw, Lock, Unlock, Users, Play, FolderOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { VideoPlayerModal } from "@/components/player/VideoPlayerModal";
 import { isVideoFile, getVideoFileUrl } from "@/lib/video-utils";
@@ -38,7 +38,8 @@ export function FileGridItem({
     onRestore,
     onEncrypt,
     onDecrypt,
-    onCustomAction
+    onCustomAction,
+    onMove
   } = actionHandlers;
 
   const isVideo = isVideoFile(file);
@@ -147,6 +148,12 @@ export function FileGridItem({
                     <DropdownMenuItem onClick={() => onShare(file)}>
                       <Share2 className="h-4 w-4 mr-2" />
                       Share
+                    </DropdownMenuItem>
+                  )}
+                  {onMove && (
+                    <DropdownMenuItem onClick={() => onMove(file)}>
+                      <FolderOpen className="h-4 w-4 mr-2" />
+                      Move
                     </DropdownMenuItem>
                   )}
                   {onRename && (

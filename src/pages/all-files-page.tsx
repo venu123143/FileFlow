@@ -22,7 +22,7 @@ export default function AllFilesPage() {
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false)
   const [fileToRename, setFileToRename] = useState<FileItem | null>(null)
 
-  const { createFolder, fileSystemTree, deleteFileOrFolder, renameFolder } = useFile();
+  const { createFolder, fileSystemTree, deleteFileOrFolder, renameFolder, moveFileOrFolder } = useFile();
   const navigate = useNavigate();
 
   // Transform dynamic data to FileItem format
@@ -148,11 +148,35 @@ export default function AllFilesPage() {
     setFileToRename(null);
   }
 
+  const handleMoveFile = async (file: FileItem) => {
+    try {
+      // For now, we'll just log the move action
+      // In a real implementation, you would open a folder picker modal
+      console.log("Move file:", file.name);
+
+      // Example: Move to root folder (you can implement a folder picker here)
+      const result = await moveFileOrFolder(file.id, {
+        target_folder_id: currentPath.length > 0 ? currentPath[currentPath.length - 1].id : null
+      });
+
+      if (result.success) {
+        console.log("File moved successfully");
+        // Remove from selected files if it was selected
+        setSelectedFiles(prev => prev.filter(id => id !== file.id));
+      } else {
+        console.error("Failed to move file:", result.error);
+      }
+    } catch (error) {
+      console.error("Error moving file:", error);
+    }
+  }
+
   const actionHandlers: FileActionHandlers = {
     onFileSelect: toggleFileSelection,
     onItemClick: handleItemClick,
     onDownload: (file) => console.log("Download", file.name),
     onShare: (file) => console.log("Share", file.name),
+    onMove: handleMoveFile,
     onRename: handleRenameFile,
     onDelete: handleDeleteFile,
   }

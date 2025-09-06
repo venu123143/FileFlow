@@ -5,10 +5,10 @@ import type { FileItem, PageConfig, ViewConfig, FileActionHandlers } from "@/typ
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Download, Share2, Edit, Trash2, RotateCcw, Lock, Unlock, Users, Shield, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { VideoPlayerModal } from "@/components/player/VideoPlayerModal";
 import { isVideoFile, getVideoFileUrl } from "@/lib/video-utils";
+import { MoreHorizontal, Download, Share2, Edit, Trash2, RotateCcw, Lock, Unlock, Users, Shield, Play, FolderOpen } from "lucide-react";
 
 interface FileListItemProps {
   file: FileItem;
@@ -19,16 +19,16 @@ interface FileListItemProps {
   actionHandlers: FileActionHandlers;
 }
 
-export function FileListItem({ 
-  file, 
-  index, 
-  isSelected, 
-  pageConfig, 
-  viewConfig, 
-  actionHandlers 
+export function FileListItem({
+  file,
+  index,
+  isSelected,
+  pageConfig,
+  viewConfig,
+  actionHandlers
 }: FileListItemProps) {
   const [isVideoPlayerOpen, setIsVideoPlayerOpen] = useState(false);
-  
+
   const {
     onFileSelect,
     onItemClick,
@@ -39,7 +39,8 @@ export function FileListItem({
     onRestore,
     onEncrypt,
     onDecrypt,
-    onCustomAction
+    onCustomAction,
+    onMove
   } = actionHandlers;
 
   const isVideo = isVideoFile(file);
@@ -63,7 +64,7 @@ export function FileListItem({
 
   const renderCustomActions = () => {
     if (!pageConfig.customActions) return null;
-    
+
     return pageConfig.customActions.map((action, idx) => (
       <DropdownMenuItem
         key={idx}
@@ -93,7 +94,7 @@ export function FileListItem({
           );
         }
         break;
-      
+
       case "private":
         if (isPrivateFile(file)) {
           return (
@@ -107,7 +108,7 @@ export function FileListItem({
           );
         }
         break;
-      
+
       case "shared":
         if (isSharedFile(file)) {
           return (
@@ -123,7 +124,7 @@ export function FileListItem({
           );
         }
         break;
-      
+
       default:
         return (
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -149,7 +150,7 @@ export function FileListItem({
           );
         }
         break;
-      
+
       case "private":
         if (isPrivateFile(file)) {
           return (
@@ -160,7 +161,7 @@ export function FileListItem({
           );
         }
         break;
-      
+
       case "shared":
         if (isSharedFile(file)) {
           return (
@@ -173,7 +174,7 @@ export function FileListItem({
           );
         }
         break;
-      
+
       default:
         return (
           <div className="flex items-center gap-2 shrink-0">
@@ -197,7 +198,7 @@ export function FileListItem({
         onCheckedChange={() => onFileSelect(file.id)}
         onClick={(e) => e.stopPropagation()}
       />
-      
+
       {pageConfig.showThumbnails && file.thumbnail ? (
         <div className="w-8 h-8 rounded-lg overflow-hidden bg-muted flex-shrink-0 relative">
           <img
@@ -221,14 +222,14 @@ export function FileListItem({
           )}
         </div>
       )}
-      
+
       <div className="flex-1 min-w-0 file-item-content">
         <p className="font-medium truncate text-sm whitespace-nowrap">{file.name}</p>
         {renderPageSpecificInfo()}
       </div>
-      
+
       {renderPageSpecificBadges()}
-      
+
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -259,6 +260,12 @@ export function FileListItem({
               Share
             </DropdownMenuItem>
           )}
+          {onMove && ( // Add move option for standard variant
+            <DropdownMenuItem onClick={() => onMove(file)}>
+              <FolderOpen className="h-4 w-4 mr-2" />
+              Move
+            </DropdownMenuItem>
+          )}
           {onRename && (
             <DropdownMenuItem onClick={() => onRename(file)}>
               <Edit className="h-4 w-4 mr-2" />
@@ -287,7 +294,7 @@ export function FileListItem({
           {onDelete && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => onDelete(file)}
                 className="text-red-600"
               >

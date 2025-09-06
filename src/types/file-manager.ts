@@ -112,6 +112,7 @@ export interface FileActionHandlers {
   onRestore?: (file: FileItem) => void;
   onEncrypt?: (file: FileItem) => void;
   onDecrypt?: (file: FileItem) => void;
+  onMove?: (file: FileItem) => void;
   onPermissionChange?: (file: FileItem, permission: string) => void;
   onCustomAction?: (action: string, file: FileItem) => void;
 }
