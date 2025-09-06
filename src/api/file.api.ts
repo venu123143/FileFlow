@@ -1,122 +1,68 @@
 import apiClient from "@/api/axios";
 
-
 const createFolder = async (data: any) => {
-    try {
-        const response = await apiClient.post('/file-flow/folder', data);
-        return response.data;
-    } catch (error) {
-        console.log(error, "error.createFolder---------------createFolder")
-        throw error;
-    }
+    const response = await apiClient.post("/file-flow/folder", data);
+    return response.data;
 };
 
 const renameFolder = async (id: string, data: any) => {
-    try {
-        const response = await apiClient.patch(`/file-flow/folder/${id}/rename`, data);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    const response = await apiClient.patch(`/file-flow/folder/${id}/rename`, data);
+    return response.data;
 };
 
 const moveFileOrFolder = async (id: string, data: any) => {
-    try {
-        const response = await apiClient.patch(`/file-flow/folder/${id}/move`, data);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    const response = await apiClient.patch(`/file-flow/folder/${id}/move`, data);
+    return response.data;
 };
 
 const createFile = async (data: any) => {
-    try {
-        const response = await apiClient.post('/file-flow/file', data);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    const response = await apiClient.post("/file-flow/file", data);
+    return response.data;
 };
 
 const shareFileOrFolder = async (id: string, data: any) => {
-    try {
-        const response = await apiClient.post(`/file-flow/share/file/${id}`, data);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    const response = await apiClient.post(`/file-flow/share/file/${id}`, data);
+    return response.data;
 };
 
 const getAllSharedFiles = async () => {
-    try {
-        const response = await apiClient.get('/file-flow/share/file/all-shared-files');
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    const response = await apiClient.get("/file-flow/share/file/all-shared-files");
+    return response.data;
 };
 
 const getAllSharedFilesByMe = async () => {
-    try {
-        const response = await apiClient.get('/file-flow/share/file/shared-by-me');
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    const response = await apiClient.get("/file-flow/share/file/shared-by-me");
+    return response.data;
 };
 
 const getAllSharedFilesWithMe = async () => {
-    try {
-        const response = await apiClient.get('/file-flow/share/file/shared-with-me');
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    const response = await apiClient.get("/file-flow/share/file/shared-with-me");
+    return response.data;
 };
 
 const getFileSystemTree = async () => {
-    try {
-        const response = await apiClient.get('/file-flow/file/all');
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    const response = await apiClient.get("/file-flow/file/all");
+    return response.data;
 };
 
 const getTrash = async () => {
-    try {
-        const response = await apiClient.get('/file-flow/file/trash');
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    const response = await apiClient.get("/file-flow/file/trash");
+    return response.data;
 };
 
 const deleteFileOrFolder = async (id: string) => {
-    try {
-        const response = await apiClient.delete(`/file-flow/file/${id}`);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    const response = await apiClient.delete(`/file-flow/file/${id}`);
+    return response.data;
 };
 
 const restoreFileOrFolder = async (id: string) => {
-    try {
-        const response = await apiClient.post(`/file-flow/file/${id}/restore`);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    const response = await apiClient.post(`/file-flow/file/${id}/restore`);
+    return response.data;
 };
 
 const emptyTrash = async () => {
-    try {
-        const response = await apiClient.delete('/file-flow/file/empty-trash');
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    const response = await apiClient.delete("/file-flow/file/empty-trash");
+    return response.data;
 };
 
 export default {

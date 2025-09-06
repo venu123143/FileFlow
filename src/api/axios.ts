@@ -21,32 +21,20 @@ apiClient.interceptors.request.use(
         return Promise.reject(error);
     }
 );
-// Add request interceptor (optional)
-apiClient.interceptors.request.use(
-    (config) => {
-        // console.log(`Sending request to ${config.baseURL}${config.url}`);
-        return config;
-    },
-    (error) => {
-        // console.error('Request error:', error.message);
-        return Promise.reject(error);
-    }
-);
 
 // Add response interceptor
 apiClient.interceptors.response.use(
     async (response) => {
-        if (response.status && response.status === 401) {
-            await logout();
-        }
-
-        // console.log(`Response received from ${response.config.url}:`, response.headers.sessionid, response.data);
         return response;
     },
     async (error) => {
+        if (error.response?.status === 401) {
+            await logout();
+        }
         return Promise.reject(error); // Ensure error propagates
     }
 );
+
 
 
 const logout = async () => {
