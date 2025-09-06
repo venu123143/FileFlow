@@ -23,7 +23,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.bun
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lockb') }}
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
           restore-keys: |
             ${{ runner.os }}-bun-
 
@@ -32,15 +32,15 @@ jobs:
 
       - name: Build project
         env:
-          VITE_API_BACKEND_URL: ${{ secrets.VITE_API_BACKEND_URL || 'http://localhost:7000/api/v1' }}
-          VITE_API_CDN_URL: ${{ secrets.VITE_API_CDN_URL || 'https://cdn.nerchuko.in' }}
+          VITE_API_BACKEND_URL: ${{ vars.VITE_API_BACKEND_URL || 'http://fileflowapi.nerchuko.in' }}
+          VITE_API_CDN_URL: ${{ vars.VITE_API_CDN_URL || 'https://cdn.nerchuko.in' }}
         run: bun run build
 
       # Step 4: Deploy to server
       - name: Deploy to server
         env:
-          HOST: ${{ secrets.HOST }}
-          USER: ${{ secrets.USER }}
+          HOST: ${{ secrets.SERVER_HOST }}
+          USER: ${{ secrets.SERVER_USERNAME }}
           KEY: ${{ secrets.SERVER_SSH_KEY }}
         run: |
           # Setup SSH

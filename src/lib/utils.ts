@@ -1,7 +1,7 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import type { FileSystemNode } from "@/types/file.types"
-import type { FileItem, StandardFileItem, DeletedFileItem } from "@/types/file-manager"
+import type { StandardFileItem, DeletedFileItem } from "@/types/file-manager"
 import {
   FileText,
   FolderIcon,

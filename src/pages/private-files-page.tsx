@@ -176,7 +176,6 @@ export function PrivateFilesPage() {
     onItemClick: (item) => console.log("Clicked on private item:", item.name),
     onDownload: (file) => console.log("Download file:", file.name),
     onShare: (file) => console.log("Share file:", file.name),
-    onStar: (file) => console.log("Toggle star:", file.name),
     onDelete: handleDeleteFile,
     onEncrypt: (file) => console.log("Encrypt file:", file.name),
     onDecrypt: (file) => console.log("Decrypt file:", file.name),

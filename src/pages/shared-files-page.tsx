@@ -168,7 +168,6 @@ export function SharedFilesPage() {
     onItemClick: (item) => console.log("Clicked on shared item:", item.name),
     onDownload: (file) => console.log("Download file:", file.name),
     onShare: (file) => console.log("Share file:", file.name),
-    onStar: (file) => console.log("Toggle star:", file.name),
     onDelete: handleDeleteFile,
   }
 
