@@ -7,6 +7,7 @@ import { Toolbar } from "@/components/file-manager/Toolbar"
 import { BulkActionsBar } from "@/components/file-manager/BulkActionsBar"
 import { FileManager } from "@/components/file-manager/FileManager"
 import { AddNewFolder } from "@/components/file-manager/AddNewFolder"
+import { MoveFileModal } from "@/components/file-manager/MoveFileModal"
 import { standardPageConfig, defaultViewConfig } from "@/config/page-configs"
 
 import { useFile } from "@/contexts/fileContext"
@@ -21,6 +22,9 @@ export default function AllFilesPage() {
   // Rename popup state
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false)
   const [fileToRename, setFileToRename] = useState<FileItem | null>(null)
+  // Move file popup state
+  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false)
+  const [fileToMove, setFileToMove] = useState<FileItem | null>(null)
 
   const { createFolder, fileSystemTree, deleteFileOrFolder, renameFolder, moveFileOrFolder } = useFile();
   const navigate = useNavigate();
@@ -148,27 +152,32 @@ export default function AllFilesPage() {
     setFileToRename(null);
   }
 
-  const handleMoveFile = async (file: FileItem) => {
-    try {
-      // For now, we'll just log the move action
-      // In a real implementation, you would open a folder picker modal
-      console.log("Move file:", file.name);
+  const handleMoveFile = (file: FileItem) => {
+    setFileToMove(file);
+    setIsMoveModalOpen(true);
+  }
 
-      // Example: Move to root folder (you can implement a folder picker here)
-      const result = await moveFileOrFolder(file.id, {
-        target_folder_id: currentPath.length > 0 ? currentPath[currentPath.length - 1].id : null
+  const handleMoveFileToFolder = async (fileId: string, targetFolderId: string | null): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const result = await moveFileOrFolder(fileId, {
+        target_folder_id: targetFolderId
       });
 
       if (result.success) {
-        console.log("File moved successfully");
         // Remove from selected files if it was selected
-        setSelectedFiles(prev => prev.filter(id => id !== file.id));
+        setSelectedFiles(prev => prev.filter(id => id !== fileId));
+        return { success: true };
       } else {
-        console.error("Failed to move file:", result.error);
+        return { success: false, error: result.error || "Failed to move file" };
       }
-    } catch (error) {
-      console.error("Error moving file:", error);
+    } catch (error: any) {
+      return { success: false, error: error?.message || "An unexpected error occurred" };
     }
+  }
+
+  const handleCloseMoveModal = () => {
+    setIsMoveModalOpen(false);
+    setFileToMove(null);
   }
 
   const actionHandlers: FileActionHandlers = {
@@ -232,6 +241,15 @@ export default function AllFilesPage() {
             onAddFolder={async () => ({ success: false, error: "Not used in edit mode" })}
           />
         )}
+
+        {/* Move File Modal */}
+        <MoveFileModal
+          isOpen={isMoveModalOpen}
+          onClose={handleCloseMoveModal}
+          fileToMove={fileToMove}
+          fileSystemTree={transformedFileSystem}
+          onMoveFile={handleMoveFileToFolder}
+        />
       </div>
     </div>
   )
