@@ -8,6 +8,7 @@ import { BulkActionsBar } from "@/components/file-manager/BulkActionsBar"
 import { FileManager } from "@/components/file-manager/FileManager"
 import { AddNewFolder } from "@/components/file-manager/AddNewFolder"
 import { MoveFileModal } from "@/components/file-manager/MoveFileModal"
+import { ShareFileModal } from "@/components/file-manager/ShareFileModal"
 import { standardPageConfig, defaultViewConfig } from "@/config/page-configs"
 
 import { useFile } from "@/contexts/fileContext"
@@ -25,6 +26,9 @@ export default function AllFilesPage() {
   // Move file popup state
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false)
   const [fileToMove, setFileToMove] = useState<FileItem | null>(null)
+  // Share file popup state
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false)
+  const [fileToShare, setFileToShare] = useState<FileItem | null>(null)
 
   const { createFolder, fileSystemTree, deleteFileOrFolder, renameFolder, moveFileOrFolder } = useFile();
   const navigate = useNavigate();
@@ -180,11 +184,36 @@ export default function AllFilesPage() {
     setFileToMove(null);
   }
 
+  const handleShareFile = (file: FileItem) => {
+    setFileToShare(file);
+    setIsShareModalOpen(true);
+  }
+
+  const handleShareFileWithUsers = async (fileId: string, userIds: string[]): Promise<{ success: boolean; error?: string }> => {
+    try {
+      // TODO: Implement the actual share API call
+      // For now, we'll just log the share action
+      console.log("Sharing file:", fileId, "with users:", userIds);
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error?.message || "Failed to share file" };
+    }
+  }
+
+  const handleCloseShareModal = () => {
+    setIsShareModalOpen(false);
+    setFileToShare(null);
+  }
+
   const actionHandlers: FileActionHandlers = {
     onFileSelect: toggleFileSelection,
     onItemClick: handleItemClick,
     onDownload: (file) => console.log("Download", file.name),
-    onShare: (file) => console.log("Share", file.name),
+    onShare: handleShareFile,
     onMove: handleMoveFile,
     onRename: handleRenameFile,
     onDelete: handleDeleteFile,
@@ -249,6 +278,14 @@ export default function AllFilesPage() {
           fileToMove={fileToMove}
           fileSystemTree={transformedFileSystem}
           onMoveFile={handleMoveFileToFolder}
+        />
+
+        {/* Share File Modal */}
+        <ShareFileModal
+          isOpen={isShareModalOpen}
+          onClose={handleCloseShareModal}
+          fileToShare={fileToShare}
+          onShareFile={handleShareFileWithUsers}
         />
       </div>
     </div>

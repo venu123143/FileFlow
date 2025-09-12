@@ -1,5 +1,5 @@
 import apiClient from "@/api/axios";
-import { type SignupDto } from "@/types/user.types";
+import { type GetAllUsersAttributes, type SignupDto } from "@/types/user.types";
 
 const login = async (email: string, password: string) => {
     try {
@@ -37,4 +37,14 @@ const logout = async () => {
     }
 };
 
-export default { login, register, verifyEmail, logout };
+const getAllUsers = async (attributes: GetAllUsersAttributes) => {
+    try {
+        const response = await apiClient.get('/auth/user/all', { params: attributes });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
+
+export default { login, register, verifyEmail, logout, getAllUsers };

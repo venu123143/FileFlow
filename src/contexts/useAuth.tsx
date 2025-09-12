@@ -1,10 +1,12 @@
 import React, { useReducer, useContext, createContext, type ReactNode } from 'react';
 import { CONSTANTS } from '@/constants/constants';
 import { useAuthStore } from '@/store/auth.store';
-import { type IUser, type SignupDto } from '@/types/user.types';
+import { type IUser, type SignupDto, type GetAllUsersAttributes, type IUserListItem } from '@/types/user.types';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import authApi from '@/api/auth.api';
 import { toast } from 'sonner';
+
+
 const userStr = localStorage.getItem(CONSTANTS.STORAGE_KEYS.USER_DATA);
 const user = userStr ? JSON.parse(userStr) as IUser : null;
 
@@ -48,6 +50,7 @@ interface AuthContextType extends AuthState {
     logout: () => Promise<void>;
     logoutLoading: boolean;
     VerifyEmail: (token: string) => Promise<boolean | undefined>;
+    getAllUsers: (attributes: GetAllUsersAttributes) => Promise<IUserListItem[]>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -134,6 +137,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         },
     });
 
+    const { mutateAsync: getAllUsersMutationFn } = useMutation({
+        mutationFn: async (attributes: GetAllUsersAttributes) => {
+            const result = await authApi.getAllUsers(attributes);
+            return result.data;
+        },
+        onSuccess: () => {
+            dispatch({ type: 'SET_LOADING', loading: false });
+        },
+        onError: () => {
+            dispatch({ type: 'SET_LOADING', loading: false });
+        },
+    });
+
+
     const login = async (email: string, password: string) => {
         try {
             dispatch({ type: 'LOGIN_START' });
@@ -168,6 +185,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
+    const getAllUsers = async (attributes: GetAllUsersAttributes) => {
+        try {
+            dispatch({ type: 'SET_LOADING', loading: true });
+            const result = await getAllUsersMutationFn(attributes);
+            return result?.users || [];
+        } catch (error) {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            console.error('Error fetching users:', error);
+            return [];
+        }
+    };
+
     const logout = async () => {
         try {
             await logoutMutationFn();
@@ -184,6 +213,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         saveUser,
         logout,
         logoutLoading,
+        getAllUsers,
         VerifyEmail,
     };
 

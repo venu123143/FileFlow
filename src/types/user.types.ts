@@ -30,5 +30,22 @@ export interface SignupDto {
     password: string;
     display_name?: string;
     avatar_url?: string;
-  }
-  
+}
+
+
+export interface IUserListItem {
+    id: string;
+    email: string;
+    display_name: string | null;
+    avatar_url: string | null;
+    created_at: string; // or Date if you convert it before returning
+}
+
+
+export interface GetAllUsersAttributes {
+    page: number;
+    limit: number;
+    search: string;
+    is_active: boolean;
+    email_verified: boolean;
+}
