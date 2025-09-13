@@ -9,12 +9,13 @@ import { Card, CardContent } from "@/components/ui/card"
 import { useAuth } from "@/contexts/useAuth"
 import type { FileItem } from "@/types/file-manager"
 import type { IUserListItem } from "@/types/user.types"
+import { SHARE_PERMISSION, type SharePermission } from "@/types/file.types"
 
 interface ShareFileModalProps {
   isOpen: boolean
   onClose: () => void
   fileToShare: FileItem | null
-  onShareFile: (fileId: string, userIds: string[]) => Promise<{ success: boolean; error?: string }>
+  onShareFile: (fileId: string, userIds: string[], permissionLevel: SharePermission) => Promise<{ success: boolean; error?: string }>
 }
 
 export function ShareFileModal({
@@ -30,7 +31,8 @@ export function ShareFileModal({
   const [error, setError] = useState("")
   const [users, setUsers] = useState<IUserListItem[]>([])
   const [showDropdown, setShowDropdown] = useState(false)
-  
+  const [permissionLevel, setPermissionLevel] = useState<SharePermission>(SHARE_PERMISSION.VIEW)
+
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const { getAllUsers, user: currentUser } = useAuth()
 
@@ -74,8 +76,8 @@ export function ShareFileModal({
 
   // Filter out already selected users and current user
   const availableUsers = useMemo(() => {
-    return users.filter(user => 
-      !selectedUsers.some(selected => selected.id === user.id) && 
+    return users.filter(user =>
+      !selectedUsers.some(selected => selected.id === user.id) &&
       user.id !== currentUser?.id
     )
   }, [users, selectedUsers, currentUser])
@@ -98,11 +100,12 @@ export function ShareFileModal({
 
     try {
       const userIds = selectedUsers.map(user => user.id)
-      const result = await onShareFile(fileToShare.id, userIds)
+      const result = await onShareFile(fileToShare.id, userIds, permissionLevel)
       if (result.success) {
         onClose()
         setSelectedUsers([])
         setSearchQuery("")
+        setPermissionLevel(SHARE_PERMISSION.VIEW)
       } else {
         setError(result.error || "Failed to share file")
       }
@@ -120,6 +123,7 @@ export function ShareFileModal({
     setError("")
     setIsLoading(false)
     setShowDropdown(false)
+    setPermissionLevel(SHARE_PERMISSION.VIEW)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -186,7 +190,7 @@ export function ShareFileModal({
             </div>
 
             {/* Search Section */}
-            <div className="p-4 sm:p-5 border-b border-border flex-shrink-0 relative" onClick={handleClickOutside}>
+            <div className="p-1 sm:p-2 border-b border-border flex-shrink-0 relative" onClick={handleClickOutside}>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -239,8 +243,35 @@ export function ShareFileModal({
               )}
             </div>
 
+            {/* Permission Level Selector */}
+            <div className="p-1 sm:p-2 border-b border-border flex-shrink-0">
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm text-muted-foreground">
+                  Permission Level
+                </h4>
+                <div className="grid grid-cols-3 gap-2">
+                  {Object.entries(SHARE_PERMISSION).map(([key, value]) => (
+                    <Button
+                      key={value}
+                      variant={permissionLevel === value ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPermissionLevel(value)}
+                      className="text-xs"
+                    >
+                      {key.charAt(0) + key.slice(1).toLowerCase()}
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {permissionLevel === SHARE_PERMISSION.VIEW && "Users can only view the file"}
+                  {permissionLevel === SHARE_PERMISSION.EDIT && "Users can view and edit the file"}
+                  {permissionLevel === SHARE_PERMISSION.ADMIN && "Users have full administrative access"}
+                </p>
+              </div>
+            </div>
+
             {/* Selected Users */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+            <div className="flex-1 p-2 overflow-y-auto">
               {error && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                   <p className="text-sm text-red-600">{error}</p>
@@ -314,14 +345,14 @@ export function ShareFileModal({
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={handleClose}
                     disabled={isLoading}
                   >
                     Cancel
                   </Button>
-                  <Button 
+                  <Button
                     onClick={handleShare}
                     disabled={isLoading || selectedUsers.length === 0}
                   >

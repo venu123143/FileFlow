@@ -65,7 +65,7 @@ interface FileContextType extends FileState {
     renameFolder: (id: string, data: RenameFolderInput) => MutationResult;
     moveFileOrFolder: (id: string, data: MoveFileOrFolderInput) => MutationResult;
     createFile: (data: CreateFileInput) => MutationResult;
-    shareFileOrFolder: (id: string, data: ShareFileOrFolderInput) => MutationResult;
+    shareFileOrFolder: (file_id: string, data: ShareFileOrFolderInput) => MutationResult;
     getAllSharedFiles: () => Promise<SharedFileSystemNode[]>;
     getAllSharedFilesByMe: () => Promise<SharedFileSystemNode[]>;
     getAllSharedFilesWithMe: () => Promise<SharedFileSystemNode[]>;
@@ -186,8 +186,8 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
 
     const { mutateAsync: shareFileOrFolderMutationFn } = useMutation({
-        mutationFn: async ({ id, data }: { id: string; data: ShareFileOrFolderInput }) => {
-            const result = await fileApi.shareFileOrFolder(id, data);
+        mutationFn: async ({ file_id, data }: { file_id: string; data: ShareFileOrFolderInput }) => {
+            const result = await fileApi.shareFileOrFolder(file_id, data);
             return result.data;
         },
         onSuccess: () => {
@@ -321,10 +321,10 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
-    const shareFileOrFolder = async (id: string, data: ShareFileOrFolderInput) => {
+    const shareFileOrFolder = async (file_id: string, data: ShareFileOrFolderInput) => {
         try {
             dispatch({ type: 'SET_LOADING', loading: true });
-            await shareFileOrFolderMutationFn({ id, data });
+            await shareFileOrFolderMutationFn({ file_id, data });
             return { success: true };
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });

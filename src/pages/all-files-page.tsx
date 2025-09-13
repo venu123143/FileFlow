@@ -1,6 +1,7 @@
 "use client"
 import { useState, useMemo } from "react"
 import type { FileItem, FileActionHandlers } from "@/types/file-manager"
+import type { SharePermission } from "@/types/file.types"
 import { FileManagerHeader } from "@/components/file-manager/FileManagerHeader"
 import { BreadcrumbNavigation } from "@/components/file-manager/BreadcrumbNavigation"
 import { Toolbar } from "@/components/file-manager/Toolbar"
@@ -30,7 +31,7 @@ export default function AllFilesPage() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [fileToShare, setFileToShare] = useState<FileItem | null>(null)
 
-  const { createFolder, fileSystemTree, deleteFileOrFolder, renameFolder, moveFileOrFolder } = useFile();
+  const { createFolder, fileSystemTree, deleteFileOrFolder, renameFolder, moveFileOrFolder, shareFileOrFolder } = useFile();
   const navigate = useNavigate();
 
   // Transform dynamic data to FileItem format
@@ -189,14 +190,26 @@ export default function AllFilesPage() {
     setIsShareModalOpen(true);
   }
 
-  const handleShareFileWithUsers = async (fileId: string, userIds: string[]): Promise<{ success: boolean; error?: string }> => {
+  const handleShareFileWithUsers = async (fileId: string, userIds: string[], permissionLevel: SharePermission): Promise<{ success: boolean; error?: string }> => {
     try {
-      // TODO: Implement the actual share API call
-      // For now, we'll just log the share action
-      console.log("Sharing file:", fileId, "with users:", userIds);
+      // Share the file with each selected user
+      const sharePromises = userIds.map(userId => 
+        shareFileOrFolder(fileId, {
+          shared_with_user_id: userId,
+          permission_level: permissionLevel
+        })
+      );
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const results = await Promise.all(sharePromises);
+      
+      // Check if any share operation failed
+      const failedResults = results.filter(result => !result.success);
+      if (failedResults.length > 0) {
+        return { 
+          success: false, 
+          error: `Failed to share with ${failedResults.length} user(s). ${failedResults[0].error}` 
+        };
+      }
       
       return { success: true };
     } catch (error: any) {

@@ -20,8 +20,8 @@ const createFile = async (data: any) => {
     return response.data;
 };
 
-const shareFileOrFolder = async (id: string, data: any) => {
-    const response = await apiClient.post(`/file-flow/share/file/${id}`, data);
+const shareFileOrFolder = async (file_id: string, data: any) => {
+    const response = await apiClient.post(`/file-flow/share/file/${file_id}`, data);
     return response.data;
 };
 
