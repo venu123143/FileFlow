@@ -63,7 +63,7 @@ export function TopBar({ onSidebarToggle }: TopBarProps) {
           <Menu className="w-5 h-5" />
         </button>
 
-        <Breadcrumb>
+        <Breadcrumb className="md:block hidden">
           <BreadcrumbList>
             {breadcrumbs.map((breadcrumb, index) => (
               <React.Fragment key={breadcrumb.path}>

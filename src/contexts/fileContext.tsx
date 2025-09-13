@@ -280,7 +280,19 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return { success: true };
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to rename folder.';
+            // Handle different error structures
+            let errorMessage = 'Failed to create folder.';
+
+            if (error?.response?.data?.errors && Array.isArray(error.response.data.errors) && error.response.data.errors.length > 0) {
+                // API returned errors array
+                errorMessage = error.response.data.errors[0];
+            } else if (error?.response?.data?.message) {
+                // API returned message field
+                errorMessage = error.response.data.message;
+            } else if (error?.message) {
+                // Standard error message
+                errorMessage = error.message;
+            }
             return { success: false, error: errorMessage };
         }
     };

@@ -74,9 +74,9 @@ export function AddNewFolder({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     const trimmedName = folderName.trim()
-    
+
     if (!trimmedName) {
       setIsError(true)
       setErrorMessage("Folder name is required")
@@ -101,13 +101,13 @@ export function AddNewFolder({
 
     try {
       let result: { success: boolean; error?: string }
-      
+
       if (isEditMode && onEditFolder && folderId) {
         result = await onEditFolder(folderId, trimmedName)
       } else {
         result = await onAddFolder(trimmedName)
       }
-      
+
       if (result.success) {
         handleClose()
       } else {
@@ -133,11 +133,11 @@ export function AddNewFolder({
       {/* Trigger Button/Card - Only show when not in edit mode */}
       {!isEditMode && variant === "card" ? (
         <div className={className}>
-          <Card 
-            className="group cursor-pointer hover:shadow-md transition-all duration-200 border-dashed border-2 border-muted-foreground/30 hover:border-muted-foreground/50"
+          <Card
+            className="group h-full cursor-pointer hover:shadow-md transition-all duration-200 border-dashed border-2 border-muted-foreground/30 hover:bg-amber-50 hover:border-muted-foreground/50"
             onClick={handleCreateClick}
           >
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center space-y-3">
+            <CardContent className="p-6  flex flex-col items-center justify-center text-center space-y-3">
               <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
                 <Plus className="h-6 w-6 text-muted-foreground group-hover:text-foreground transition-colors" />
               </div>
@@ -236,14 +236,14 @@ export function AddNewFolder({
 
                   {/* Modal Footer */}
                   <div className="flex items-center justify-end gap-2 pt-2">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
+                    <Button
+                      type="button"
+                      variant="outline"
                       onClick={handleClose}
                     >
                       Cancel
                     </Button>
-                    <Button 
+                    <Button
                       type="submit"
                       disabled={isLoading}
                     >

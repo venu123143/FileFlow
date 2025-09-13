@@ -1,8 +1,9 @@
 import { motion } from "framer-motion";
-import { Search, Filter, SortAsc, Grid3X3, List } from "lucide-react";
+import { Search, SortDesc, SortAsc, Grid3X3, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
 
 interface ToolbarProps {
   searchQuery: string;
@@ -13,6 +14,7 @@ interface ToolbarProps {
 }
 
 export function Toolbar({ searchQuery, onSearchChange, selectedFilesCount, viewMode, onViewModeChange }: ToolbarProps) {
+  const [sort, setSort] = useState<"ASC" | "DESC">("ASC")
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -30,13 +32,19 @@ export function Toolbar({ searchQuery, onSearchChange, selectedFilesCount, viewM
             className="pl-10"
           />
         </div>
-        <Button variant="outline" size="sm" className="shrink-0 bg-transparent">
-          <Filter className="h-4 w-4 sm:mr-2" />
-          <span className="hidden sm:inline">Filter</span>
-        </Button>
-        <Button variant="outline" size="sm" className="shrink-0 bg-transparent">
-          <SortAsc className="h-4 w-4 sm:mr-2" />
-          <span className="hidden sm:inline">Sort</span>
+        <Button onClick={() => setSort(sort === "ASC" ? "DESC" : "ASC")} variant="outline" size="sm" className="shrink-0 bg-transparent">
+          {
+            sort === "ASC" ?
+              <>
+                <SortAsc className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Sort</span>
+
+              </> :
+              <>
+                <SortDesc className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Sort</span>
+              </>
+          }
         </Button>
       </div>
 
