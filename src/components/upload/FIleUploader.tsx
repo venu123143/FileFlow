@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
     Upload,
     FileSpreadsheet,
@@ -12,10 +12,12 @@ import {
     Play,
     Pause,
     RotateCcw,
-    CheckCircle
+    CheckCircle,
+    AlertTriangle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import useFileUpload, { type FileUploadState } from '@/hooks/useFileUpload';
+import useFileUpload from '@/hooks/useFileUpload';
+import { type FileUploadState, useGlobalUpload } from '@/contexts/GlobalUploadContext';
 import { useFile } from '@/contexts/fileContext';
 
 export type FileType = 'excel' | 'pdf' | 'image' | 'video' | 'audio' | 'archive' | 'text' | 'any';
@@ -49,7 +51,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     const navigate = useNavigate();
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [isDragOver, setIsDragOver] = useState(false);
-    const { fileStates, handleUpload, abortUpload, removeFile, updateFileState } = useFileUpload();
+    const { fileStates, handleUpload, abortUpload, removeFile, updateFileState } = useFileUpload(folderId);
+    const { addFile: addToGlobalUploads, handleUpload: globalHandleUpload } = useGlobalUpload();
 
     const getFileType = (file: File): FileType => {
         const ext = file.name.toLowerCase().split('.').pop() || '';
@@ -137,7 +140,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                 name: file.name,
                 parent_id: folderId === "root" ? null : folderId,
                 file_info: result
-            })
+            });
             updateFileState(file.name, {
                 url: result.storage_path,
                 status: 'completed',
@@ -199,9 +202,41 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         return fileState?.status === 'completed';
     });
 
+    // Check if there are any active uploads
+    const hasActiveUploads = selectedFiles.some(file => {
+        const fileState = fileStates[file.name];
+        return fileState?.status === 'uploading' || fileState?.status === 'processing';
+    });
+
     const handleClose = () => {
         navigate('/all-files');
     };
+
+    // Move active uploads to global state when component unmounts (user navigates away)
+    useEffect(() => {
+        return () => {
+            // Move any active uploads to global state when leaving the page
+            selectedFiles.forEach(async (file) => {
+                const fileState = fileStates[file.name];
+                if (fileState && (fileState.status === 'uploading' || fileState.status === 'processing')) {
+                    // Add file to global state with current upload state
+                    addToGlobalUploads(file, folderId, {
+                        uploadId: fileState.uploadId,
+                        fileKey: fileState.fileKey,
+                        progress: fileState.progress,
+                        status: fileState.status,
+                        lastUploadedChunk: fileState.lastUploadedChunk,
+                        error: fileState.error
+                    });
+                    
+                    // Continue the upload in global context
+                    setTimeout(() => {
+                        globalHandleUpload(file.name).catch(console.error);
+                    }, 100);
+                }
+            });
+        };
+    }, [selectedFiles, fileStates, addToGlobalUploads, folderId, globalHandleUpload]);
 
     return (
         <>
@@ -253,6 +288,25 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                     </div>
                 </div>
             </div>
+
+            {/* Warning Message - Show when there are active uploads */}
+            {hasActiveUploads && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg mx-6 mb-4">
+                    <div className="flex items-start space-x-3">
+                        <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                            <h3 className="text-sm font-medium text-amber-800 mb-1">
+                                Upload in Progress
+                            </h3>
+                            <p className="text-sm text-amber-700">
+                                <strong>Please do not refresh the page</strong> while files are uploading. 
+                                You can safely navigate to other pages within the application - your uploads will continue in the background.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Close Button - Show when all files are completed */}
             {allFilesCompleted && (
                 <div className="p-6 bg-green-50 border-t border-green-200">

@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ErrorBoundary } from "@/components/error/ErrorBoundry";
 import { UploadProvider } from "@/contexts/UploadContext";
+import { GlobalUploadProvider } from "@/contexts/GlobalUploadContext";
 // import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/useAuth";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -25,6 +26,7 @@ const AppProviders = ({ children }: { children: ReactNode }) => {
         ),
         (children: ReactNode) => <AuthProvider>{children}</AuthProvider>,
         (children: ReactNode) => <FileProvider>{children}</FileProvider>,
+        (children: ReactNode) => <GlobalUploadProvider>{children}</GlobalUploadProvider>,
     ];
 
     return providers.reduceRight((acc, Provider) => Provider(acc), children);

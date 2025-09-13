@@ -1,12 +1,25 @@
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import FileUploader, { type FileConfig } from '@/components/upload/FIleUploader';
+import { useGlobalUpload } from '@/contexts/GlobalUploadContext';
+import { useEffect } from 'react';
 
 const Upload = () => {
     const { folder_id } = useParams<{ folder_id: string }>();
     const location = useLocation();
     const navigate = useNavigate();
     const { folder_name } = location.state || {};
+    const { uploads, clearAllUploads } = useGlobalUpload();
+    
+    // Get uploads for this specific folder
+    const folderUploads = Object.values(uploads).filter(upload => 
+        upload.folderId === folder_id || (folder_id === "root" && !upload.folderId)
+    );
+
+    // Clear global uploads when entering upload page (they will be handled locally)
+    useEffect(() => {
+        clearAllUploads();
+    }, [clearAllUploads]);
 
     const allowedTypes: FileConfig[] = [
         {
@@ -50,6 +63,45 @@ const Upload = () => {
                     </div>
                 </div>
 
+
+                {/* Existing Uploads Section */}
+                {folderUploads.length > 0 && (
+                    <div className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                            Current Uploads ({folderUploads.length})
+                        </h2>
+                        <div className="space-y-3">
+                            {folderUploads.map((upload) => (
+                                <div key={upload.file.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="text-sm font-medium text-gray-900">
+                                            {upload.file.name}
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                            {upload.status === 'uploading' ? `${upload.progress}%` : upload.status}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        {upload.status === 'uploading' && (
+                                            <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-blue-500 transition-all duration-300"
+                                                    style={{ width: `${upload.progress}%` }}
+                                                />
+                                            </div>
+                                        )}
+                                        {upload.status === 'completed' && (
+                                            <div className="text-green-600 text-sm">✓ Completed</div>
+                                        )}
+                                        {upload.status === 'error' && (
+                                            <div className="text-red-600 text-sm">✗ Failed</div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* File Uploader */}
                 <FileUploader

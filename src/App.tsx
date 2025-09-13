@@ -15,6 +15,7 @@ import Login from "@/routes/auth/Login";
 import Register from "@/routes/auth/Register";
 import Unauthorized from "@/routes/Unauthorized";
 import Upload from "@/routes/Upload";
+import GlobalUploadIndicator from "@/components/upload/GlobalUploadIndicator";
 // Loading component for Suspense fallback
 const Loading = () => (
   <div className="flex items-center justify-center h-screen">
@@ -44,6 +45,7 @@ function App() {
 
         </Routes>
       </Suspense>
+      <GlobalUploadIndicator />
     </>
   )
 }
