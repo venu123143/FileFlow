@@ -95,7 +95,7 @@ const uploadReducer = (state: UploadState, action: UploadAction): UploadState =>
                         fileType: action.payload.fileType,
                     }
                 },
-                isPopupVisible: true,
+                // isPopupVisible: true,
             };
 
         case 'UPDATE_FILE_STATE':

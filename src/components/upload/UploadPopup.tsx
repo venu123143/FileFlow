@@ -1,11 +1,10 @@
 // @/components/upload/UploadPopup.tsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
     X,
     Minimize2,
     Maximize2,
     Upload,
-    FileText,
     Pause,
     RotateCcw,
     Trash2,
@@ -13,8 +12,10 @@ import {
     AlertCircle
 } from 'lucide-react';
 import { useUpload } from '@/contexts/UploadContext';
+import { useLocation } from 'react-router-dom';
 
 const UploadPopup: React.FC = () => {
+    const location = useLocation();
     const {
         state,
         abortUpload,
@@ -27,6 +28,13 @@ const UploadPopup: React.FC = () => {
 
     const { fileStates, isPopupMinimized, isPopupVisible } = state;
     const files = Object.values(fileStates);
+    useEffect(() => {
+        if (location.pathname.includes("/all-files")) {
+            setPopupVisible(files.length > 0); // visible only if files exist
+        } else {
+            setPopupVisible(true); // always visible on other routes
+        }
+    }, [location.pathname]);
 
     if (!isPopupVisible || files.length === 0) return null;
 
@@ -74,11 +82,10 @@ const UploadPopup: React.FC = () => {
 
     return (
         <div
-            className={`fixed z-50 bg-white rounded-lg shadow-2xl transition-all duration-300 ${
-                isPopupMinimized
-                    ? 'bottom-4 right-4 w-80'
-                    : 'bottom-4 right-4 w-96 max-h-[600px]'
-            }`}
+            className={`fixed z-50 bg-white rounded-lg shadow-2xl transition-all duration-300 ${isPopupMinimized
+                ? 'bottom-4 right-4 w-80'
+                : 'bottom-4 right-4 w-96 max-h-[600px]'
+                }`}
             style={{
                 boxShadow: '0 10px 40px rgba(0,0,0,0.15)'
             }}
@@ -237,10 +244,9 @@ const UploadPopup: React.FC = () => {
                         <div
                             className="h-full bg-blue-500 transition-all duration-300 rounded-full"
                             style={{
-                                width: `${
-                                    uploadingFiles.reduce((acc, f) => acc + f.progress, 0) / 
+                                width: `${uploadingFiles.reduce((acc, f) => acc + f.progress, 0) /
                                     uploadingFiles.length
-                                }%`
+                                    }%`
                             }}
                         />
                     </div>
