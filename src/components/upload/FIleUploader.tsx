@@ -52,15 +52,15 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [isDragOver, setIsDragOver] = useState(false);
     const [showWarning, setShowWarning] = useState(false);
-    
-    const { 
-        state, 
-        handleUpload, 
-        abortUpload, 
-        removeFile, 
-        updateFileState 
+
+    const {
+        state,
+        handleUpload,
+        abortUpload,
+        removeFile,
+        updateFileState
     } = useUpload();
-    
+
     const { fileStates } = state;
 
     // Check if any uploads are in progress
@@ -241,31 +241,13 @@ const FileUploader: React.FC<FileUploaderProps> = ({
 
     return (
         <>
-            {/* Warning Message */}
-            {showWarning && (
-                <div className="m-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <div className="flex items-start">
-                        <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5 mr-3 flex-shrink-0" />
-                        <div>
-                            <h3 className="text-sm font-medium text-yellow-800">
-                                Upload in Progress
-                            </h3>
-                            <p className="mt-1 text-sm text-yellow-700">
-                                Please do not refresh or close this page while files are being uploaded. 
-                                You can navigate to other pages - uploads will continue in the background.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Drop Zone */}
             <div
-                className={`lg:cursor-pointer relative m-6 border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${
-                    isDragOver
-                        ? 'border-blue-400 bg-blue-50'
-                        : 'border-gray-300 hover:border-gray-400 hover:bg-gray-100'
-                }`}
+                className={`lg:cursor-pointer relative m-6 border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${isDragOver
+                    ? 'border-blue-400 bg-blue-50'
+                    : 'border-gray-300 hover:border-gray-400 hover:bg-gray-100'
+                    }`}
                 onDrop={onDrop}
                 onDragOver={(e) => {
                     e.preventDefault();
@@ -284,9 +266,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                 />
 
                 <div className="space-y-4">
-                    <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center ${
-                        isDragOver ? 'bg-blue-100' : 'bg-gray-100'
-                    }`}>
+                    <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center ${isDragOver ? 'bg-blue-100' : 'bg-gray-100'
+                        }`}>
                         <Upload className={`w-8 h-8 ${isDragOver ? 'text-blue-600' : 'text-gray-400'}`} />
                     </div>
                     <div>
@@ -309,7 +290,23 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                     </div>
                 </div>
             </div>
-
+            {/* Warning Message */}
+            {showWarning && (
+                <div className="m-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-start">
+                        <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5 mr-3 flex-shrink-0" />
+                        <div>
+                            <h3 className="text-sm font-medium text-yellow-800">
+                                Upload in Progress
+                            </h3>
+                            <p className="mt-1 text-sm text-yellow-700">
+                                <strong>Please do not refresh or close this page</strong> while files are being uploaded.
+                                You can freely go to other pages - uploads will continue in the background.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* Close Button - Show when all files are completed */}
             {allFilesCompleted && (
                 <div className="p-6 bg-green-50 border-t border-green-200">
