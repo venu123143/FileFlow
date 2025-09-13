@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+// @/components/upload/FileUploader.tsx
+import React, { useState, useCallback, useEffect } from 'react';
 import {
     Upload,
     FileSpreadsheet,
@@ -12,10 +13,11 @@ import {
     Play,
     Pause,
     RotateCcw,
-    CheckCircle
+    CheckCircle,
+    AlertTriangle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import useFileUpload, { type FileUploadState } from '@/hooks/useFileUpload';
+import { useUpload } from '@/contexts/UploadContext';
 import { useFile } from '@/contexts/fileContext';
 
 export type FileType = 'excel' | 'pdf' | 'image' | 'video' | 'audio' | 'archive' | 'text' | 'any';
@@ -49,7 +51,42 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     const navigate = useNavigate();
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [isDragOver, setIsDragOver] = useState(false);
-    const { fileStates, handleUpload, abortUpload, removeFile, updateFileState } = useFileUpload();
+    const [showWarning, setShowWarning] = useState(false);
+    
+    const { 
+        state, 
+        handleUpload, 
+        abortUpload, 
+        removeFile, 
+        updateFileState 
+    } = useUpload();
+    
+    const { fileStates } = state;
+
+    // Check if any uploads are in progress
+    useEffect(() => {
+        const hasActiveUploads = Object.values(fileStates).some(
+            file => file.status === 'uploading' || file.status === 'processing'
+        );
+        setShowWarning(hasActiveUploads);
+
+        // Add beforeunload event listener
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (hasActiveUploads) {
+                e.preventDefault();
+                e.returnValue = 'You have uploads in progress. Are you sure you want to leave?';
+                return e.returnValue;
+            }
+        };
+
+        if (hasActiveUploads) {
+            window.addEventListener('beforeunload', handleBeforeUnload);
+        }
+
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [fileStates]);
 
     const getFileType = (file: File): FileType => {
         const ext = file.name.toLowerCase().split('.').pop() || '';
@@ -121,7 +158,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         });
 
         if (errors.length > 0) {
-            // Handle errors if needed
             console.error('File validation errors:', errors);
         }
 
@@ -131,18 +167,18 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     }, [allowedTypes, maxFiles, selectedFiles.length]);
 
     const handleFileUpload = async (file: File) => {
-        const result = await handleUpload(file);
+        const result = await handleUpload(file, folderId);
         if (result) {
             await createFile({
                 name: file.name,
                 parent_id: folderId === "root" ? null : folderId,
                 file_info: result
-            })
+            });
             updateFileState(file.name, {
                 url: result.storage_path,
                 status: 'completed',
                 progress: 100,
-                lastUploadedChunk: 0
+                lastUploadedChunk: Math.ceil(file.size / (5 * 1024 * 1024))
             });
         }
     };
@@ -171,7 +207,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
             case 'error': return 'text-red-600';
             case 'processing': return 'text-orange-600';
             case 'uploading': return 'text-blue-600';
-            default: return 'text-gray-600'; // upload not started
+            default: return 'text-gray-600';
         }
     };
 
@@ -181,7 +217,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
             case 'error': return 'bg-red-500';
             case 'processing': return 'bg-orange-500';
             case 'uploading': return 'bg-blue-500';
-            default: return 'bg-gray-300';  // upload not started
+            default: return 'bg-gray-300';
         }
     };
 
@@ -205,12 +241,31 @@ const FileUploader: React.FC<FileUploaderProps> = ({
 
     return (
         <>
+            {/* Warning Message */}
+            {showWarning && (
+                <div className="m-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-start">
+                        <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5 mr-3 flex-shrink-0" />
+                        <div>
+                            <h3 className="text-sm font-medium text-yellow-800">
+                                Upload in Progress
+                            </h3>
+                            <p className="mt-1 text-sm text-yellow-700">
+                                Please do not refresh or close this page while files are being uploaded. 
+                                You can navigate to other pages - uploads will continue in the background.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Drop Zone */}
             <div
-                className={`lg:cursor-pointer relative m-6 border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${isDragOver
-                    ? 'border-blue-400 bg-blue-50'
-                    : 'border-gray-300 hover:border-gray-400 hover:bg-gray-100 '
-                    }`}
+                className={`lg:cursor-pointer relative m-6 border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${
+                    isDragOver
+                        ? 'border-blue-400 bg-blue-50'
+                        : 'border-gray-300 hover:border-gray-400 hover:bg-gray-100'
+                }`}
                 onDrop={onDrop}
                 onDragOver={(e) => {
                     e.preventDefault();
@@ -229,8 +284,9 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                 />
 
                 <div className="space-y-4">
-                    <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center ${isDragOver ? 'bg-blue-100' : 'bg-gray-100'
-                        }`}>
+                    <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center ${
+                        isDragOver ? 'bg-blue-100' : 'bg-gray-100'
+                    }`}>
                         <Upload className={`w-8 h-8 ${isDragOver ? 'text-blue-600' : 'text-gray-400'}`} />
                     </div>
                     <div>
@@ -253,6 +309,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                     </div>
                 </div>
             </div>
+
             {/* Close Button - Show when all files are completed */}
             {allFilesCompleted && (
                 <div className="p-6 bg-green-50 border-t border-green-200">
@@ -271,6 +328,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                     </div>
                 </div>
             )}
+
             {/* File List */}
             {selectedFiles.length > 0 && (
                 <div className="p-6 bg-gray-50">
@@ -282,8 +340,10 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                             const fileState = fileStates[file.name] || {
                                 progress: 0,
                                 status: 'idle',
-                                error: null
-                            } as FileUploadState;
+                                error: null,
+                                totalChunks: Math.ceil(file.size / (5 * 1024 * 1024)),
+                                lastUploadedChunk: 0
+                            };
 
                             return (
                                 <div
@@ -323,7 +383,9 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                                                                 : 'Ready to upload'}
                                             </span>
                                             {fileState.status === 'uploading' && (
-                                                <span className="text-xs text-gray-500">{fileState.progress}%</span>
+                                                <span className="text-xs text-gray-500">
+                                                    Chunk {fileState.lastUploadedChunk}/{fileState.totalChunks}
+                                                </span>
                                             )}
                                         </div>
                                         <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
@@ -387,8 +449,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                     </div>
                 </div>
             )}
-
-
         </>
     );
 };

@@ -15,6 +15,8 @@ import Login from "@/routes/auth/Login";
 import Register from "@/routes/auth/Register";
 import Unauthorized from "@/routes/Unauthorized";
 import Upload from "@/routes/Upload";
+import UploadPopup from "@/components/upload/UploadPopup";
+
 // Loading component for Suspense fallback
 const Loading = () => (
   <div className="flex items-center justify-center h-screen">
@@ -41,8 +43,9 @@ function App() {
             <Route path="*" element={<NotFound />} />
           </Route>
           <Route path="/unauthorized" element={<Unauthorized />} />
-
         </Routes>
+        
+        <UploadPopup />
       </Suspense>
     </>
   )
