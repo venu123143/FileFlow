@@ -1,14 +1,19 @@
 
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
+import { getAuthState } from '@/store/auth.store';
 
 const createSocket = (url: string): Promise<Socket> => {
     const startTime = performance.now();
+    const { token } = getAuthState();
     return new Promise<Socket>((resolve, reject) => {
         const socket = io(url, {
             transports: ['websocket'],
             timeout: 10000,
             autoConnect: false, // Prevent auto-connection
+            auth: {
+                token: token?.jwt_token
+            }
         });
 
         socket.on('connect', () => {
