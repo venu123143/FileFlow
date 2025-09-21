@@ -114,14 +114,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const { mutateAsync: verifyEmailMutationFn } = useMutation({
         mutationFn: async (token: string) => {
             const result = await authApi.verifyEmail(token);
-            console.log(result);
             return result.data;
         },
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
         },
-        onError: (error) => {
-            console.log(error, "error.register");
+        onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
         },
     });

@@ -24,9 +24,9 @@ const AppProviders = ({ children }: { children: ReactNode }) => {
                 {children}
             </>
         ),
+        (children: ReactNode) => <NotificationProvider>{children}</NotificationProvider>,
         (children: ReactNode) => <AuthProvider>{children}</AuthProvider>,
         (children: ReactNode) => <FileProvider>{children}</FileProvider>,
-        (children: ReactNode) => <NotificationProvider>{children}</NotificationProvider>,
     ];
 
     return providers.reduceRight((acc, Provider) => Provider(acc), children);

@@ -11,6 +11,9 @@ const createSocket = (url: string): Promise<Socket> => {
             transports: ['websocket'],
             timeout: 10000,
             autoConnect: false, // Prevent auto-connection
+            reconnection: false, // Disable automatic reconnection
+            reconnectionAttempts: 0,
+            reconnectionDelay: 0,
             auth: {
                 token: token?.jwt_token
             }

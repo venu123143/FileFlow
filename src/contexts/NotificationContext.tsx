@@ -51,14 +51,16 @@ interface NotificationProviderProps {
 
 export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
     const [notifications, setNotifications] = useState<NotificationAttributes[]>([]);
-    const { socket } = useSocket();
+    const { socket, initializeSocket } = useSocket();
+
+    useEffect(() => {
+        initializeSocket();
+    }, [initializeSocket]);
 
     // Set up socket event listeners
     useEffect(() => {
         if (!socket) return;
-
         const handleNewNotification = (notification: NotificationAttributes) => {
-            console.log('New notification:', notification);
             toast.success(`New notification: ${notification.title}`);
             setNotifications(prev => [notification, ...prev]);
         };
