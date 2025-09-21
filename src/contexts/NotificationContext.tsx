@@ -1,28 +1,35 @@
-import React, { createContext, useContext, useCallback, useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
-import { useSocket } from '@/hooks/useSocket';
-import { toast } from 'sonner';
+import React, {
+    createContext,
+    useContext,
+    useReducer,
+    useEffect,
+    type ReactNode,
+} from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { useSocket } from "@/hooks/useSocket";
+import notificationApi from "@/api/notification.api";
 
+// 🔹 Notification Types
 export const NotificationType = {
-    FILE_SHARED: 'file_shared',
-    FILE_UPDATED: 'file_updated',
-    FILE_UPLOAD_COMPLETED: 'file_upload_completed',
-    FILE_UPLOAD_FAILED: 'file_upload_failed',
-    MULTIPART_UPLOAD_COMPLETED: 'multipart_upload_completed',
-    MULTIPART_UPLOAD_FAILED: 'multipart_upload_failed',
-    FILE_DELETED: 'file_deleted',
-    STORAGE_QUOTA_WARNING: 'storage_quota_warning',
-    STORAGE_QUOTA_EXCEEDED: 'storage_quota_exceeded',
-    SHARE_EXPIRED: 'share_expired',
-    FILE_COMMENTED: 'file_commented',
-    PUBLIC_LINK_ACCESSED: 'public_link_accessed',
+    FILE_SHARED: "file_shared",
+    FILE_UPDATED: "file_updated",
+    FILE_UPLOAD_COMPLETED: "file_upload_completed",
+    FILE_UPLOAD_FAILED: "file_upload_failed",
+    MULTIPART_UPLOAD_COMPLETED: "multipart_upload_completed",
+    MULTIPART_UPLOAD_FAILED: "multipart_upload_failed",
+    FILE_DELETED: "file_deleted",
+    STORAGE_QUOTA_WARNING: "storage_quota_warning",
+    STORAGE_QUOTA_EXCEEDED: "storage_quota_exceeded",
+    SHARE_EXPIRED: "share_expired",
+    FILE_COMMENTED: "file_commented",
+    PUBLIC_LINK_ACCESSED: "public_link_accessed",
 } as const;
 
 export type NotificationType = typeof NotificationType[keyof typeof NotificationType];
 
-// Define the attributes interface
 export interface NotificationAttributes {
-    id?: string;
+    id: string;
     user_id: string;
     type: NotificationType;
     title: string;
@@ -34,82 +41,170 @@ export interface NotificationAttributes {
     data: Record<string, any>;
 }
 
-interface NotificationContextType {
+// 🔹 State
+interface NotificationState {
     notifications: NotificationAttributes[];
-    addNotification: (notification: NotificationAttributes) => void;
-    markAsRead: (notificationId: string) => void;
-    markAllAsRead: () => void;
+    loading: boolean;
     unreadCount: number;
+}
+
+// 🔹 Actions
+type NotificationAction =
+    | { type: "SET_NOTIFICATIONS"; payload: NotificationAttributes[] }
+    | { type: "ADD_NOTIFICATION"; payload: NotificationAttributes }
+    | { type: "MARK_AS_READ"; id: string }
+    | { type: "MARK_ALL_AS_READ" }
+    | { type: "CLEAR_NOTIFICATIONS" }
+    | { type: "SET_LOADING"; payload: boolean };
+
+// 🔹 Reducer
+function notificationReducer(state: NotificationState, action: NotificationAction): NotificationState {
+    switch (action.type) {
+        case "SET_NOTIFICATIONS":
+            return {
+                ...state,
+                notifications: action.payload,
+                unreadCount: action.payload.filter((n) => !n.is_read).length,
+            };
+        case "ADD_NOTIFICATION":
+            return {
+                ...state,
+                notifications: [action.payload, ...state.notifications],
+                unreadCount: state.unreadCount + (action.payload.is_read ? 0 : 1),
+            };
+        case "MARK_AS_READ":
+            return {
+                ...state,
+                notifications: state.notifications.map((n) =>
+                    n.id === action.id ? { ...n, is_read: true } : n
+                ),
+                unreadCount: state.unreadCount - 1,
+            };
+        case "MARK_ALL_AS_READ":
+            return {
+                ...state,
+                notifications: state.notifications.map((n) => ({
+                    ...n,
+                    is_read: true,
+                })),
+                unreadCount: 0,
+            };
+        case "CLEAR_NOTIFICATIONS":
+            return { ...state, notifications: [], unreadCount: 0 };
+        case "SET_LOADING":
+            return { ...state, loading: action.payload };
+        default:
+            return state;
+    }
+}
+
+// 🔹 Context Type
+interface NotificationContextType extends NotificationState {
+    fetchNotifications: () => Promise<void>;
+    fetchUnreadCount: () => Promise<void>;
+    markAsRead: (id: string) => Promise<void>;
+    markAllAsRead: () => Promise<void>;
     clearNotifications: () => void;
 }
 
+// 🔹 Context
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
-interface NotificationProviderProps {
-    children: ReactNode;
-}
+export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children}) => {
+    const [state, dispatch] = useReducer(notificationReducer, {
+        notifications: [],
+        loading: false,
+        unreadCount: 0,
+    });
 
-export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
-    const [notifications, setNotifications] = useState<NotificationAttributes[]>([]);
+    const queryClient = useQueryClient();
     const { socket, initializeSocket } = useSocket();
 
+    // Initialize socket
     useEffect(() => {
         initializeSocket();
     }, [initializeSocket]);
 
-    // Set up socket event listeners
+    // 🔹 Socket listener
     useEffect(() => {
         if (!socket) return;
+
         const handleNewNotification = (notification: NotificationAttributes) => {
-            toast.success(`New notification: ${notification.title}`);
-            setNotifications(prev => [notification, ...prev]);
+            toast.success(`🔔 ${notification.title}`);
+            dispatch({ type: "ADD_NOTIFICATION", payload: notification });
         };
 
-        // Listen for new notifications
-        socket.on('notification:new', handleNewNotification);
+        socket.on("notification:new", handleNewNotification);
 
-        // Clean up listeners on unmount or socket change
         return () => {
-            socket.off('notification:new', handleNewNotification);
+            socket.off("notification:new", handleNewNotification);
         };
     }, [socket]);
 
-    const addNotification = useCallback((notification: NotificationAttributes) => {
-        setNotifications(prev => [notification, ...prev]);
-    }, []);
+    // 🔹 Queries
+    const { refetch: fetchNotifications } = useQuery({
+        queryKey: ["notifications"],
+        queryFn: async () => {
+            const result = await notificationApi.getUserNotifications();
+            dispatch({ type: "SET_NOTIFICATIONS", payload: result });
+            return result;
+        },
+        enabled: false, // manual fetch
+    });
 
-    const markAsRead = useCallback((notificationId: string) => {
-        setNotifications(prev =>
-            prev.map(notification =>
-                notification.id === notificationId
-                    ? { ...notification, is_read: true }
-                    : notification
-            )
-        );
-    }, []);
+    const { refetch: fetchUnreadCount } = useQuery({
+        queryKey: ["notificationsUnreadCount"],
+        queryFn: async () => {
+            const result = await notificationApi.getUnreadNotificationsCount();
+            dispatch({ type: "SET_LOADING", payload: false });
+            return result;
+        },
+        enabled: false,
+    });
 
-    const markAllAsRead = useCallback(() => {
-        setNotifications(prev =>
-            prev.map(notification => ({
-                ...notification,
-                is_read: true
-            }))
-        );
-    }, []);
+    // 🔹 Mutations
+    const { mutateAsync: markAsReadMutation } = useMutation({
+        mutationFn: (id: string) => notificationApi.markNotificationAsRead(id),
+        onSuccess: (_, id) => {
+            dispatch({ type: "MARK_AS_READ", id });
+            queryClient.invalidateQueries({ queryKey: ["notifications"] });
+            queryClient.invalidateQueries({ queryKey: ["notificationsUnreadCount"] });
+        },
+    });
 
-    const clearNotifications = useCallback(() => {
-        setNotifications([]);
-    }, []);
+    const { mutateAsync: markAllAsReadMutation } = useMutation({
+        mutationFn: () => notificationApi.markAllNotificationsAsRead(),
+        onSuccess: () => {
+            dispatch({ type: "MARK_ALL_AS_READ" });
+            queryClient.invalidateQueries({ queryKey: ["notifications"] });
+            queryClient.invalidateQueries({ queryKey: ["notificationsUnreadCount"] });
+        },
+    });
 
-    const unreadCount = notifications.filter(notification => !notification.is_read).length;
+    // 🔹 Exposed actions
+    const clearNotifications = () => {
+        dispatch({ type: "CLEAR_NOTIFICATIONS" });
+    };
 
     const value: NotificationContextType = {
-        notifications,
-        addNotification,
-        markAsRead,
-        markAllAsRead,
-        unreadCount,
-        clearNotifications
+        ...state,
+        fetchNotifications: async () => {
+            dispatch({ type: "SET_LOADING", payload: true });
+            await fetchNotifications();
+            dispatch({ type: "SET_LOADING", payload: false });
+        },
+        fetchUnreadCount: async () => {
+            dispatch({ type: "SET_LOADING", payload: true });
+            await fetchUnreadCount();
+            dispatch({ type: "SET_LOADING", payload: false });
+        },
+        markAsRead: async (id: string) => {
+            await markAsReadMutation(id);
+        },
+        markAllAsRead: async () => {
+            await markAllAsReadMutation();
+        },
+        clearNotifications,
     };
 
     return (
@@ -119,10 +214,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     );
 };
 
-export const useNotifications = (): NotificationContextType => {
+export const useNotifications = () => {
     const context = useContext(NotificationContext);
-    if (context === undefined) {
-        throw new Error('useNotifications must be used within a NotificationProvider');
+    if (!context) {
+        throw new Error("useNotifications must be used within NotificationProvider");
     }
     return context;
 };
