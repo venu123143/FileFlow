@@ -1,10 +1,11 @@
-import React, { useReducer, useContext, createContext, type ReactNode } from 'react';
+import React, { useReducer, useContext, createContext, useEffect, type ReactNode } from 'react';
 import { CONSTANTS } from '@/constants/constants';
 import { useAuthStore } from '@/store/auth.store';
 import { type IUser, type SignupDto, type GetAllUsersAttributes, type IUserListItem } from '@/types/user.types';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import authApi from '@/api/auth.api';
 import { toast } from 'sonner';
+import { useSocket } from '@/hooks/useSocket';
 
 
 const userStr = localStorage.getItem(CONSTANTS.STORAGE_KEYS.USER_DATA);
@@ -57,8 +58,20 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [state, dispatch] = useReducer(authReducer, initialState);
-    const { removeToken, setToken } = useAuthStore();
+    const { removeToken, setToken, token } = useAuthStore();
     const queryClient = useQueryClient();
+    const { disconnectSocket, initializeSocket } = useSocket();
+
+    // Initialize socket if user is already authenticated (page refresh scenario)
+    useEffect(() => {
+        const initSocketIfAuthenticated = async () => {
+            if (state.user && token?.jwt_token) {
+                await initializeSocket();
+            }
+        };
+
+        initSocketIfAuthenticated();
+    }, [state.user, token, initializeSocket]);
 
     const saveUser = (user: IUser) => {
         dispatch({ type: 'LOGIN_SUCCESS', user: user });
@@ -70,7 +83,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const result = await authApi.login(email, password);
             return result.data;
         },
-        onSuccess: (data) => {
+        onSuccess: async (data) => {
             if (data) {
                 saveUser(data.user);
                 setToken(data.jwt);
@@ -121,6 +134,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         onSuccess: () => {
             // Clear all local data and state
             localStorage.removeItem(CONSTANTS.STORAGE_KEYS.USER_DATA);
+            disconnectSocket();
             removeToken();
             dispatch({ type: 'LOGOUT' });
             queryClient.clear();
@@ -130,6 +144,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             console.error('Logout error:', error);
             // Even if logout API fails, clear local data for security
             localStorage.removeItem(CONSTANTS.STORAGE_KEYS.USER_DATA);
+            disconnectSocket();
             removeToken();
             dispatch({ type: 'LOGOUT' });
             queryClient.clear();

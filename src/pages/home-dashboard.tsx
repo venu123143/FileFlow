@@ -22,8 +22,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { useSocket } from "@/hooks/useSocket"
-import { useEffect } from "react"
 
 const recentFiles = [
   { name: "Project Proposal.pdf", type: "pdf", size: "2.4 MB", modified: "2 hours ago", icon: FileText, color: "text-red-500", bgColor: "bg-red-50" },
@@ -57,14 +55,7 @@ const quickActions = [
 
 export function HomeDashboard() {
   const navigate = useNavigate()
-  const { initializeSocket } = useSocket();
 
-  useEffect(() => {
-    const init = async () => {
-      await initializeSocket();
-    };
-    init();
-  }, [initializeSocket])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
