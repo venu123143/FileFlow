@@ -6,238 +6,174 @@ import {
     Bell,
     CheckCircle,
     Search,
-    Play,
-    Paperclip
+    Paperclip,
+    FileText,
+    Upload,
+    Trash2,
+    Share2,
+    AlertTriangle,
+    XCircle,
+    MessageSquare,
+    ExternalLink
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { useNotifications, NotificationType } from "@/contexts/NotificationContext"
 
-interface Notification {
-    id: string
-    type: "success" | "warning" | "info" | "error"
-    title: string
-    message: string
-    timestamp: string
-    read: boolean
-    category: "file" | "security" | "storage" | "system" | "sharing" | "finance" | "management" | "marketing" | "hr" | "design"
-    action?: {
-        label: string
-        onClick: () => void
-        variant?: "default" | "outline"
+// Helper function to get notification icon based on type
+const getNotificationIcon = (type: string) => {
+    switch (type) {
+        case NotificationType.FILE_SHARED:
+            return <Share2 className="h-4 w-4" />
+        case NotificationType.FILE_UPLOAD_COMPLETED:
+        case NotificationType.MULTIPART_UPLOAD_COMPLETED:
+            return <Upload className="h-4 w-4" />
+        case NotificationType.FILE_UPLOAD_FAILED:
+        case NotificationType.MULTIPART_UPLOAD_FAILED:
+            return <XCircle className="h-4 w-4" />
+        case NotificationType.FILE_DELETED:
+            return <Trash2 className="h-4 w-4" />
+        case NotificationType.FILE_COMMENTED:
+            return <MessageSquare className="h-4 w-4" />
+        case NotificationType.STORAGE_QUOTA_WARNING:
+        case NotificationType.STORAGE_QUOTA_EXCEEDED:
+            return <AlertTriangle className="h-4 w-4" />
+        case NotificationType.SHARE_EXPIRED:
+            return <ExternalLink className="h-4 w-4" />
+        case NotificationType.PUBLIC_LINK_ACCESSED:
+            return <ExternalLink className="h-4 w-4" />
+        default:
+            return <FileText className="h-4 w-4" />
     }
-    metadata?: {
-        fileName?: string
-        fileSize?: string
-        user?: string
-        avatar?: string
-        project?: string
-        isOnline?: boolean
-    }
-    hasComment?: boolean
-    commentText?: string
-    isMention?: boolean
 }
 
-const mockNotifications: Notification[] = [
-    {
-        id: "1",
-        type: "success",
-        title: "Monica shared a new document in Q3 Financials",
-        message: "A new financial document has been shared for review",
-        timestamp: "Now",
-        read: false,
-        category: "finance",
-        action: {
-            label: "Approve",
-            onClick: () => console.log("Approve document"),
-            variant: "default"
-        },
-        metadata: {
-            user: "Monica",
-            avatar: "M",
-            project: "Q3 Financials",
-            isOnline: true
-        }
-    },
-    {
-        id: "2",
-        type: "info",
-        title: "David commented in Performance Reviews",
-        message: "Please ensure the feedback is constructive and actionable. We need to finalize this by tomorrow.",
-        timestamp: "2h ago",
-        read: false,
-        category: "management",
-        hasComment: true,
-        commentText: "Please ensure the feedback is constructive and actionable. We need to finalize this by tomorrow.",
-        metadata: {
-            user: "David",
-            avatar: "D",
-            project: "Performance Reviews",
-            isOnline: true
-        }
-    },
-    {
-        id: "3",
-        type: "info",
-        title: "Leo added a new file in Marketing Campaigns",
-        message: "Q3_Campaigns_Strategy.csv has been uploaded",
-        timestamp: "2h ago",
-        read: false,
-        category: "marketing",
-        metadata: {
-            user: "Leo",
-            avatar: "L",
-            project: "Marketing Campaigns",
-            fileName: "Q3_Campaigns_Strategy.csv",
-            fileSize: "12MB"
-        }
-    },
-    {
-        id: "4",
-        type: "info",
-        title: "Nina mentioned you in a comment on Annual Report",
-        message: "Could you please verify the numbers on page 4?",
-        timestamp: "2h ago",
-        read: false,
-        category: "finance",
-        isMention: true,
-        hasComment: true,
-        commentText: "Could you please verify the numbers on page 4?",
-        action: {
-            label: "Reply",
-            onClick: () => console.log("Reply to comment"),
-            variant: "default"
-        },
-        metadata: {
-            user: "Nina",
-            avatar: "N",
-            project: "Annual Report"
-        }
-    },
-    {
-        id: "5",
-        type: "success",
-        title: "Ethan marked 3 tasks complete in Website Redesign",
-        message: "Multiple tasks have been completed in the website redesign project",
-        timestamp: "2h ago",
-        read: true,
-        category: "design",
-        metadata: {
-            user: "Ethan",
-            avatar: "E",
-            project: "Website Redesign"
-        }
-    },
-    {
-        id: "6",
-        type: "info",
-        title: "Noah uploaded a new video tutorial in Training Materials",
-        message: "Leadership_training_tutorial.mp4 has been uploaded",
-        timestamp: "1 day ago",
-        read: true,
-        category: "hr",
-        metadata: {
-            user: "Noah",
-            avatar: "N",
-            project: "Training Materials",
-            fileName: "Leadership_training_tutorial.mp4",
-            fileSize: "45MB"
-        }
-    },
-    {
-        id: "7",
-        type: "warning",
-        title: "Storage Space Running Low",
-        message: "You're using 85% of your available storage. Consider cleaning up old files.",
-        timestamp: "1 hour ago",
-        read: false,
-        category: "storage",
-        action: {
-            label: "Manage Storage",
-            onClick: () => console.log("Manage storage"),
-            variant: "default"
-        },
-        metadata: {
-            fileSize: "85 GB / 100 GB"
-        }
-    },
-    {
-        id: "8",
-        type: "success",
-        title: "Security Scan Complete",
-        message: "Your files have been scanned for malware. All files are safe.",
-        timestamp: "5 hours ago",
-        read: true,
-        category: "security",
-        metadata: {
-            fileName: "Security Scan"
-        }
+// Helper function to get notification type color
+const getNotificationTypeColor = (type: string) => {
+    switch (type) {
+        case NotificationType.FILE_UPLOAD_COMPLETED:
+        case NotificationType.MULTIPART_UPLOAD_COMPLETED:
+            return "text-green-600 bg-green-100"
+        case NotificationType.FILE_UPLOAD_FAILED:
+        case NotificationType.MULTIPART_UPLOAD_FAILED:
+            return "text-red-600 bg-red-100"
+        case NotificationType.STORAGE_QUOTA_WARNING:
+            return "text-yellow-600 bg-yellow-100"
+        case NotificationType.STORAGE_QUOTA_EXCEEDED:
+            return "text-red-600 bg-red-100"
+        case NotificationType.FILE_SHARED:
+        case NotificationType.FILE_COMMENTED:
+            return "text-blue-600 bg-blue-100"
+        case NotificationType.FILE_DELETED:
+            return "text-gray-600 bg-gray-100"
+        default:
+            return "text-gray-600 bg-gray-100"
     }
-]
+}
 
-const notificationCategories = [
-    { id: "all", label: "All", count: mockNotifications.length },
-    { id: "teams", label: "Teams", count: mockNotifications.filter(n => ["finance", "management", "marketing", "hr", "design"].includes(n.category)).length },
-    { id: "mentions", label: "Mentions", count: mockNotifications.filter(n => n.isMention).length }
-]
+// Helper function to format timestamp
+const formatTimestamp = (dateString: string | Date) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
+    
+    if (diffInMinutes < 1) return "Now"
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`
+    if (diffInMinutes < 10080) return `${Math.floor(diffInMinutes / 1440)}d ago`
+    
+    return date.toLocaleDateString()
+}
 
 export default function NotificationsPage() {
     const [activeFilter, setActiveFilter] = useState("all")
     const [searchQuery, setSearchQuery] = useState("")
+    
+    const { 
+        notifications, 
+        unreadCount, 
+        loading, 
+        markAsRead, 
+        markAllAsRead 
+    } = useNotifications()
 
     const filteredNotifications = useMemo(() => {
-        let filtered = mockNotifications
+        let filtered = notifications
 
         // Filter by category
-        if (activeFilter === "teams") {
-            filtered = filtered.filter(n => ["finance", "management", "marketing", "hr", "design"].includes(n.category))
-        } else if (activeFilter === "mentions") {
-            filtered = filtered.filter(n => n.isMention)
+        if (activeFilter === "file") {
+            filtered = filtered.filter(n => [
+                NotificationType.FILE_SHARED,
+                NotificationType.FILE_UPDATED,
+                NotificationType.FILE_UPLOAD_COMPLETED,
+                NotificationType.FILE_UPLOAD_FAILED,
+                NotificationType.MULTIPART_UPLOAD_COMPLETED,
+                NotificationType.MULTIPART_UPLOAD_FAILED,
+                NotificationType.FILE_DELETED,
+                NotificationType.FILE_COMMENTED
+            ].includes(n.type as any))
+        } else if (activeFilter === "storage") {
+            filtered = filtered.filter(n => [
+                NotificationType.STORAGE_QUOTA_WARNING,
+                NotificationType.STORAGE_QUOTA_EXCEEDED
+            ].includes(n.type as any))
+        } else if (activeFilter === "sharing") {
+            filtered = filtered.filter(n => [
+                NotificationType.FILE_SHARED,
+                NotificationType.SHARE_EXPIRED,
+                NotificationType.PUBLIC_LINK_ACCESSED
+            ].includes(n.type as any))
         }
 
         // Filter by search query
         if (searchQuery) {
             filtered = filtered.filter(n =>
                 n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                n.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                n.metadata?.user?.toLowerCase().includes(searchQuery.toLowerCase())
+                n.message.toLowerCase().includes(searchQuery.toLowerCase())
             )
         }
 
         return filtered
-    }, [activeFilter, searchQuery])
+    }, [notifications, activeFilter, searchQuery])
 
-    const unreadCount = mockNotifications.filter(n => !n.read).length
+    const notificationCategories = [
+        { id: "all", label: "All", count: notifications.length },
+        { id: "file", label: "Files", count: notifications.filter(n => {
+            const fileTypes = [
+                NotificationType.FILE_SHARED,
+                NotificationType.FILE_UPDATED,
+                NotificationType.FILE_UPLOAD_COMPLETED,
+                NotificationType.FILE_UPLOAD_FAILED,
+                NotificationType.MULTIPART_UPLOAD_COMPLETED,
+                NotificationType.MULTIPART_UPLOAD_FAILED,
+                NotificationType.FILE_DELETED,
+                NotificationType.FILE_COMMENTED
+            ];
+            return fileTypes.includes(n.type as any);
+        }).length },
+        { id: "storage", label: "Storage", count: notifications.filter(n => {
+            const storageTypes = [
+                NotificationType.STORAGE_QUOTA_WARNING,
+                NotificationType.STORAGE_QUOTA_EXCEEDED
+            ];
+            return storageTypes.includes(n.type as any);
+        }).length },
+        { id: "sharing", label: "Sharing", count: notifications.filter(n => {
+            const sharingTypes = [
+                NotificationType.FILE_SHARED,
+                NotificationType.SHARE_EXPIRED,
+                NotificationType.PUBLIC_LINK_ACCESSED
+            ];
+            return sharingTypes.includes(n.type as any);
+        }).length }
+    ]
 
-    const getCategoryColor = (): string => {
-        return "bg-blue-100 text-blue-700"
+    const handleMarkAsRead = async (notificationId: string) => {
+        await markAsRead(notificationId)
     }
 
-    const getCategoryLabel = (category: Notification["category"]) => {
-        switch (category) {
-            case "finance":
-                return "Finance"
-            case "management":
-                return "Management"
-            case "marketing":
-                return "Marketing"
-            case "hr":
-                return "HR"
-            case "design":
-                return "Design"
-            case "storage":
-                return "Storage"
-            case "security":
-                return "Security"
-            default:
-                return category
-        }
-    }
-
-    const markAllAsRead = () => {
-        console.log("Mark all as read")
+    const handleMarkAllAsRead = async () => {
+        await markAllAsRead()
     }
 
     return (
@@ -257,15 +193,15 @@ export default function NotificationsPage() {
                         <div>
                             <h1 className="text-3xl font-bold text-foreground">Notifications</h1>
                             <p className="text-muted-foreground">
-                                {unreadCount} unread • {mockNotifications.length} total
+                                {unreadCount} unread • {notifications.length} total
                             </p>
                         </div>
                     </div>
 
                     <Button
                         variant="outline"
-                        onClick={markAllAsRead}
-                        disabled={unreadCount === 0}
+                        onClick={handleMarkAllAsRead}
+                        disabled={unreadCount === 0 || loading}
                         className="gap-2"
                     >
                         <CheckCircle className="h-4 w-4" />
@@ -332,109 +268,99 @@ export default function NotificationsPage() {
                     transition={{ duration: 0.5, delay: 0.3 }}
                     className="space-y-3"
                 >
-                    <AnimatePresence mode="popLayout">
-                        {filteredNotifications.map((notification, index) => (
-                            <motion.div
-                                key={notification.id}
-                                layout
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -20 }}
-                                transition={{ duration: 0.3, delay: index * 0.05 }}
-                                className={`
-                  bg-white border border-gray-200 rounded-lg p-4 transition-colors
-                  ${!notification.read ? 'border-l-4 border-l-blue-500' : 'hover:border-gray-300'}
-                `}
-                            >
-                                <div className="flex items-start gap-4">
-                                    {/* User Avatar */}
-                                    <div className="flex-shrink-0 relative">
-                                        <Avatar className="h-10 w-10">
-                                            <AvatarFallback className="bg-gray-200 text-gray-700 font-medium">
-                                                {notification.metadata?.user ? notification.metadata.user[0] : 'U'}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                        {notification.metadata?.isOnline && (
-                                            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
-                                        )}
-                                    </div>
+                    {loading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+                        </div>
+                    ) : (
+                        <AnimatePresence mode="popLayout">
+                            {filteredNotifications.map((notification, index) => (
+                                <motion.div
+                                    key={notification.id}
+                                    layout
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -20 }}
+                                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                                    className={`
+                                        bg-white border border-gray-200 rounded-lg p-4 transition-colors cursor-pointer
+                                        ${!notification.is_read ? 'border-l-4 border-l-blue-500' : 'hover:border-gray-300'}
+                                    `}
+                                    onClick={() => !notification.is_read && handleMarkAsRead(notification.id)}
+                                >
+                                    <div className="flex items-start gap-4">
+                                        {/* Notification Icon */}
+                                        <div className="flex-shrink-0 relative">
+                                            <div className={`h-10 w-10 rounded-full flex items-center justify-center ${getNotificationTypeColor(notification.type)}`}>
+                                                {getNotificationIcon(notification.type)}
+                                            </div>
+                                            {!notification.is_read && (
+                                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 border-2 border-white rounded-full"></div>
+                                            )}
+                                        </div>
 
-                                    {/* Content */}
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div className="flex-1 min-w-0">
-                                                {/* Title and Category */}
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <p className={`text-sm ${!notification.read ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
-                                                        {notification.title}
+                                        {/* Content */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex-1 min-w-0">
+                                                    {/* Title and Type */}
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <p className={`text-sm ${!notification.is_read ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
+                                                            {notification.title}
+                                                        </p>
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className={`text-xs ${getNotificationTypeColor(notification.type)}`}
+                                                        >
+                                                            {notification.type.replace(/_/g, ' ').toLowerCase()}
+                                                        </Badge>
+                                                    </div>
+
+                                                    {/* Message */}
+                                                    <p className="text-sm text-gray-600 mb-2">
+                                                        {notification.message}
                                                     </p>
-                                                    <Badge
-                                                        variant="secondary"
-                                                        className={`text-xs ${getCategoryColor()}`}
-                                                    >
-                                                        {getCategoryLabel(notification.category)}
-                                                    </Badge>
+
+                                                    {/* File Info */}
+                                                    {notification.file_id && (
+                                                        <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
+                                                            <Paperclip className="h-3 w-3" />
+                                                            <span className="font-medium">File ID: {notification.file_id}</span>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Additional Data */}
+                                                    {notification.data && Object.keys(notification.data).length > 0 && (
+                                                        <div className="text-xs text-gray-500 mb-2">
+                                                            {notification.data.fileName && (
+                                                                <div className="flex items-center gap-2">
+                                                                    <FileText className="h-3 w-3" />
+                                                                    <span>{notification.data.fileName}</span>
+                                                                    {notification.data.fileSize && (
+                                                                        <span>• {notification.data.fileSize}</span>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
 
-                                                {/* Comment Text */}
-                                                {notification.hasComment && notification.commentText && (
-                                                    <p className="text-sm text-gray-600 mb-2 pl-4 border-l-2 border-gray-200">
-                                                        {notification.commentText}
-                                                    </p>
-                                                )}
-
-                                                {/* File/Project Info */}
-                                                {notification.metadata?.fileName && (
-                                                    <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-                                                        <Paperclip className="h-3 w-3" />
-                                                        <span className="font-medium">{notification.metadata.fileName}</span>
-                                                        {notification.metadata.fileSize && (
-                                                            <span className="text-gray-400">• {notification.metadata.fileSize}</span>
-                                                        )}
-                                                    </div>
-                                                )}
-
-                                                {/* Video File */}
-                                                {notification.metadata?.fileName?.includes('.mp4') && (
-                                                    <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-                                                        <Play className="h-3 w-3" />
-                                                        <span className="font-medium">{notification.metadata.fileName}</span>
-                                                        {notification.metadata.fileSize && (
-                                                            <span className="text-gray-400">• {notification.metadata.fileSize}</span>
-                                                        )}
-                                                    </div>
-                                                )}
-
-                                                {/* Action Button */}
-                                                {notification.action && (
-                                                    <div className="mt-3">
-                                                        <Button
-                                                            variant={notification.action.variant || "default"}
-                                                            size="sm"
-                                                            onClick={notification.action.onClick}
-                                                            className="bg-blue-600 hover:bg-blue-700"
-                                                        >
-                                                            {notification.action.label}
-                                                        </Button>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {/* Timestamp */}
-                                            <div className="flex-shrink-0">
-                                                <span className="text-xs text-gray-400">
-                                                    {notification.timestamp}
-                                                </span>
+                                                {/* Timestamp */}
+                                                <div className="flex-shrink-0">
+                                                    <span className="text-xs text-gray-400">
+                                                        {formatTimestamp(notification.created_at)}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            </motion.div>
-                        ))}
-                    </AnimatePresence>
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
+                    )}
 
                     {/* Empty State */}
-                    {filteredNotifications.length === 0 && (
+                    {!loading && filteredNotifications.length === 0 && (
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}

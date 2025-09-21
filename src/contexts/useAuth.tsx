@@ -1,4 +1,4 @@
-import React, { useReducer, useContext, createContext, useEffect, type ReactNode } from 'react';
+import React, { useReducer, useContext, createContext, type ReactNode } from 'react';
 import { CONSTANTS } from '@/constants/constants';
 import { useAuthStore } from '@/store/auth.store';
 import { type IUser, type SignupDto, type GetAllUsersAttributes, type IUserListItem } from '@/types/user.types';
@@ -58,20 +58,20 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [state, dispatch] = useReducer(authReducer, initialState);
-    const { removeToken, setToken, token } = useAuthStore();
+    const { removeToken, setToken } = useAuthStore();
     const queryClient = useQueryClient();
-    const { disconnectSocket, initializeSocket } = useSocket();
+    const { disconnectSocket } = useSocket();
 
     // Initialize socket if user is already authenticated (page refresh scenario)
-    useEffect(() => {
-        const initSocketIfAuthenticated = async () => {
-            if (state.user && token?.jwt_token) {
-                await initializeSocket();
-            }
-        };
+    // useEffect(() => {
+    //     const initSocketIfAuthenticated = async () => {
+    //         if (state.user && token?.jwt_token) {
+    //             await initializeSocket();
+    //         }
+    //     };
 
-        initSocketIfAuthenticated();
-    }, [state.user, token, initializeSocket]);
+    //     initSocketIfAuthenticated();
+    // }, [state.user, token, initializeSocket]);
 
     const saveUser = (user: IUser) => {
         dispatch({ type: 'LOGIN_SUCCESS', user: user });
