@@ -1,5 +1,5 @@
 // @/components/upload/UploadPopup.tsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
     X,
     Minimize2,
@@ -27,20 +27,29 @@ const UploadPopup: React.FC = () => {
     } = useUpload();
 
     const { fileStates, isPopupMinimized, isPopupVisible } = state;
-    const files = Object.values(fileStates);
+    
+    // Memoize file filtering to prevent unnecessary re-renders
+    const { files, uploadingFiles, completedFiles, errorFiles } = useMemo(() => {
+        const filesArray = Object.values(fileStates);
+        return {
+            files: filesArray,
+            uploadingFiles: filesArray.filter(f => f.status === 'uploading' || f.status === 'processing'),
+            completedFiles: filesArray.filter(f => f.status === 'completed'),
+            errorFiles: filesArray.filter(f => f.status === 'error')
+        };
+    }, [fileStates]);
+
     useEffect(() => {
         if (location.pathname.includes("/all-files")) {
-            setPopupVisible(files.length > 0); // visible only if files exist
+            // On all-files page, only show popup if there are active uploads
+            setPopupVisible(uploadingFiles.length > 0);
         } else {
-            setPopupVisible(true); // always visible on other routes
+            // On other routes (like upload page), show popup if there are any files
+            setPopupVisible(files.length > 0);
         }
-    }, [location.pathname]);
+    }, [location.pathname, uploadingFiles.length, files.length, setPopupVisible]);
 
     if (!isPopupVisible || files.length === 0) return null;
-
-    const uploadingFiles = files.filter(f => f.status === 'uploading' || f.status === 'processing');
-    const completedFiles = files.filter(f => f.status === 'completed');
-    const errorFiles = files.filter(f => f.status === 'error');
 
     const formatFileSize = (bytes: number): string => {
         if (bytes === 0) return '0 Bytes';

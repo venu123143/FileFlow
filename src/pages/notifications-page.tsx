@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
     Bell,
@@ -88,14 +88,44 @@ const formatTimestamp = (dateString: string | Date) => {
 export default function NotificationsPage() {
     const [activeFilter, setActiveFilter] = useState("all")
     const [searchQuery, setSearchQuery] = useState("")
+    const observerRef = useRef<HTMLDivElement>(null)
     
     const { 
         notifications, 
         unreadCount, 
-        loading, 
+        loading,
+        loadingMore,
+        hasMore,
+        totalCount,
+        loadMoreNotifications,
         markAsRead, 
         markAllAsRead 
     } = useNotifications()
+
+    // Infinite scroll observer
+    const observerCallback = useCallback((entries: IntersectionObserverEntry[]) => {
+        const [target] = entries
+        if (target.isIntersecting && hasMore && !loadingMore) {
+            loadMoreNotifications()
+        }
+    }, [hasMore, loadingMore, loadMoreNotifications])
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(observerCallback, {
+            threshold: 0.1,
+            rootMargin: '100px',
+        })
+
+        if (observerRef.current) {
+            observer.observe(observerRef.current)
+        }
+
+        return () => {
+            if (observerRef.current) {
+                observer.unobserve(observerRef.current)
+            }
+        }
+    }, [observerCallback])
 
     const filteredNotifications = useMemo(() => {
         let filtered = notifications
@@ -136,7 +166,8 @@ export default function NotificationsPage() {
         return filtered
     }, [notifications, activeFilter, searchQuery])
 
-    const notificationCategories = [
+    // Memoize notification categories for better performance
+    const notificationCategories = useMemo(() => [
         { id: "all", label: "All", count: notifications.length },
         { id: "file", label: "Files", count: notifications.filter(n => {
             const fileTypes = [
@@ -166,7 +197,7 @@ export default function NotificationsPage() {
             ];
             return sharingTypes.includes(n.type as any);
         }).length }
-    ]
+    ], [notifications])
 
     const handleMarkAsRead = async (notificationId: string) => {
         await markAsRead(notificationId)
@@ -193,7 +224,7 @@ export default function NotificationsPage() {
                         <div>
                             <h1 className="text-3xl font-bold text-foreground">Notifications</h1>
                             <p className="text-muted-foreground">
-                                {unreadCount} unread • {notifications.length} total
+                                {unreadCount} unread • {totalCount} total
                             </p>
                         </div>
                     </div>
@@ -273,7 +304,8 @@ export default function NotificationsPage() {
                             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
                         </div>
                     ) : (
-                        <AnimatePresence mode="popLayout">
+                        <>
+                            <AnimatePresence mode="popLayout">
                             {filteredNotifications.map((notification, index) => (
                                 <motion.div
                                     key={notification.id}
@@ -357,24 +389,42 @@ export default function NotificationsPage() {
                                 </motion.div>
                             ))}
                         </AnimatePresence>
-                    )}
 
-                    {/* Empty State */}
-                    {!loading && filteredNotifications.length === 0 && (
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="text-center py-12"
-                        >
-                            <Bell className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                            <h3 className="text-lg font-medium text-gray-900 mb-2">No notifications found</h3>
-                            <p className="text-gray-500">
-                                {searchQuery
-                                    ? "Try adjusting your search terms"
-                                    : "You're all caught up! No new notifications."
-                                }
-                            </p>
-                        </motion.div>
+                        {/* Infinite Scroll Loading Indicator */}
+                        {loadingMore && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                className="flex items-center justify-center py-8"
+                            >
+                                <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary"></div>
+                                <span className="ml-2 text-sm text-muted-foreground">Loading more notifications...</span>
+                            </motion.div>
+                        )}
+
+                        {/* Infinite Scroll Observer */}
+                        {hasMore && !loadingMore && (
+                            <div ref={observerRef} className="h-4" />
+                        )}
+
+                        {/* Empty State */}
+                        {filteredNotifications.length === 0 && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="text-center py-12"
+                            >
+                                <Bell className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                                <h3 className="text-lg font-medium text-gray-900 mb-2">No notifications found</h3>
+                                <p className="text-gray-500">
+                                    {searchQuery
+                                        ? "Try adjusting your search terms"
+                                        : "You're all caught up! No new notifications."
+                                    }
+                                </p>
+                            </motion.div>
+                        )}
+                        </>
                     )}
                 </motion.div>
             </div>

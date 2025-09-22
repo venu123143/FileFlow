@@ -172,6 +172,7 @@ interface UploadContextType {
     setPopupMinimized: (minimized: boolean) => void;
     setPopupVisible: (visible: boolean) => void;
     clearAllCompleted: () => void;
+    autoClearCompleted: () => void;
     uploadFiles: (files: File[]) => Promise<FileObject[]>;
     deleteFile: (fileName: string) => Promise<boolean>;
     reset: () => void;
@@ -207,6 +208,22 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const clearAllCompleted = useCallback(() => {
         dispatch({ type: 'CLEAR_ALL_COMPLETED' });
     }, []);
+
+    // Auto-clear completed uploads after 5 seconds
+    const autoClearCompleted = useCallback(() => {
+        const completedFiles = Object.values(state.fileStates).filter(
+            file => file.status === 'completed'
+        );
+        
+        if (completedFiles.length > 0) {
+            const timeoutId = setTimeout(() => {
+                dispatch({ type: 'CLEAR_ALL_COMPLETED' });
+            }, 5000); // 5 seconds delay
+            
+            // Return cleanup function
+            return () => clearTimeout(timeoutId);
+        }
+    }, [state.fileStates]);
 
     const handleUpload = useCallback(async (file: File, folderId?: string) => {
         if (!state.fileStates[file.name]) {
@@ -347,20 +364,30 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         try {
             const formData = new FormData();
-            files.forEach((file) => formData.append('upload', file));
+            files.forEach((file) => formData.append('files', file));
 
-            const response = await apiClient.post('/stream/upload', formData, {
+            const response = await apiClient.post('/upload/file', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
             });
 
-            if (response.data?.data) {
-                const fileUrls = response.data.data as FileObject[];
-                dispatch({ type: 'UPLOAD_SUCCESS', payload: fileUrls });
-                return response.data.data;
+            console.log('Upload response:', response.data); // Debug log
+
+            if (response.data?.success && response.data?.data) {
+                // The API returns an array of file objects with storage_path
+                const uploadedFiles = response.data.data.map((fileData: any, index: number) => ({
+                    fileName: files[index]?.name || 'unknown',
+                    url: fileData.storage_path
+                }));
+                
+                dispatch({ type: 'UPLOAD_SUCCESS', payload: uploadedFiles });
+                return uploadedFiles;
+            } else {
+                throw new Error(response.data?.message || 'Upload failed - invalid response');
             }
         } catch (error: any) {
+            console.error('Upload error:', error);
             dispatch({ type: 'ERROR', payload: error?.message || 'Network error' });
             return [];
         }
@@ -368,9 +395,9 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     const deleteFile = async (fileName: string) => {
         dispatch({ type: 'DELETE_START' });
-
+ 
         try {
-            const response = await apiClient.delete(`/stream/upload/${fileName}`, {
+            const response = await apiClient.delete(`/upload/file/${fileName}`, {
                 headers: {
                     Authorization: token?.jwt_token ? `Bearer ${token.jwt_token}` : undefined,
                 },
@@ -401,6 +428,7 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         setPopupMinimized,
         setPopupVisible,
         clearAllCompleted,
+        autoClearCompleted,
         uploadFiles,
         deleteFile,
         reset,

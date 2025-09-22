@@ -56,9 +56,11 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     const {
         state,
         handleUpload,
+        uploadFiles,
         abortUpload,
         removeFile,
-        updateFileState
+        updateFileState,
+        autoClearCompleted
     } = useUpload();
 
     const { fileStates } = state;
@@ -167,25 +169,96 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     }, [allowedTypes, maxFiles, selectedFiles.length]);
 
     const handleFileUpload = async (file: File) => {
-        const result = await handleUpload(file, folderId);
-        if (result) {
-            await createFile({
-                name: file.name,
-                parent_id: folderId === "root" ? null : folderId,
-                file_info: result
-            });
+        const fileType = getFileType(file);
+
+        try {
+            if (fileType === 'video') {
+                // Use chunked upload for video files
+                const result = await handleUpload(file, folderId);
+                if (result) {
+                    await createFile({
+                        name: file.name,
+                        parent_id: folderId === "root" ? null : folderId,
+                        file_info: result
+                    });
+                    updateFileState(file.name, {
+                        url: result.storage_path,
+                        status: 'completed',
+                        progress: 100,
+                        lastUploadedChunk: Math.ceil(file.size / (5 * 1024 * 1024))
+                    });
+                }
+            } else {
+                // Use direct upload for non-video files (images, excel, pdf, text, etc.)
+                // Initialize file state if not exists
+                if (!fileStates[file.name]) {
+                    updateFileState(file.name, {
+                        uploadId: null,
+                        url: null,
+                        fileKey: null,
+                        progress: 0,
+                        status: 'uploading',
+                        error: null,
+                        lastUploadedChunk: 0,
+                        totalChunks: 1,
+                        fileName: file.name,
+                        fileSize: file.size,
+                        fileType: file.type
+                    });
+                } else {
+                    updateFileState(file.name, {
+                        status: 'uploading',
+                        progress: 0,
+                        error: null
+                    });
+                }
+
+                // Update progress to show upload started
+                updateFileState(file.name, {
+                    progress: 50
+                });
+
+                const uploadedFiles = await uploadFiles([file]);
+
+                if (uploadedFiles && uploadedFiles.length > 0) {
+                    const uploadedFile = uploadedFiles[0];
+
+                    // Create file entry in database
+                    await createFile({
+                        name: file.name,
+                        parent_id: folderId === "root" ? null : folderId,
+                        file_info: {
+                            file_type: file.type,
+                            file_size: file.size,
+                            storage_path: uploadedFile.url,
+                            thumbnail_path: uploadedFile.url,
+                            duration: undefined
+                        }
+                    });
+
+                    updateFileState(file.name, {
+                        url: uploadedFile.url,
+                        status: 'completed',
+                        progress: 100,
+                        lastUploadedChunk: 1,
+                        totalChunks: 1 // Set to 1 for direct uploads
+                    });
+                } else {
+                    throw new Error('Upload failed - no file returned');
+                }
+            }
+        } catch (error: any) {
             updateFileState(file.name, {
-                url: result.storage_path,
-                status: 'completed',
-                progress: 100,
-                lastUploadedChunk: Math.ceil(file.size / (5 * 1024 * 1024))
+                status: 'error',
+                error: error.message || 'Upload failed'
             });
         }
     };
 
     const handleRemoveFile = async (file: File) => {
         const fileState = fileStates[file.name];
-        if (fileState?.status === 'uploading') {
+        if (fileState?.status === 'uploading' && fileState.totalChunks > 1) {
+            // Only abort chunked uploads (video files)
             await abortUpload(file.name);
         } else {
             removeFile(file.name);
@@ -234,6 +307,17 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         const fileState = fileStates[file.name];
         return fileState?.status === 'completed';
     });
+
+    // Auto-clear completed uploads when all files are completed
+    useEffect(() => {
+        if (allFilesCompleted) {
+            const timer = setTimeout(() => {
+                autoClearCompleted();
+            }, 3000); // Clear after 3 seconds
+            
+            return () => clearTimeout(timer);
+        }
+    }, [allFilesCompleted, autoClearCompleted]);
 
     const handleClose = () => {
         navigate('/all-files');
@@ -379,7 +463,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                                                             : fileState.status === 'uploading' ? `Uploading ${fileState.progress}%`
                                                                 : 'Ready to upload'}
                                             </span>
-                                            {fileState.status === 'uploading' && (
+                                            {fileState.status === 'uploading' && fileState.totalChunks > 1 && (
                                                 <span className="text-xs text-gray-500">
                                                     Chunk {fileState.lastUploadedChunk}/{fileState.totalChunks}
                                                 </span>
@@ -414,7 +498,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                                                     Retry
                                                 </button>
                                             )}
-                                            {fileState.status === 'uploading' && (
+                                            {fileState.status === 'uploading' && fileState.totalChunks > 1 && (
                                                 <button
                                                     onClick={() => abortUpload(file.name)}
                                                     className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-1 transition-colors duration-200"

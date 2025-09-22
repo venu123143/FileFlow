@@ -25,7 +25,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { FileManager } from "@/components/file-manager/FileManager"
 import { deletedPageConfig, defaultViewConfig } from "@/config/page-configs"
 import { useFile } from "@/contexts/fileContext"
-import { toast } from "sonner"
 import { transformFileSystemNodesToDeletedFileItems } from "@/lib/utils"
 import type { FileActionHandlers, FileItem } from "@/types/file-manager"
 
@@ -62,18 +61,11 @@ export function DeletedFilesPage() {
   const expiringFiles = transformedTrash.filter((f) => f.daysLeft <= 7).length
 
   const handleDeleteFile = async (file: FileItem) => {
-    try {
-      const result = await deleteFileOrFolder(file.id);
-      if (result.success) {
-        toast.success(`${file.type === 'folder' ? 'Folder' : 'File'} permanently deleted!`);
-        // Remove from selected files if it was selected
-        setSelectedFiles(prev => prev.filter(id => id !== file.id));
-      } else {
-        toast.error(result.error || 'Failed to permanently delete item');
-      }
-    } catch (error) {
-      console.error('Delete error:', error);
-      toast.error('An error occurred while permanently deleting the item');
+    const result = await deleteFileOrFolder(file.id);
+    console.log(result, "delete...");
+    if (result.success) {
+      // Remove from selected files if it was selected
+      setSelectedFiles(prev => prev.filter(id => id !== file.id));
     }
   }
 
