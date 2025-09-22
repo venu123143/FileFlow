@@ -27,7 +27,7 @@ const UploadPopup: React.FC = () => {
     } = useUpload();
 
     const { fileStates, isPopupMinimized, isPopupVisible } = state;
-    
+
     // Memoize file filtering to prevent unnecessary re-renders
     const { files, uploadingFiles, completedFiles, errorFiles } = useMemo(() => {
         const filesArray = Object.values(fileStates);
@@ -40,14 +40,13 @@ const UploadPopup: React.FC = () => {
     }, [fileStates]);
 
     useEffect(() => {
-        if (location.pathname.includes("/all-files")) {
-            // On all-files page, only show popup if there are active uploads
-            setPopupVisible(uploadingFiles.length > 0);
-        } else {
-            // On other routes (like upload page), show popup if there are any files
-            setPopupVisible(files.length > 0);
+        // Only show popup if there are incomplete files (not completed)
+        const incompleteFiles = files.filter(f => f.status !== 'completed');
+        if (!location.pathname.includes("/all-files")) {
+            setPopupVisible(incompleteFiles.length > 0);
         }
-    }, [location.pathname, uploadingFiles.length, files.length, setPopupVisible]);
+
+    }, [location.pathname, uploadingFiles.length, files, setPopupVisible]);
 
     if (!isPopupVisible || files.length === 0) return null;
 

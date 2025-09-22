@@ -1,52 +1,102 @@
-// Updated VideoPlayerModal component
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import VideoPlayer from './VideoPlayer';
-import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
-import { DialogClose } from '@radix-ui/react-dialog';
+import { useState } from "react";
+import { VideoPlayer } from "./VideoPlayer";
 
+// Modal Component with shadcn/ui
 interface VideoPlayerModalProps {
   isOpen: boolean;
   onClose: () => void;
   videoUrl: string;
   videoName: string;
+  poster?: string;
 }
 
-export function VideoPlayerModal({ isOpen, onClose, videoUrl, videoName }: VideoPlayerModalProps) {
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent
-        showCloseButton={false}
-        className="w-full max-w-[95vw] sm:max-w-[90vw] md:max-w-[80vw] lg:max-w-[70vw] xl:max-w-[60vw] 
-                   min-h-[40vh] max-h-[90vh] p-0 bg-black border-gray-800
-                   mx-2 sm:mx-4 my-2 sm:my-4"
-      >
-        <DialogHeader className="p-2 rounded-full sm:p-4 pb-1 sm:pb-2 flex flex-row items-center justify-between gap-2 relative z-10 bg-black/80 backdrop-blur-sm">
-          <DialogTitle
-            className="text-white text-xs sm:text-sm truncate flex-1 whitespace-nowrap overflow-hidden text-ellipsis pr-1 sm:pr-2"
-            title={videoName}
-          >
-            <span className='text-white text-xs sm:text-sm truncate flex-1 whitespace-nowrap overflow-hidden text-ellipsis pr-1 sm:pr-2'>
-              {/* Shorter truncation on mobile */}
-              {videoName.slice(0, window.innerWidth < 640 ? 40 : 80)}
-              {videoName.length > (window.innerWidth < 640 ? 40 : 80) && '...'}
-            </span>
-          </DialogTitle>
-          <DialogClose asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-white hover:bg-white/20 cursor-pointer p-1 sm:p-2 ml-2 sm:ml-4 min-w-0"
-            >
-              <X className="w-3 h-3 sm:w-4 sm:h-4" />
-            </Button>
-          </DialogClose>
-        </DialogHeader>
+export function VideoPlayerModal({
+  isOpen,
+  onClose,
+  videoUrl,
+  videoName,
+  poster
+}: VideoPlayerModalProps) {
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-        <div className="relative overflow-hidden px-2 sm:px-4 pb-2 sm:pb-4">
-          <VideoPlayer url={videoUrl} />
+  const handleReady = () => {
+    setIsLoading(false);
+    setError(null);
+  };
+
+  const handleError = (err: any) => {
+    setIsLoading(false);
+    setError('Failed to load video. Please try again.');
+    console.error('Video error:', err);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      
+      {/* Modal Content */}
+      <div className="relative z-10 w-[95vw] sm:w-[85vw] md:w-[75vw] lg:w-[65vw] xl:w-[55vw] max-w-4xl bg-black rounded-lg overflow-hidden shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black to-gray-900 border-b border-gray-800">
+          <h2 className="text-white text-sm sm:text-base md:text-lg font-semibold truncate pr-4">
+            {videoName}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full"
+            aria-label="Close"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
-      </DialogContent>
-    </Dialog>
+        
+        {/* Video Container */}
+        <div className="relative bg-black" style={{ aspectRatio: '16/9' }}>
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-600 border-t-white" />
+            </div>
+          )}
+          
+          {error && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+              <div className="text-center">
+                <svg className="w-16 h-16 mx-auto mb-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-white text-lg mb-2">{error}</p>
+                <button
+                  onClick={() => {
+                    setError(null);
+                    setIsLoading(true);
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          )}
+          
+          <VideoPlayer
+            url={videoUrl}
+            poster={poster}
+            controls={true}
+            autoplay={false}
+            onReady={handleReady}
+            onError={handleError}
+          />
+        </div>
+      </div>
+    </div>
   );
 }
