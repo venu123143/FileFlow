@@ -1,4 +1,4 @@
-import React, { useReducer, useContext, createContext, type ReactNode } from 'react';
+import { useReducer, useContext, createContext, type ReactNode, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import notificationApi from '@/api/notification.api';
 import { toast } from 'sonner';
@@ -48,79 +48,111 @@ interface NotificationState {
 type NotificationAction =
     | { type: 'SET_NOTIFICATIONS'; notifications: NotificationAttributes[]; totalCount: number; hasMore: boolean }
     | { type: 'ADD_NOTIFICATION'; notification: NotificationAttributes }
-    | { type: 'APPEND_NOTIFICATIONS'; notifications: NotificationAttributes[]; hasMore: boolean }
+    | { type: 'APPEND_NOTIFICATIONS'; notifications: NotificationAttributes[]; hasMore: boolean; totalCount?: number }
     | { type: 'MARK_AS_READ'; id: string }
     | { type: 'MARK_ALL_AS_READ' }
     | { type: 'SET_LOADING'; loading: boolean }
-    | { type: 'SET_LOADING_MORE'; loadingMore: boolean };
+    | { type: 'SET_LOADING_MORE'; loadingMore: boolean }
+    | { type: 'UPDATE_UNREAD_COUNT'; count: number };
 
 const initialState: NotificationState = {
     notifications: [],
     unreadCount: 0,
-    loading: false,
+    loading: true,
     hasMore: false,
     totalCount: 0,
     loadingMore: false,
 };
 
-function notificationReducer(state: NotificationState, action: NotificationAction): NotificationState {
+// Optimized reducer with better state management
+const notificationReducer = (state: NotificationState, action: NotificationAction): NotificationState => {
     switch (action.type) {
-        case 'SET_NOTIFICATIONS':
-            const notifications = Array.isArray(action.notifications) ? action.notifications : [];
+        case 'SET_NOTIFICATIONS': {
+            const incoming = Array.isArray(action.notifications) ? action.notifications : [];
+            // De-duplicate by id, preserve order
+            const seenIds = new Set<string>();
+            const notifications = incoming.filter(n => {
+                if (seenIds.has(n.id)) return false;
+                seenIds.add(n.id);
+                return true;
+            });
+            const unreadCount = notifications.filter((n) => !n.is_read).length;
             return {
                 ...state,
                 notifications,
-                unreadCount: notifications.filter((n) => !n.is_read).length,
+                unreadCount,
                 totalCount: action.totalCount,
                 hasMore: action.hasMore,
+                loading: false,
             };
-        case 'APPEND_NOTIFICATIONS':
+        }
+        case 'APPEND_NOTIFICATIONS': {
             const newNotifications = Array.isArray(action.notifications) ? action.notifications : [];
-            const combinedNotifications = [...state.notifications, ...newNotifications];
+            // Merge and de-duplicate by id
+            const combined = [...state.notifications, ...newNotifications];
+            const seenIds = new Set<string>();
+            const combinedNotifications = combined.filter(n => {
+                if (seenIds.has(n.id)) return false;
+                seenIds.add(n.id);
+                return true;
+            });
+            const unreadCount = combinedNotifications.filter((n) => !n.is_read).length;
             return {
                 ...state,
                 notifications: combinedNotifications,
-                unreadCount: combinedNotifications.filter((n) => !n.is_read).length,
+                unreadCount,
                 hasMore: action.hasMore,
+                totalCount: action.totalCount ?? state.totalCount,
             };
-        case 'ADD_NOTIFICATION':
+        }
+        case 'ADD_NOTIFICATION': {
+            // Check for duplicates
+            const exists = state.notifications.some(n => n.id === action.notification.id);
+            if (exists) return state;
+
+            const newNotifications = [action.notification, ...state.notifications];
             return {
                 ...state,
-                notifications: [action.notification, ...state.notifications],
+                notifications: newNotifications,
                 unreadCount: state.unreadCount + (action.notification.is_read ? 0 : 1),
                 totalCount: state.totalCount + 1,
             };
-        case 'MARK_AS_READ':
+        }
+        case 'MARK_AS_READ': {
+            const notifications = state.notifications.map((n) =>
+                n.id === action.id ? { ...n, is_read: true } : n
+            );
+            const wasUnread = state.notifications.find(n => n.id === action.id && !n.is_read);
             return {
                 ...state,
-                notifications: state.notifications.map((n) =>
-                    n.id === action.id ? { ...n, is_read: true } : n
-                ),
-                unreadCount: Math.max(0, state.unreadCount - 1),
+                notifications,
+                unreadCount: wasUnread ? Math.max(0, state.unreadCount - 1) : state.unreadCount,
             };
-        case 'MARK_ALL_AS_READ':
+        }
+        case 'MARK_ALL_AS_READ': {
             return {
                 ...state,
-                notifications: state.notifications.map((n) => ({
-                    ...n,
-                    is_read: true,
-                })),
+                notifications: state.notifications.map((n) => ({ ...n, is_read: true })),
                 unreadCount: 0,
             };
+        }
         case 'SET_LOADING':
             return { ...state, loading: action.loading };
         case 'SET_LOADING_MORE':
             return { ...state, loadingMore: action.loadingMore };
+        case 'UPDATE_UNREAD_COUNT':
+            return { ...state, unreadCount: action.count };
         default:
             return state;
     }
-}
+};
 
 interface NotificationContextType extends NotificationState {
     fetchNotifications: (params?: { limit?: number; offset?: number; unreadOnly?: boolean }) => Promise<NotificationAttributes[]>;
     loadMoreNotifications: () => Promise<void>;
     markAsRead: (id: string) => Promise<{ success: boolean; error?: string }>;
     markAllAsRead: () => Promise<{ success: boolean; error?: string }>;
+    refreshNotifications: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -131,23 +163,39 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     const { user } = useAuth();
     const { socket, initializeSocket } = useSocket();
 
-    // Initialize socket on mount
-    React.useEffect(() => {
-        if (!user) return;
-        initializeSocket();
-    }, [initializeSocket]);
+    // Memoized query key
+    const notificationsQueryKey = useMemo(() => ['notifications', { limit: 20, offset: 0 }], []);
 
-    // 🔹 Socket listener
-    React.useEffect(() => {
+    // Initialize socket on mount (guarded to avoid double init)
+    const hasInitializedSocketRef = useRef(false);
+    useEffect(() => {
+        if (!user || hasInitializedSocketRef.current) return;
+        hasInitializedSocketRef.current = true;
+        void initializeSocket();
+    }, [user, initializeSocket]);
+
+    // 🔹 Socket listener with improved error handling
+    useEffect(() => {
         if (!socket) return;
 
         const handleNewNotification = (notification: NotificationAttributes) => {
-            toast.success(`🔔 ${notification.title}`);
-            // Update state immediately
+            // Optimistic UI update first
             dispatch({ type: "ADD_NOTIFICATION", notification });
-            // Update query cache in background for consistency
-            queryClient.setQueryData(['notifications', { limit: 20, offset: 0 }], (oldData: any) => {
+
+            // Show toast
+            toast.success(`🔔 ${notification.title}`, {
+                duration: 4000,
+                position: 'top-right'
+            });
+
+            // Update query cache efficiently
+            queryClient.setQueryData(notificationsQueryKey, (oldData: any) => {
                 if (!oldData) return oldData;
+
+                // Check for duplicates
+                const exists = oldData.notifications.some((n: NotificationAttributes) => n.id === notification.id);
+                if (exists) return oldData;
+
                 return {
                     ...oldData,
                     notifications: [notification, ...oldData.notifications],
@@ -156,74 +204,71 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             });
         };
 
+        const handleNotificationRead = (notificationId: string) => {
+            dispatch({ type: "MARK_AS_READ", id: notificationId });
+        };
+
         socket.on("notification:new", handleNewNotification);
+        socket.on("notification:read", handleNotificationRead);
 
         return () => {
             socket.off("notification:new", handleNewNotification);
+            socket.off("notification:read", handleNotificationRead);
         };
-    }, [socket]);
+    }, [socket, queryClient, notificationsQueryKey]);
 
-    // 🔹 Queries - Optimized for immediate UI updates
-    const { data: notificationsData, isLoading: notificationsLoading } = useQuery<{
-        notifications: NotificationAttributes[];
-        totalCount: number;
-        hasMore: boolean;
-    }>({
-        queryKey: ['notifications', { limit: 20, offset: 0 }],
+    // 🔹 Optimized query with better caching
+    const { data: notificationsData, isLoading: notificationsLoading, isRefetching, refetch } = useQuery({
+        queryKey: notificationsQueryKey,
         queryFn: async () => {
             const result = await notificationApi.getUserNotifications({ limit: 20, offset: 0 });
-            // The API returns { success, message, data: { notifications: [...], totalCount: number, hasMore: boolean } }
             return {
                 notifications: result.data?.notifications || result.notifications || [],
                 totalCount: result.data?.totalCount || 0,
                 hasMore: result.data?.hasMore || false,
             };
         },
-        retry: 2,
-        staleTime: 2 * 60 * 1000, // Reduced to 2 minutes for faster updates
-        gcTime: 5 * 60 * 1000, // Reduced to 5 minutes
-        enabled: !!user, // Only enable the query when user is authenticated
-        refetchOnWindowFocus: false, // Disable refetch on window focus for better performance
-    });
-
-    // Note: Unread count is calculated from notifications array in the reducer
-    // This query is kept for potential future use or if we need separate unread count endpoint
-    useQuery<number>({
-        queryKey: ['notificationsUnreadCount'],
-        queryFn: async () => {
-            const result = await notificationApi.getUnreadNotificationsCount();
-            return result.data?.count || result.count || 0;
-        },
-        retry: 2,
-        staleTime: 2 * 60 * 1000, // 2 minutes
+        retry: 3,
+        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+        staleTime: 30 * 1000, // 30 seconds
         gcTime: 5 * 60 * 1000, // 5 minutes
-        enabled: !!user, // Only enable the query when user is authenticated
+        enabled: !!user,
+        refetchOnWindowFocus: true,
+        refetchOnReconnect: true,
     });
 
     // Update notifications in state when query data changes
-    React.useEffect(() => {
-        if (notificationsData) {
-            dispatch({ 
-                type: 'SET_NOTIFICATIONS', 
-                notifications: notificationsData.notifications,
-                totalCount: notificationsData.totalCount,
-                hasMore: notificationsData.hasMore,
-            });
-        }
+    useEffect(() => {
+        if (!notificationsData) return;
+        dispatch({
+            type: 'SET_NOTIFICATIONS',
+            notifications: notificationsData.notifications,
+            totalCount: notificationsData.totalCount,
+            hasMore: notificationsData.hasMore,
+        });
     }, [notificationsData]);
 
-    // 🔹 Mutations - Optimized for immediate UI updates
+    // keep local loading in sync with query loading states
+    useEffect(() => {
+        if (notificationsLoading || isRefetching) {
+            dispatch({ type: 'SET_LOADING', loading: true });
+        }
+    }, [notificationsLoading, isRefetching]);
+
+    // 🔹 Optimized mutations with immediate UI updates
     const { mutateAsync: markAsReadMutationFn } = useMutation({
         mutationFn: async (id: string) => {
             const result = await notificationApi.markNotificationAsRead(id);
             return result.data;
         },
         retry: 2,
-        onSuccess: (_, id) => {
-            // Update UI immediately
+        onMutate: async (id: string) => {
+            // Optimistic update
             dispatch({ type: 'MARK_AS_READ', id });
-            // Update query cache immediately without refetching
-            queryClient.setQueryData(['notifications', { limit: 20, offset: 0 }], (oldData: any) => {
+
+            // Update query cache immediately
+            const previousData = queryClient.getQueryData(notificationsQueryKey);
+            queryClient.setQueryData(notificationsQueryKey, (oldData: any) => {
                 if (!oldData) return oldData;
                 return {
                     ...oldData,
@@ -232,9 +277,21 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                     )
                 };
             });
-            // Invalidate only unread count query
-            queryClient.invalidateQueries({ queryKey: ['notificationsUnreadCount'] });
+
+            return { previousData };
         },
+        onError: (_error, id, context) => {
+            // Revert optimistic update on error
+            if (context?.previousData) {
+                queryClient.setQueryData(notificationsQueryKey, context.previousData);
+                // Revert state
+                const notification = state.notifications.find(n => n.id === id);
+                if (notification) {
+                    dispatch({ type: 'ADD_NOTIFICATION', notification: { ...notification, is_read: false } });
+                }
+            }
+            toast.error('Failed to mark notification as read');
+        }
     });
 
     const { mutateAsync: markAllAsReadMutationFn } = useMutation({
@@ -243,11 +300,13 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             return result.data;
         },
         retry: 2,
-        onSuccess: () => {
-            // Update UI immediately
+        onMutate: async () => {
+            // Optimistic update
             dispatch({ type: 'MARK_ALL_AS_READ' });
-            // Update query cache immediately without refetching
-            queryClient.setQueryData(['notifications', { limit: 20, offset: 0 }], (oldData: any) => {
+
+            // Update query cache immediately
+            const previousData = queryClient.getQueryData(notificationsQueryKey);
+            queryClient.setQueryData(notificationsQueryKey, (oldData: any) => {
                 if (!oldData) return oldData;
                 return {
                     ...oldData,
@@ -257,80 +316,89 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                     }))
                 };
             });
-            // Invalidate only unread count query
-            queryClient.invalidateQueries({ queryKey: ['notificationsUnreadCount'] });
+
+            return { previousData };
         },
+        onError: (_error, _variables, context) => {
+            // Revert optimistic update on error
+            if (context?.previousData) {
+                queryClient.setQueryData(notificationsQueryKey, context.previousData);
+            }
+            toast.error('Failed to mark all notifications as read');
+        }
     });
 
-    // 🔹 Wrapped Actions - Optimized for immediate UI updates
-    const fetchNotifications = async (params?: { limit?: number; offset?: number; unreadOnly?: boolean }) => {
+    // 🔹 Optimized actions with better error handling
+    const fetchNotifications = useCallback(async (params?: { limit?: number; offset?: number; unreadOnly?: boolean }) => {
         try {
             dispatch({ type: 'SET_LOADING', loading: true });
-            
-            // Direct API call for immediate UI update
+
             const result = await notificationApi.getUserNotifications(params || { limit: 20, offset: 0 });
             const data = {
                 notifications: result.data?.notifications || result.notifications || [],
                 totalCount: result.data?.totalCount || 0,
                 hasMore: result.data?.hasMore || false,
             };
-            
-            // Update state immediately
-            dispatch({ 
-                type: 'SET_NOTIFICATIONS', 
+
+            dispatch({
+                type: 'SET_NOTIFICATIONS',
                 notifications: data.notifications,
                 totalCount: data.totalCount,
                 hasMore: data.hasMore,
             });
-            
-            // Update query cache in background for consistency
-            queryClient.setQueryData(['notifications', params || { limit: 20, offset: 0 }], data);
-            
-            dispatch({ type: 'SET_LOADING', loading: false });
+
+            // Update query cache
+            queryClient.setQueryData(notificationsQueryKey, data);
+
             return data.notifications;
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
             const errorMessage = error?.response?.data?.message || error?.message || 'Failed to fetch notifications.';
+            toast.error(errorMessage);
             throw new Error(errorMessage);
         }
-    };
+    }, [queryClient, notificationsQueryKey]);
 
-    const loadMoreNotifications = async () => {
+    const loadMoreNotifications = useCallback(async () => {
         if (state.loadingMore || !state.hasMore) return;
-        
+
         try {
             dispatch({ type: 'SET_LOADING_MORE', loadingMore: true });
             const offset = state.notifications.length;
-            
-            // Direct API call for immediate UI update
+
             const result = await notificationApi.getUserNotifications({ limit: 20, offset });
             const newNotifications = result.data?.notifications || result.notifications || [];
             const hasMore = result.data?.hasMore || false;
-            
-            // Update state immediately
-            dispatch({ 
-                type: 'APPEND_NOTIFICATIONS', 
+            const totalCount = result.data?.totalCount || state.totalCount;
+
+            // Immediate UI update
+            dispatch({
+                type: 'APPEND_NOTIFICATIONS',
                 notifications: newNotifications,
-                hasMore: hasMore,
+                hasMore,
+                totalCount,
             });
-            
-            // Update query cache in background for consistency
-            queryClient.setQueryData(['notifications', { limit: 20, offset: 0 }], (oldData: any) => {
+
+            // Update query cache in background
+            queryClient.setQueryData(notificationsQueryKey, (oldData: any) => {
                 if (!oldData) return oldData;
                 return {
                     ...oldData,
                     notifications: [...oldData.notifications, ...newNotifications],
-                    hasMore: hasMore,
+                    hasMore,
+                    totalCount,
                 };
             });
         } catch (error: any) {
             console.error('Failed to load more notifications:', error);
+            toast.error('Failed to load more notifications');
         } finally {
+            // Ensure spinner hides only after state/cache are updated
             dispatch({ type: 'SET_LOADING_MORE', loadingMore: false });
         }
-    };
+    }, [state.loadingMore, state.hasMore, state.notifications.length, state.totalCount, queryClient, notificationsQueryKey]);
 
-    const markAsRead = async (id: string) => {
+    const markAsRead = useCallback(async (id: string) => {
         try {
             await markAsReadMutationFn(id);
             return { success: true };
@@ -338,9 +406,9 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             const errorMessage = error?.response?.data?.message || error?.message || 'Failed to mark notification as read.';
             return { success: false, error: errorMessage };
         }
-    };
+    }, [markAsReadMutationFn]);
 
-    const markAllAsRead = async () => {
+    const markAllAsRead = useCallback(async () => {
         try {
             await markAllAsReadMutationFn();
             return { success: true };
@@ -348,16 +416,30 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             const errorMessage = error?.response?.data?.message || error?.message || 'Failed to mark all notifications as read.';
             return { success: false, error: errorMessage };
         }
-    };
+    }, [markAllAsReadMutationFn]);
 
-    const value: NotificationContextType = {
+    const refreshNotifications = useCallback(async () => {
+        await refetch();
+    }, [refetch]);
+
+    // Memoized context value
+    const value = useMemo<NotificationContextType>(() => ({
         ...state,
         loading: state.loading || notificationsLoading,
         fetchNotifications,
         loadMoreNotifications,
         markAsRead,
         markAllAsRead,
-    };
+        refreshNotifications,
+    }), [
+        state,
+        notificationsLoading,
+        fetchNotifications,
+        loadMoreNotifications,
+        markAsRead,
+        markAllAsRead,
+        refreshNotifications
+    ]);
 
     return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;
 };
@@ -369,4 +451,3 @@ export const useNotifications = () => {
     }
     return context;
 };
-  
