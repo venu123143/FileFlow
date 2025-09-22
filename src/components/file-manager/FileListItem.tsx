@@ -202,7 +202,7 @@ export function FileListItem({
       {pageConfig.showThumbnails && file.thumbnail ? (
         <div className="w-8 h-8 rounded-lg overflow-hidden bg-muted flex-shrink-0 relative">
           <img
-            src={file.thumbnail}
+            src={`${import.meta.env.VITE_API_CDN_URL}/${file.thumbnail}`}
             alt={file.name}
             className="w-full h-full object-cover"
           />

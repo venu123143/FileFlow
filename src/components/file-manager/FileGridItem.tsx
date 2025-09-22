@@ -208,7 +208,7 @@ export function FileGridItem({
               {pageConfig.showThumbnails && file.thumbnail ? (
                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0 relative">
                   <img
-                    src={file.thumbnail}
+                    src={`${import.meta.env.VITE_API_CDN_URL}/${file.thumbnail}`}
                     alt={file.name}
                     className="w-full h-full object-cover"
                   />
