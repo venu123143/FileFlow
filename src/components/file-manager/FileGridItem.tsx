@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { MoreHorizontal, Download, Share2, Edit, Trash2, RotateCcw, Lock, Unlock, Users, Play, FolderOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { VideoPlayerModal } from "@/components/player/VideoPlayerModal";
+import { ImageViewer } from "@/components/custom/ImageViewer";
 import { isVideoFile, getVideoFileUrl } from "@/lib/video-utils";
+import { isImageFile, getImageFileUrl } from "@/lib/image-utils";
 
 interface FileGridItemProps {
   file: FileItem;
@@ -27,6 +29,7 @@ export function FileGridItem({
   actionHandlers
 }: FileGridItemProps) {
   const [isVideoPlayerOpen, setIsVideoPlayerOpen] = useState(false);
+  const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
 
   const {
     onFileSelect,
@@ -43,12 +46,15 @@ export function FileGridItem({
   } = actionHandlers;
 
   const isVideo = isVideoFile(file);
+  const isImage = isImageFile(file);
 
   const handleItemClick = (file: FileItem, event: React.MouseEvent) => {
-    // Only open video player if clicking directly on the file item content, not on child elements
+    // Only open media viewers if clicking directly on the file item content, not on child elements
     if (event.target === event.currentTarget || (event.target as HTMLElement).closest('.file-item-content')) {
       if (isVideo) {
         setIsVideoPlayerOpen(true);
+      } else if (isImage) {
+        setIsImageViewerOpen(true);
       } else {
         onItemClick(file);
       }
@@ -57,6 +63,10 @@ export function FileGridItem({
 
   const handleVideoPlayerClose = () => {
     setIsVideoPlayerOpen(false);
+  };
+
+  const handleImageViewerClose = () => {
+    setIsImageViewerOpen(false);
   };
 
   const renderCustomActions = () => {
@@ -136,6 +146,12 @@ export function FileGridItem({
                     <DropdownMenuItem onClick={() => setIsVideoPlayerOpen(true)}>
                       <Play className="h-4 w-4 mr-2" />
                       Play Video
+                    </DropdownMenuItem>
+                  )}
+                  {isImage && (
+                    <DropdownMenuItem onClick={() => setIsImageViewerOpen(true)}>
+                      <Play className="h-4 w-4 mr-2" />
+                      View Image
                     </DropdownMenuItem>
                   )}
                   {onDownload && (
@@ -278,7 +294,16 @@ export function FileGridItem({
           onClose={handleVideoPlayerClose}
           videoUrl={getVideoFileUrl(file.file_info?.storage_path || "")}
           videoName={file.name}
+        />
+      )}
 
+      {/* Image Viewer Modal */}
+      {isImage && (
+        <ImageViewer
+          isOpen={isImageViewerOpen}
+          onClose={handleImageViewerClose}
+          imageUrl={getImageFileUrl(file.file_info?.storage_path || "")}
+          imageName={file.name}
         />
       )}
     </motion.div>
