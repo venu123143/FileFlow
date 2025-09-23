@@ -1,4 +1,4 @@
-import { useReducer, useContext, createContext, type ReactNode, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useReducer, useContext, createContext, type ReactNode, useCallback, useMemo, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import notificationApi from '@/api/notification.api';
 import { toast } from 'sonner';
