@@ -22,6 +22,26 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useNotifications, NotificationType, type NotificationAttributes } from "@/contexts/NotificationContext"
 
+
+type FileNotificationType =
+    | typeof NotificationType.FILE_SHARED
+    | typeof NotificationType.FILE_UPDATED
+    | typeof NotificationType.FILE_UPLOAD_COMPLETED
+    | typeof NotificationType.FILE_UPLOAD_FAILED
+    | typeof NotificationType.MULTIPART_UPLOAD_COMPLETED
+    | typeof NotificationType.MULTIPART_UPLOAD_FAILED
+    | typeof NotificationType.FILE_DELETED
+    | typeof NotificationType.FILE_COMMENTED
+
+type StorageNotificationType =
+    | typeof NotificationType.STORAGE_QUOTA_WARNING
+    | typeof NotificationType.STORAGE_QUOTA_EXCEEDED;
+
+type SharingNotificationType =
+    | typeof NotificationType.FILE_SHARED
+    | typeof NotificationType.SHARE_EXPIRED
+    | typeof NotificationType.PUBLIC_LINK_ACCESSED
+
 // Helper function to get notification icon based on type
 const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -103,15 +123,15 @@ const NotificationItem = ({ notification, onMarkAsRead }: { notification: Notifi
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
             className={`
-                bg-white border border-gray-200 rounded-lg p-4 transition-all duration-200 cursor-pointer
+                bg-white border border-gray-200 rounded-lg p-3 sm:p-4 transition-all duration-200 cursor-pointer
                 ${!notification.is_read ? 'border-l-4 border-l-blue-500 shadow-sm' : 'hover:border-gray-300 hover:shadow-sm'}
                                     `}
             onClick={handleClick}
         >
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-3 sm:gap-4">
                 {/* Notification Icon */}
                 <div className="flex-shrink-0 relative">
-                    <div className={`h-10 w-10 rounded-full flex items-center justify-center ${getNotificationTypeColor(notification.type)}`}>
+                    <div className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full flex items-center justify-center ${getNotificationTypeColor(notification.type)}`}>
                         {getNotificationIcon(notification.type)}
                     </div>
                     {!notification.is_read && (
@@ -121,16 +141,16 @@ const NotificationItem = ({ notification, onMarkAsRead }: { notification: Notifi
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                         <div className="flex-1 min-w-0">
                             {/* Title and Type */}
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
                                 <p className={`text-sm ${!notification.is_read ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
                                     {notification.title}
                                 </p>
                                 <Badge
                                     variant="secondary"
-                                    className={`text-xs ${getNotificationTypeColor(notification.type)}`}
+                                    className={`text-xs ${getNotificationTypeColor(notification.type)} self-start sm:self-auto`}
                                 >
                                     {notification.type.replace(/_/g, ' ').toLowerCase()}
                                 </Badge>
@@ -153,7 +173,7 @@ const NotificationItem = ({ notification, onMarkAsRead }: { notification: Notifi
                             {notification.data && Object.keys(notification.data).length > 0 && (
                                 <div className="text-xs text-gray-500 mb-2">
                                     {notification.data.fileName && (
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 line-clamp-1">
                                             <FileText className="h-3 w-3" />
                                             <span>{notification.data.fileName}</span>
                                             {notification.data.fileSize && (
@@ -166,7 +186,7 @@ const NotificationItem = ({ notification, onMarkAsRead }: { notification: Notifi
                         </div>
 
                         {/* Timestamp */}
-                        <div className="flex-shrink-0">
+                        <div className="flex-shrink-0 sm:ml-auto">
                             <span className="text-xs text-gray-400">
                                 {formatTimestamp(notification.created_at)}
                             </span>
@@ -271,7 +291,7 @@ export default function NotificationsPage() {
             const allowedTypes = filterMap[activeFilter as keyof typeof filterMap];
             if (allowedTypes) {
                 const typeSet = new Set(allowedTypes);
-                filtered = filtered.filter(n => typeSet.has(n.type as any));
+                filtered = filtered.filter(n => typeSet.has(n.type as NotificationType));
             }
         }
 
@@ -299,14 +319,14 @@ export default function NotificationsPage() {
                 NotificationType.MULTIPART_UPLOAD_FAILED,
                 NotificationType.FILE_DELETED,
                 NotificationType.FILE_COMMENTED
-            ].includes(n.type as any)) {
+            ].includes(n.type as FileNotificationType)) {
                 acc.file++;
             }
 
             if ([
                 NotificationType.STORAGE_QUOTA_WARNING,
                 NotificationType.STORAGE_QUOTA_EXCEEDED
-            ].includes(n.type as any)) {
+            ].includes(n.type as StorageNotificationType)) {
                 acc.storage++;
             }
 
@@ -314,7 +334,7 @@ export default function NotificationsPage() {
                 NotificationType.FILE_SHARED,
                 NotificationType.SHARE_EXPIRED,
                 NotificationType.PUBLIC_LINK_ACCESSED
-            ].includes(n.type as any)) {
+            ].includes(n.type as SharingNotificationType)) {
                 acc.sharing++;
             }
 
@@ -365,45 +385,46 @@ export default function NotificationsPage() {
 
     return (
         <div className="min-h-screen bg-background">
-            <div className="max-w-4xl mx-auto p-6">
+            <div className="max-w-4xl mx-auto p-4 sm:p-6">
                 {/* Header */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="flex items-center justify-between mb-8"
+                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8"
                 >
                     <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                            <Bell className="h-6 w-6 text-blue-600" />
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                            <Bell className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-bold text-foreground">Notifications</h1>
-                            <p className="text-muted-foreground">
+                            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Notifications</h1>
+                            <p className="text-sm sm:text-base text-muted-foreground">
                                 {unreadCount} unread • {totalCount} total
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={handleRefresh}
                             disabled={isRefreshing || loading}
-                            className="gap-2"
+                            className="gap-2 flex-1 sm:flex-initial"
                         >
                             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                            Refresh
+                            <span className="">Refresh</span>
                         </Button>
                         <Button
                             variant="outline"
+                            size="sm"
                             onClick={handleMarkAllAsRead}
                             disabled={unreadCount === 0 || loading}
-                            className="gap-2"
+                            className="gap-2 flex-1 sm:flex-initial"
                         >
                             <CheckCircle className="h-4 w-4" />
-                            Mark All Read
+                            <span className="">Mark All Read</span>
                         </Button>
                     </div>
                 </motion.div>
@@ -413,15 +434,15 @@ export default function NotificationsPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: 0.1 }}
-                    className="mb-6"
+                    className="mb-4 sm:mb-6"
                 >
-                    <div className="flex items-center gap-6 border-b border-gray-200">
+                    <div className="flex items-center gap-4 sm:gap-6 border-b border-gray-200 overflow-x-auto scrollbar-hide">
                         {notificationCategories.map((category) => (
                             <button
                                 key={category.id}
                                 onClick={() => handleFilterChange(category.id)}
                                 className={`
-                                    flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm transition-colors relative
+                                    flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm transition-colors relative whitespace-nowrap flex-shrink-0
                                     ${activeFilter === category.id
                                         ? "border-blue-600 text-blue-600"
                                         : "border-transparent text-gray-500 hover:text-gray-700"
@@ -447,15 +468,15 @@ export default function NotificationsPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: 0.2 }}
-                    className="mb-6"
+                    className="mb-4 sm:mb-6"
                 >
-                    <div className="relative max-w-md">
+                    <div className="relative w-full sm:max-w-md">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
                             placeholder="Search notifications..."
                             value={searchQuery}
                             onChange={handleSearchChange}
-                            className="pl-10 h-10"
+                            className="pl-10 h-10 w-full"
                         />
                     </div>
                 </motion.div>
@@ -465,7 +486,7 @@ export default function NotificationsPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: 0.3 }}
-                    className="space-y-3"
+                    className="space-y-2 sm:space-y-3"
                 >
                     {loading && notifications.length === 0 ? (
                         <div className="flex items-center justify-center py-12">

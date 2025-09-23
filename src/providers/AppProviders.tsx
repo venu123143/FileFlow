@@ -9,6 +9,7 @@ import { AuthProvider } from "@/contexts/useAuth";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { FileProvider } from "@/contexts/fileContext";  
 import { NotificationProvider } from "@/contexts/NotificationContext";
+import { SocketProvider } from "@/contexts/SocketContext";
 
 const queryClient = new QueryClient();
 
@@ -18,6 +19,7 @@ const AppProviders = ({ children }: { children: ReactNode }) => {
         (children: ReactNode) => <ErrorBoundary>{children}</ErrorBoundary>,
         (children: ReactNode) => <UploadProvider>{children}</UploadProvider>,
         (children: ReactNode) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>,
+        (children: ReactNode) => <SocketProvider>{children}</SocketProvider>,
         (children: ReactNode) => (
             <>
                 <Sonner />

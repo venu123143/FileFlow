@@ -15,8 +15,10 @@ import { standardPageConfig, defaultViewConfig } from "@/config/page-configs"
 import { useFile } from "@/contexts/fileContext"
 import { transformFileSystemNodesToFileItems } from "@/lib/utils"
 import { useNavigate } from "react-router-dom"
+import { useSocket } from "@/contexts/SocketContext";
 
 export default function AllFilesPage() {
+  const { socket } = useSocket();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
@@ -68,6 +70,9 @@ export default function AllFilesPage() {
       setCurrentPath([...currentPath, { id: item.id, name: item.name }])
       setSelectedFiles([])
       setSearchQuery("")
+    } else {
+      if (!socket) return;
+      socket?.emit("last_accessed", { file_id: item.id })
     }
   }
 
@@ -100,7 +105,7 @@ export default function AllFilesPage() {
       }
 
       const result = await createFolder({
-        name: folderName,
+        name: folderName.trim(),
         parent_id: parentId
       })
 
@@ -193,24 +198,24 @@ export default function AllFilesPage() {
   const handleShareFileWithUsers = async (fileId: string, userIds: string[], permissionLevel: SharePermission): Promise<{ success: boolean; error?: string }> => {
     try {
       // Share the file with each selected user
-      const sharePromises = userIds.map(userId => 
+      const sharePromises = userIds.map(userId =>
         shareFileOrFolder(fileId, {
           shared_with_user_id: userId,
           permission_level: permissionLevel
         })
       );
-      
+
       const results = await Promise.all(sharePromises);
-      
+
       // Check if any share operation failed
       const failedResults = results.filter(result => !result.success);
       if (failedResults.length > 0) {
-        return { 
-          success: false, 
-          error: `Failed to share with ${failedResults.length} user(s). ${failedResults[0].error}` 
+        return {
+          success: false,
+          error: `Failed to share with ${failedResults.length} user(s). ${failedResults[0].error}`
         };
       }
-      
+
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error?.message || "Failed to share file" };

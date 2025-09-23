@@ -128,7 +128,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const result = await fileApi.createFolder(data);
             return result.data;
         },
-        retry: 2,
+        retry: false,
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
             toast.success('Folder created successfully!');
@@ -145,7 +145,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const result = await fileApi.renameFolder(id, data);
             return result.data;
         },
-        retry: 2,
+        retry: false,
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
             toast.success('Folder renamed successfully!');
@@ -162,7 +162,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const result = await fileApi.moveFileOrFolder(id, data);
             return result.data;
         },
-        retry: 2,
+        retry: false,
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
             toast.success('File or folder moved successfully!');
@@ -179,7 +179,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const result = await fileApi.createFile(data);
             return result.data;
         },
-        retry: 2,
+        retry: false,
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
             toast.success('File created successfully!');
@@ -196,7 +196,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const result = await fileApi.shareFileOrFolder(file_id, data);
             return result.data;
         },
-        retry: 2,
+        retry: false,
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
             toast.success('File or folder shared successfully!');
@@ -211,7 +211,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const result = await fileApi.deleteFileOrFolder(id);
             return result.data;
         },
-        retry: 2,
+        retry: false,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
             queryClient.invalidateQueries({ queryKey: ['trash'] });
@@ -228,7 +228,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const result = await fileApi.restoreFileOrFolder(id);
             return result.data;
         },
-        retry: 2,
+        retry: false,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
             queryClient.invalidateQueries({ queryKey: ['trash'] });
@@ -245,7 +245,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const result = await fileApi.emptyTrash();
             return result.data;
         },
-        retry: 2,
+        retry: false,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['trash'] });
             dispatch({ type: 'SET_LOADING', loading: false });
@@ -453,8 +453,10 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const emptyTrash = async () => {
         try {
-            dispatch({ type: 'SET_LOADING', loading: true });
-            await emptyTrashMutationFn();
+            if (state.trash.length > 0) {
+                dispatch({ type: 'SET_LOADING', loading: true });
+                await emptyTrashMutationFn();
+            }
             return { success: true };
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });

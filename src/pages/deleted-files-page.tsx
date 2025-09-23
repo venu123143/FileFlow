@@ -10,15 +10,12 @@ import {
   SortAsc,
   RotateCcw,
   Trash2,
-  Archive,
   AlertTriangle,
-  Clock,
   RefreshCw,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -77,27 +74,27 @@ export function DeletedFilesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <Trash2 className="h-6 w-6 text-muted-foreground" />
-              <h1 className="text-2xl font-semibold text-foreground">Deleted files</h1>
+              <Trash2 className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
+              <h1 className="text-xl sm:text-2xl font-semibold text-foreground">Deleted files</h1>
             </div>
-            <p className="text-muted-foreground">
+            <p className="text-sm sm:text-base text-muted-foreground">
               {filteredFiles.length} deleted items • {(totalSize / 1024).toFixed(1)} GB total
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
+          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            <Button variant="outline" size="sm" className="flex-1 sm:flex-initial">
+              <RefreshCw className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Refresh</span>
             </Button>
-            <Button onClick={emptyTrash} variant="destructive" size="sm">
-              <Trash2 className="h-4 w-4 mr-2" />
-              Empty Trash
+            <Button onClick={emptyTrash} variant="destructive" size="sm" className="flex-1 sm:flex-initial">
+              <Trash2 className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Empty Trash</span>
             </Button>
           </div>
         </div>
@@ -120,83 +117,41 @@ export function DeletedFilesPage() {
         </motion.div>
       )}
 
-      {/* Trash Stats */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.2 }}
-        className="grid grid-cols-1 md:grid-cols-3 gap-4"
-      >
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 bg-red-100 rounded-lg flex items-center justify-center">
-                <Trash2 className="h-5 w-5 text-red-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Deleted Items</p>
-                <p className="text-xl font-bold">{transformedTrash.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                <Clock className="h-5 w-5 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Expiring Soon</p>
-                <p className="text-xl font-bold">{expiringFiles}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                <Archive className="h-5 w-5 text-gray-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Storage Used</p>
-                <p className="text-xl font-bold">{(totalSize / 1024).toFixed(1)} GB</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
       {/* Toolbar */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.3 }}
-        className="flex items-center justify-between gap-4"
+        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4"
       >
-        <div className="flex items-center gap-3 flex-1">
-          <div className="relative flex-1 max-w-md">
+        <div className="flex items-center gap-2 sm:gap-3 flex-1 w-full sm:w-auto">
+          <div className="relative flex-1 sm:max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search deleted files..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-10 w-full"
             />
           </div>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="hidden sm:flex">
             <Filter className="h-4 w-4 mr-2" />
             Filter
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="hidden sm:flex">
             <SortAsc className="h-4 w-4 mr-2" />
             Sort
           </Button>
+          <Button variant="outline" size="sm" className="sm:hidden">
+            <Filter className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" className="sm:hidden">
+            <SortAsc className="h-4 w-4" />
+          </Button>
         </div>
 
-        <div className="flex items-center gap-2">
-          {selectedFiles.length > 0 && <Badge variant="secondary">{selectedFiles.length} selected</Badge>}
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+          {selectedFiles.length > 0 && <Badge variant="secondary" className="text-xs">{selectedFiles.length} selected</Badge>}
           <div className="flex items-center border rounded-lg">
             <Button
               variant={viewMode === "grid" ? "default" : "ghost"}
@@ -224,18 +179,20 @@ export function DeletedFilesPage() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
-          className="flex items-center gap-3 p-4 bg-muted rounded-lg"
+          className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 sm:p-4 bg-muted rounded-lg"
         >
-          <Checkbox checked={selectedFiles.length === filteredFiles.length} onCheckedChange={selectAllFiles} />
-          <span className="text-sm font-medium">{selectedFiles.length} deleted items selected</span>
-          <div className="flex items-center gap-2 ml-auto">
-            <Button variant="outline" size="sm">
-              <RotateCcw className="h-4 w-4 mr-2" />
-              Restore
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <Checkbox checked={selectedFiles.length === filteredFiles.length} onCheckedChange={selectAllFiles} />
+            <span className="text-sm font-medium">{selectedFiles.length} deleted items selected</span>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
+            <Button variant="outline" size="sm" className="flex-1 sm:flex-initial">
+              <RotateCcw className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Restore</span>
             </Button>
-            <Button variant="destructive" size="sm">
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete Forever
+            <Button variant="destructive" size="sm" className="flex-1 sm:flex-initial">
+              <Trash2 className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Delete Forever</span>
             </Button>
           </div>
         </motion.div>

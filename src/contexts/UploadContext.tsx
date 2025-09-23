@@ -371,9 +371,6 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     'Content-Type': 'multipart/form-data',
                 },
             });
-
-            console.log('Upload response:', response.data); // Debug log
-
             if (response.data?.success && response.data?.data) {
                 // The API returns an array of file objects with storage_path
                 const uploadedFiles = response.data.data.map((fileData: any, index: number) => ({
@@ -387,7 +384,6 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 throw new Error(response.data?.message || 'Upload failed - invalid response');
             }
         } catch (error: any) {
-            console.error('Upload error:', error);
             dispatch({ type: 'ERROR', payload: error?.message || 'Network error' });
             return [];
         }
