@@ -5,7 +5,7 @@ import { type IUser, type SignupDto, type GetAllUsersAttributes, type IUserListI
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import authApi from '@/api/auth.api';
 import { toast } from 'sonner';
-import { useSocket } from '@/hooks/useSocket';
+import { useSocket } from "@/contexts/SocketContext";
 
 
 const userStr = localStorage.getItem(CONSTANTS.STORAGE_KEYS.USER_DATA);
@@ -138,8 +138,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             queryClient.clear();
             toast.success("Logged out successfully");
         },
-        onError: (error) => {
-            console.error('Logout error:', error);
+        onError: () => {
             // Even if logout API fails, clear local data for security
             localStorage.removeItem(CONSTANTS.STORAGE_KEYS.USER_DATA);
             disconnectSocket();
@@ -205,7 +204,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return result?.users || [];
         } catch (error) {
             dispatch({ type: 'SET_LOADING', loading: false });
-            console.error('Error fetching users:', error);
             return [];
         }
     };

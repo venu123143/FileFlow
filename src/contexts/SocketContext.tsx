@@ -1,8 +1,16 @@
-import { useCallback, useState, useRef, useEffect } from 'react';
+import { createContext, useContext, useCallback, useState, useRef, useEffect, type ReactNode } from 'react';
 import { Socket } from 'socket.io-client';
 import createSocket from "@/store/connect-socket";
 
-export const useSocket = () => {
+interface SocketContextType {
+    socket: Socket | null;
+    initializeSocket: () => Promise<Socket | null>;
+    disconnectSocket: () => void;
+}
+
+const SocketContext = createContext<SocketContextType | undefined>(undefined);
+
+export const SocketProvider = ({ children }: { children: ReactNode }) => {
     const [socket, setSocket] = useState<Socket | null>(null);
     const isInitializing = useRef(false);
     const socketRef = useRef<Socket | null>(null);
@@ -19,12 +27,11 @@ export const useSocket = () => {
         try {
             const connectedSocket = await createSocket(import.meta.env.VITE_API_SOCKET_URL);
             setSocket(connectedSocket);
-            socketRef.current = connectedSocket;
             return connectedSocket;
         } finally {
             isInitializing.current = false;
         }
-    }, []); // No dependencies needed
+    }, []);
 
     const disconnectSocket = useCallback(() => {
         if (socket) {
@@ -33,9 +40,23 @@ export const useSocket = () => {
         }
     }, [socket]);
 
-    return {
+    const value = {
         socket,
         initializeSocket,
         disconnectSocket,
     };
+
+    return (
+        <SocketContext.Provider value={value}>
+            {children}
+        </SocketContext.Provider>
+    );
+};
+
+export const useSocket = () => {
+    const context = useContext(SocketContext);
+    if (context === undefined) {
+        throw new Error('useSocket must be used within a SocketProvider');
+    }
+    return context;
 };

@@ -1,9 +1,9 @@
-import { useReducer, useContext, createContext, type ReactNode, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useReducer, useContext, createContext, type ReactNode, useCallback, useMemo, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import notificationApi from '@/api/notification.api';
 import { toast } from 'sonner';
 import { useAuth } from './useAuth';
-import { useSocket } from "@/hooks/useSocket";
+import { useSocket } from "@/contexts/SocketContext";
 
 // 🔹 Notification Types
 export const NotificationType = {
@@ -166,27 +166,25 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     // Memoized query key
     const notificationsQueryKey = useMemo(() => ['notifications', { limit: 20, offset: 0 }], []);
 
-    // Initialize socket on mount (guarded to avoid double init)
-    const hasInitializedSocketRef = useRef(false);
+
     useEffect(() => {
-        if (!user || hasInitializedSocketRef.current) return;
-        hasInitializedSocketRef.current = true;
+        if (!user) return;
         void initializeSocket();
     }, [user, initializeSocket]);
 
     // 🔹 Socket listener with improved error handling
     useEffect(() => {
         if (!socket) return;
-
+ 
         const handleNewNotification = (notification: NotificationAttributes) => {
-            // Optimistic UI update first
-            dispatch({ type: "ADD_NOTIFICATION", notification });
-
-            // Show toast
             toast.success(`🔔 ${notification.title}`, {
                 duration: 4000,
                 position: 'top-right'
             });
+
+            // Optimistic UI update first
+            dispatch({ type: "ADD_NOTIFICATION", notification });
+            // Show toast
 
             // Update query cache efficiently
             queryClient.setQueryData(notificationsQueryKey, (oldData: any) => {

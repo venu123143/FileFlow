@@ -49,6 +49,7 @@ export function FileGridItem({
   const isImage = isImageFile(file);
 
   const handleItemClick = (file: FileItem, event: React.MouseEvent) => {
+    onItemClick(file);
     // Only open media viewers if clicking directly on the file item content, not on child elements
     if (event.target === event.currentTarget || (event.target as HTMLElement).closest('.file-item-content')) {
       if (isVideo) {
@@ -56,7 +57,6 @@ export function FileGridItem({
       } else if (isImage) {
         setIsImageViewerOpen(true);
       } else {
-        onItemClick(file);
       }
     }
   };
