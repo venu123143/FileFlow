@@ -9,6 +9,7 @@ import { AuthProvider } from "@/contexts/useAuth";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { FileProvider } from "@/contexts/fileContext";  
 import { NotificationProvider } from "@/contexts/NotificationContext";
+import { NotificationUIProvider } from "@/contexts/NotificationUIContext";
 import { SocketProvider } from "@/contexts/SocketContext";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const AppProviders = ({ children }: { children: ReactNode }) => {
         ),
         (children: ReactNode) => <AuthProvider>{children}</AuthProvider>,
         (children: ReactNode) => <FileProvider>{children}</FileProvider>,
+        (children: ReactNode) => <NotificationUIProvider>{children}</NotificationUIProvider>,
         (children: ReactNode) => <NotificationProvider>{children}</NotificationProvider>,
     ];
 

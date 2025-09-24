@@ -4,6 +4,7 @@ import notificationApi from '@/api/notification.api';
 import { toast } from 'sonner';
 import { useAuth } from './useAuth';
 import { useSocket } from "@/contexts/SocketContext";
+import { useNotificationUI } from "./NotificationUIContext";
 
 // 🔹 Notification Types
 export const NotificationType = {
@@ -162,6 +163,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     const queryClient = useQueryClient();
     const { user } = useAuth();
     const { socket, initializeSocket } = useSocket();
+    const { showNotification } = useNotificationUI();
 
     // Memoized query key
     const notificationsQueryKey = useMemo(() => ['notifications', { limit: 20, offset: 0 }], []);
@@ -177,14 +179,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         if (!socket) return;
  
         const handleNewNotification = (notification: NotificationAttributes) => {
-            toast.success(`🔔 ${notification.title}`, {
-                duration: 4000,
-                position: 'top-right'
-            });
+            // Show custom notification UI instead of toast
+            showNotification(notification);
 
             // Optimistic UI update first
             dispatch({ type: "ADD_NOTIFICATION", notification });
-            // Show toast
 
             // Update query cache efficiently
             queryClient.setQueryData(notificationsQueryKey, (oldData: any) => {
@@ -388,7 +387,6 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 };
             });
         } catch (error: any) {
-            console.error('Failed to load more notifications:', error);
             toast.error('Failed to load more notifications');
         } finally {
             // Ensure spinner hides only after state/cache are updated
