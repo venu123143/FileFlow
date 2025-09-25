@@ -1,7 +1,6 @@
 import React, { useReducer, useContext, createContext, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import fileApi from '@/api/file.api';
-import { toast } from 'sonner';
 import { useAuth } from './useAuth';
 import type {
     CreateFolderInput,
@@ -131,7 +130,6 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         retry: false,
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success('Folder created successfully!');
             // Invalidate and refetch file system tree
             queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
         },
@@ -148,7 +146,6 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         retry: false,
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success('Folder renamed successfully!');
             // Invalidate and refetch file system tree
             queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
         },
@@ -165,7 +162,6 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         retry: false,
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success('File or folder moved successfully!');
             // Invalidate and refetch file system tree
             queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
         },
@@ -182,7 +178,6 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         retry: false,
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success('File created successfully!');
             // Invalidate and refetch file system tree
             queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
         },
@@ -199,7 +194,6 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         retry: false,
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success('File or folder shared successfully!');
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
@@ -216,7 +210,6 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
             queryClient.invalidateQueries({ queryKey: ['trash'] });
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success('File or folder deleted successfully!');
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
@@ -233,7 +226,6 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
             queryClient.invalidateQueries({ queryKey: ['trash'] });
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success('File or folder restored successfully!');
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
@@ -249,7 +241,6 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['trash'] });
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success('Trash emptied successfully!');
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
