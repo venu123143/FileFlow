@@ -52,6 +52,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [isDragOver, setIsDragOver] = useState(false);
     const [showWarning, setShowWarning] = useState(false);
+    const [completedFiles, setCompletedFiles] = useState<Set<string>>(new Set());
 
     const {
         state,
@@ -187,6 +188,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                         progress: 100,
                         lastUploadedChunk: Math.ceil(file.size / (5 * 1024 * 1024))
                     });
+                    setCompletedFiles(prev => new Set([...prev, file.name]));
                 }
             } else {
                 // Use direct upload for non-video files (images, excel, pdf, text, etc.)
@@ -243,6 +245,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                         lastUploadedChunk: 1,
                         totalChunks: 1 // Set to 1 for direct uploads
                     });
+                    setCompletedFiles(prev => new Set([...prev, file.name]));
                 } else {
                     throw new Error('Upload failed - no file returned');
                 }
@@ -264,6 +267,11 @@ const FileUploader: React.FC<FileUploaderProps> = ({
             removeFile(file.name);
         }
         setSelectedFiles(prev => prev.filter(f => f.name !== file.name));
+        setCompletedFiles(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(file.name);
+            return newSet;
+        });
     };
 
     const formatFileSize = (bytes: number): string => {
@@ -314,7 +322,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
             const timer = setTimeout(() => {
                 autoClearCompleted();
             }, 3000); // Clear after 3 seconds
-            
+
             return () => clearTimeout(timer);
         }
     }, [allFilesCompleted, autoClearCompleted]);
@@ -418,13 +426,20 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                     </h3>
                     <div className="space-y-3">
                         {selectedFiles.map((file) => {
-                            const fileState = fileStates[file.name] || {
+                            const fileState = fileStates[file.name] || (completedFiles.has(file.name) ? {
+                                progress: 100,
+                                status: 'completed',
+                                error: null,
+                                totalChunks: Math.ceil(file.size / (5 * 1024 * 1024)),
+                                lastUploadedChunk: Math.ceil(file.size / (5 * 1024 * 1024)),
+                                url: null
+                            } : {
                                 progress: 0,
                                 status: 'idle',
                                 error: null,
                                 totalChunks: Math.ceil(file.size / (5 * 1024 * 1024)),
                                 lastUploadedChunk: 0
-                            };
+                            });
 
                             return (
                                 <div

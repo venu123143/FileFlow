@@ -22,7 +22,6 @@ const createSocket = (url: string): Promise<Socket> => {
         socket.on('connect', () => {
             const timeTaken = performance.now() - startTime;
             console.log(`Connected in ${timeTaken.toFixed(2)} ms, socket id: ${socket.id}`);
-            toast.success(`Connected to server (${socket.id})`);
             resolve(socket);
         });
 
