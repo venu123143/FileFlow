@@ -18,18 +18,12 @@ import {
 import { useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
+import RecentFiles from "@/components/file-manager/RecentFiles"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-
-const recentFiles = [
-  { name: "Project Proposal.pdf", type: "pdf", size: "2.4 MB", modified: "2 hours ago", icon: FileText, color: "text-red-500", bgColor: "bg-red-50" },
-  { name: "Dashboard Mockup.fig", type: "figma", size: "15.2 MB", modified: "4 hours ago", icon: ImageIcon, color: "text-purple-500", bgColor: "bg-purple-50" },
-  { name: "Team Meeting.mp4", type: "video", size: "124 MB", modified: "1 day ago", icon: Video, color: "text-blue-500", bgColor: "bg-blue-50" },
-  { name: "Brand Assets.zip", type: "archive", size: "45.8 MB", modified: "2 days ago", icon: Archive, color: "text-orange-500", bgColor: "bg-orange-50" },
-  { name: "Presentation.pptx", type: "presentation", size: "8.1 MB", modified: "3 days ago", icon: FileText, color: "text-pink-500", bgColor: "bg-pink-50" },
-]
+import { useAuth } from "@/contexts/useAuth"
+// recent files are now loaded via RecentFiles component
 
 const quickStats = [
   { label: "Total Files", value: "1,247", icon: FileText, change: "+12%", color: "from-blue-500 to-blue-600" },
@@ -55,7 +49,7 @@ const quickActions = [
 
 export function HomeDashboard() {
   const navigate = useNavigate()
-
+  const { user } = useAuth()
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
@@ -69,7 +63,7 @@ export function HomeDashboard() {
         >
           <div>
             <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-              Good morning, Sophie ✨
+              Good morning, {user?.display_name} ✨
             </h1>
             <p className="text-slate-600 dark:text-slate-400 mt-2 text-sm sm:text-base">
               Here's what's happening with your files today.
@@ -196,37 +190,7 @@ export function HomeDashboard() {
                 </Button>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {recentFiles.map((file, index) => (
-                    <motion.div
-                      key={file.name}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: 0.4 + index * 0.05 }}
-                      whileHover={{ x: 2 }}
-                      className="group flex items-center gap-4 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all duration-200 cursor-pointer"
-                    >
-                      <div className={cn(
-                        "p-2.5 rounded-lg",
-                        file.bgColor,
-                        "group-hover:scale-110 transition-transform duration-200"
-                      )}>
-                        <file.icon className={cn("h-5 w-5", file.color)} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-slate-900 dark:text-slate-100 truncate">
-                          {file.name}
-                        </p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          {file.size} • {file.modified}
-                        </p>
-                      </div>
-                      <Badge variant="secondary" className="text-xs">
-                        {file.type}
-                      </Badge>
-                    </motion.div>
-                  ))}
-                </div>
+                <RecentFiles page={1} limit={5} />
               </CardContent>
             </Card>
           </motion.div>

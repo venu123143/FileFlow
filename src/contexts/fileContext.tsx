@@ -18,6 +18,7 @@ interface FileState {
     sharedFiles: SharedFileSystemNode[];
     sharedFilesByMe: SharedFileSystemNode[];
     sharedFilesWithMe: SharedFileSystemNode[];
+    recents: { files: Array<Pick<FileSystemNode, 'id' | 'name' | 'access_level' | 'file_info' | 'created_at' | 'last_accessed_at'>>; metadata: { total: number; page: number; limit: number; totalPages: number } } | null;
     loading: boolean;
 }
 
@@ -27,6 +28,7 @@ type FileAction =
     | { type: 'SET_SHARED_FILES'; sharedFiles: SharedFileSystemNode[] }
     | { type: 'SET_SHARED_FILES_BY_ME'; sharedFilesByMe: SharedFileSystemNode[] }
     | { type: 'SET_SHARED_FILES_WITH_ME'; sharedFilesWithMe: SharedFileSystemNode[] }
+    | { type: 'SET_RECENTS'; recents: FileState['recents'] }
     | { type: 'SET_LOADING'; loading: boolean };
 
 const initialState: FileState = {
@@ -35,6 +37,7 @@ const initialState: FileState = {
     sharedFiles: [],
     sharedFilesByMe: [],
     sharedFilesWithMe: [],
+    recents: null,
     loading: false,
 };
 
@@ -50,6 +53,8 @@ function fileReducer(state: FileState, action: FileAction): FileState {
             return { ...state, sharedFilesByMe: action.sharedFilesByMe };
         case 'SET_SHARED_FILES_WITH_ME':
             return { ...state, sharedFilesWithMe: action.sharedFilesWithMe };
+        case 'SET_RECENTS':
+            return { ...state, recents: action.recents };
         case 'SET_LOADING':
             return { ...state, loading: action.loading };
         default:
@@ -70,6 +75,7 @@ interface FileContextType extends FileState {
     getAllSharedFilesWithMe: () => Promise<SharedFileSystemNode[]>;
     getFileSystemTree: () => Promise<FileSystemNode[]>;
     getTrash: () => Promise<FileSystemNode[]>;
+    getRecents: (page?: number, limit?: number) => Promise<FileState['recents']>;
     deleteFileOrFolder: (id: string) => MutationResult;
     restoreFileOrFolder: (id: string) => MutationResult;
     emptyTrash: () => MutationResult;
@@ -418,6 +424,28 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
+    const getRecents = async (page: number = 1, limit: number = 20) => {
+        try {
+            dispatch({ type: 'SET_LOADING', loading: true });
+            const data = await queryClient.fetchQuery({
+                queryKey: ['recents', page, limit],
+                queryFn: async () => {
+                    const result = await fileApi.getRecents(page, limit);
+                    return result.data as FileState['recents'];
+                },
+                staleTime: 2 * 60 * 1000, // 2 minutes
+                gcTime: 5 * 60 * 1000,
+            });
+            dispatch({ type: 'SET_RECENTS', recents: data });
+            dispatch({ type: 'SET_LOADING', loading: false });
+            return data;
+        } catch (error: any) {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to get recents.';
+            throw new Error(errorMessage);
+        }
+    };
+
     const deleteFileOrFolder = async (id: string) => {
         try {
             dispatch({ type: 'SET_LOADING', loading: true });
@@ -469,6 +497,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         getAllSharedFilesWithMe,
         getFileSystemTree,
         getTrash,
+        getRecents,
         deleteFileOrFolder,
         restoreFileOrFolder,
         emptyTrash,

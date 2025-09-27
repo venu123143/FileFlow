@@ -323,10 +323,10 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
-          style={{
-            cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
-            touchAction: 'none' // Prevent default touch behaviors
-          }}
+        // style={{
+        //   cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
+        //   touchAction: 'none' // Prevent default touch behaviors
+        // }}
         >
           {!imageLoaded && !imageError && (
             <div className="absolute inset-0 flex items-center justify-center">

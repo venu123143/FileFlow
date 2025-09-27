@@ -65,6 +65,13 @@ const emptyTrash = async () => {
     return response.data;
 };
 
+const getRecents = async (page: number = 1, limit: number = 20) => {
+    const response = await apiClient.get(`/file-flow/file/recents`, {
+        params: { page, limit }
+    });
+    return response.data;
+};
+
 export default {
     createFolder,
     renameFolder,
@@ -79,4 +86,5 @@ export default {
     deleteFileOrFolder,
     restoreFileOrFolder,
     emptyTrash,
+    getRecents,
 };
