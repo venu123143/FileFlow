@@ -46,5 +46,32 @@ const getAllUsers = async (attributes: GetAllUsersAttributes) => {
     }
 };
 
+const setPin = async (pin: string) => {
+    try {
+        const response = await apiClient.post('/auth/user/set-pin', { pin });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+};
 
-export default { login, register, verifyEmail, logout, getAllUsers };
+const verifyPin = async (pin: string) => {
+    try {
+        const response = await apiClient.post('/auth/user/verify-pin', { pin }, { withCredentials: true });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
+const changePin = async (oldPin: string, newPin: string) => {
+    try {
+        const response = await apiClient.put('/auth/user/change-pin', { old_pin: oldPin, new_pin: newPin });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
+
+export default { login, register, verifyEmail, logout, getAllUsers, setPin, verifyPin, changePin };

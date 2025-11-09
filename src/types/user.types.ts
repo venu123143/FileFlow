@@ -15,6 +15,7 @@ export interface IUser {
     email: string;
     role: UserRole;
     password_hash: string;
+    pin_hash?: string;
     display_name?: string;
     avatar_url?: string;
     storage_quota: number;

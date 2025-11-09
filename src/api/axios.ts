@@ -7,6 +7,7 @@ const apiClient = axios.create({
     baseURL: API_BASE_URL, // Replace with your API base URL
     headers: { 'Content-Type': 'application/json' },
     timeout: 100000,
+    withCredentials: true,
 });
 
 apiClient.interceptors.request.use(
@@ -29,7 +30,7 @@ apiClient.interceptors.response.use(
     },
     async (error) => {
         if (error.response?.status === 401) {
-            await logout();
+            // await logout();
         }
         return Promise.reject(error); // Ensure error propagates
     }

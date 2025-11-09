@@ -52,6 +52,12 @@ interface AuthContextType extends AuthState {
     logoutLoading: boolean;
     VerifyEmail: (token: string) => Promise<boolean | undefined>;
     getAllUsers: (attributes: GetAllUsersAttributes) => Promise<IUserListItem[]>;
+    setPin: (pin: string) => Promise<{ success: boolean; error?: string }>;
+    verifyPin: (pin: string) => Promise<{ success: boolean; error?: string }>;
+    changePin: (oldPin: string, newPin: string) => Promise<{ success: boolean; error?: string }>;
+    setPinLoading: boolean;
+    verifyPinLoading: boolean;
+    changePinLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -162,6 +168,48 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         },
     });
 
+    const { mutateAsync: setPinMutationFn, isPending: setPinLoading } = useMutation({
+        mutationFn: async (pin: string) => {
+            const result = await authApi.setPin(pin);
+            return result.data;
+        },
+        onSuccess: () => {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            toast.success("PIN set successfully");
+        },
+        onError: () => {
+            dispatch({ type: 'SET_LOADING', loading: false });
+        },
+    });
+
+    const { mutateAsync: verifyPinMutationFn, isPending: verifyPinLoading } = useMutation({
+        mutationFn: async (pin: string) => {
+            const result = await authApi.verifyPin(pin);
+            return result.data;
+        },
+        onSuccess: () => {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            toast.success("PIN verified successfully. Session created.");
+        },
+        onError: () => {
+            dispatch({ type: 'SET_LOADING', loading: false });
+        },
+    });
+
+    const { mutateAsync: changePinMutationFn, isPending: changePinLoading } = useMutation({
+        mutationFn: async ({ oldPin, newPin }: { oldPin: string; newPin: string }) => {
+            const result = await authApi.changePin(oldPin, newPin);
+            return result.data;
+        },
+        onSuccess: () => {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            toast.success("PIN changed successfully");
+        },
+        onError: () => {
+            dispatch({ type: 'SET_LOADING', loading: false });
+        },
+    });
+
 
     const login = async (email: string, password: string) => {
         try {
@@ -217,6 +265,42 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
+    const setPin = async (pin: string) => {
+        try {
+            dispatch({ type: 'SET_LOADING', loading: true });
+            await setPinMutationFn(pin);
+            return { success: true };
+        } catch (error: any) {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            const errorMessage = error?.response?.data?.message || error?.message || "Failed to set PIN. Please try again.";
+            return { success: false, error: errorMessage };
+        }
+    };
+
+    const verifyPin = async (pin: string) => {
+        try {
+            dispatch({ type: 'SET_LOADING', loading: true });
+            await verifyPinMutationFn(pin);
+            return { success: true };
+        } catch (error: any) {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            const errorMessage = error?.response?.data?.message || error?.message || "Invalid PIN. Please try again.";
+            return { success: false, error: errorMessage };
+        }
+    };
+
+    const changePin = async (oldPin: string, newPin: string) => {
+        try {
+            dispatch({ type: 'SET_LOADING', loading: true });
+            await changePinMutationFn({ oldPin, newPin });
+            return { success: true };
+        } catch (error: any) {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            const errorMessage = error?.response?.data?.message || error?.message || "Failed to change PIN. Please try again.";
+            return { success: false, error: errorMessage };
+        }
+    };
+
     const value: AuthContextType = {
         ...state,
         login,
@@ -226,9 +310,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         logoutLoading,
         getAllUsers,
         VerifyEmail,
+        setPin,
+        verifyPin,
+        changePin,
+        setPinLoading,
+        verifyPinLoading,
+        changePinLoading,
     };
 
-    return <AuthContext.Provider value={value}>{children},</AuthContext.Provider>;
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
