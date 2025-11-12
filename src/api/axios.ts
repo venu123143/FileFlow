@@ -30,7 +30,7 @@ apiClient.interceptors.response.use(
     },
     async (error) => {
         if (error.response?.status === 401) {
-            // await logout();
+            await logout();
         }
         return Promise.reject(error); // Ensure error propagates
     }

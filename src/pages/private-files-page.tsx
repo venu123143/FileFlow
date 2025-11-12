@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
 import {
   Grid3X3,
@@ -138,21 +138,67 @@ export function PrivateFilesPage() {
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
   const [showSensitiveOnly, setShowSensitiveOnly] = useState(false)
   const [isPinVerified, setIsPinVerified] = useState(false)
-  const [showPinModal, setShowPinModal] = useState(true)
+  const [showPinModal, setShowPinModal] = useState(false)
+  const [isCheckingSession, setIsCheckingSession] = useState(true)
+  const hasCheckedSession = useRef(false)
 
   const { deleteFileOrFolder } = useFile()
-  const { user } = useAuth()
+  const { user, getPinSession } = useAuth()
 
-  // Show PIN modal when component mounts if user has PIN set
+  // Check for active PIN session on mount (only once)
   useEffect(() => {
-    if (user?.pin_hash && !isPinVerified) {
-      setShowPinModal(true)
-    } else if (!user?.pin_hash) {
-      // If no PIN is set, allow access but show warning
-      setIsPinVerified(true)
-      setShowPinModal(false)
+    // Prevent multiple calls
+    if (hasCheckedSession.current) {
+      return
     }
-  }, [user, isPinVerified])
+
+    const checkSession = async () => {
+      hasCheckedSession.current = true
+
+      if (!user?.pin_hash) {
+        // If no PIN is set, allow access
+        setIsPinVerified(true)
+        setShowPinModal(false)
+        setIsCheckingSession(false)
+        return
+      }
+
+      try {
+        // Try to get the current session
+        const sessionResult = await getPinSession()
+        
+        if (sessionResult.success && sessionResult.session) {
+          // Check if session is valid (within 20 minutes)
+          const verifiedAt = new Date(sessionResult.session.verified_at)
+          const now = new Date()
+          const diffInMinutes = (now.getTime() - verifiedAt.getTime()) / (1000 * 60)
+          const isValid = sessionResult.session.pin_verified && diffInMinutes <= 20
+          
+          if (isValid) {
+            // Session is valid (within 20 minutes), auto-verify
+            setIsPinVerified(true)
+            setShowPinModal(false)
+          } else {
+            // Session expired, show PIN modal
+            setIsPinVerified(false)
+            setShowPinModal(true)
+          }
+        } else {
+          // No valid session, show PIN modal
+          setIsPinVerified(false)
+          setShowPinModal(true)
+        }
+      } catch (error) {
+        // If session check fails, show PIN modal
+        setIsPinVerified(false)
+        setShowPinModal(true)
+      } finally {
+        setIsCheckingSession(false)
+      }
+    }
+
+    checkSession()
+  }, [user, getPinSession])
 
   const handlePinVerified = () => {
     setIsPinVerified(true)
@@ -200,6 +246,18 @@ export function PrivateFilesPage() {
     onDelete: handleDeleteFile,
     onEncrypt: (file) => console.log("Encrypt file:", file.name),
     onDecrypt: (file) => console.log("Decrypt file:", file.name),
+  }
+
+  // Show loading state while checking session
+  if (isCheckingSession) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <Lock className="h-12 w-12 text-muted-foreground mx-auto animate-pulse" />
+          <p className="text-muted-foreground">Checking session...</p>
+        </div>
+      </div>
+    )
   }
 
   // Don't render content until PIN is verified (if PIN is set)

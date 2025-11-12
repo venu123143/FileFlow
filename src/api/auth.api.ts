@@ -73,5 +73,14 @@ const changePin = async (oldPin: string, newPin: string) => {
     }
 };
 
+const getSession = async () => {
+    try {
+        const response = await apiClient.get('/auth/user/get-session', { withCredentials: true });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+};
 
-export default { login, register, verifyEmail, logout, getAllUsers, setPin, verifyPin, changePin };
+
+export default { login, register, verifyEmail, logout, getAllUsers, setPin, verifyPin, changePin, getSession };
