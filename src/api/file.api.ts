@@ -67,7 +67,7 @@ const emptyTrash = async () => {
 
 const getRecents = async (page: number = 1, limit: number = 20) => {
     const response = await apiClient.get(`/file-flow/file/recents`, {
-        params: { page, limit }
+        params: { page, limit }, withCredentials: true
     });
     return response.data;
 };

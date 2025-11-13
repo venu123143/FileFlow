@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -7,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { useAuth } from "@/contexts/useAuth"
 import { 
   User, 
   Shield, 
@@ -19,7 +21,9 @@ import {
   Download,
   Upload,
   Settings,
-  Palette
+  Palette,
+  Key,
+  CheckCircle2
 } from "lucide-react"
 
 interface SettingsContentProps {
@@ -27,6 +31,89 @@ interface SettingsContentProps {
 }
 
 export function SettingsContent({ activeTab }: SettingsContentProps) {
+  const { user, setPin, changePin, setPinLoading, changePinLoading, saveUser } = useAuth()
+  const [pin, setPinValue] = useState("")
+  const [confirmPin, setConfirmPin] = useState("")
+  const [oldPin, setOldPin] = useState("")
+  const [newPin, setNewPin] = useState("")
+  const [confirmNewPin, setConfirmNewPin] = useState("")
+  const [error, setError] = useState("")
+  const [isChangingPin, setIsChangingPin] = useState(false)
+
+  const handleSetPin = async () => {
+    setError("")
+    
+    // Validation
+    if (!pin || pin.length !== 4) {
+      setError("PIN must be exactly 4 digits")
+      return
+    }
+    
+    if (!/^\d+$/.test(pin)) {
+      setError("PIN must contain only numbers")
+      return
+    }
+    
+    if (pin !== confirmPin) {
+      setError("PINs do not match")
+      return
+    }
+
+    const result = await setPin(pin)
+    if (result.success) {
+      setPinValue("")
+      setConfirmPin("")
+      setError("")
+      // Update user in context and localStorage to reflect pin_hash
+      if (user) {
+        const updatedUser = { ...user, pin_hash: "set" }
+        saveUser(updatedUser)
+      }
+    } else {
+      setError(result.error || "Failed to set PIN")
+    }
+  }
+
+  const handleChangePin = async () => {
+    setError("")
+    
+    // Validation
+    if (!oldPin || oldPin.length !== 4) {
+      setError("Old PIN must be exactly 4 digits")
+      return
+    }
+    
+    if (!newPin || newPin.length !== 4) {
+      setError("New PIN must be exactly 4 digits")
+      return
+    }
+    
+    if (!/^\d+$/.test(oldPin) || !/^\d+$/.test(newPin)) {
+      setError("PINs must contain only numbers")
+      return
+    }
+    
+    if (newPin !== confirmNewPin) {
+      setError("New PINs do not match")
+      return
+    }
+
+    if (oldPin === newPin) {
+      setError("New PIN must be different from old PIN")
+      return
+    }
+
+    const result = await changePin(oldPin, newPin)
+    if (result.success) {
+      setOldPin("")
+      setNewPin("")
+      setConfirmNewPin("")
+      setError("")
+      setIsChangingPin(false)
+    } else {
+      setError(result.error || "Failed to change PIN")
+    }
+  }
   const renderGeneralTab = () => (
     <motion.div
       key="general"
@@ -291,6 +378,213 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
     </motion.div>
   )
 
+  const renderPinTab = () => {
+    const hasPin = user?.pin_hash
+
+    return (
+      <motion.div
+        key="pin"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.3 }}
+        className="space-y-6"
+      >
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5" />
+              PIN Settings
+            </CardTitle>
+            <CardDescription>
+              Set a 4-digit PIN for quick access and additional security
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {hasPin ? (
+              <div className="space-y-4">
+                {!isChangingPin ? (
+                  <>
+                    <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+                      <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      <div>
+                        <p className="font-medium text-green-900 dark:text-green-100">PIN Already Set</p>
+                        <p className="text-sm text-green-700 dark:text-green-300">
+                          You have already set a PIN for your account. Your session will be created when you verify your PIN.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="pt-4 border-t">
+                      <Button 
+                        onClick={() => setIsChangingPin(true)} 
+                        variant="outline"
+                        className="w-full"
+                      >
+                        Change PIN
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="oldPin">Enter Current PIN</Label>
+                      <Input
+                        id="oldPin"
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={4}
+                        placeholder="0000"
+                        value={oldPin}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, "")
+                          if (value.length <= 4) {
+                            setOldPin(value)
+                            setError("")
+                          }
+                        }}
+                        className={error ? "border-red-500" : ""}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="newPin">Enter New 4-Digit PIN</Label>
+                      <Input
+                        id="newPin"
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={4}
+                        placeholder="0000"
+                        value={newPin}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, "")
+                          if (value.length <= 4) {
+                            setNewPin(value)
+                            setError("")
+                          }
+                        }}
+                        className={error ? "border-red-500" : ""}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Enter a 4-digit numeric PIN
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmNewPin">Confirm New PIN</Label>
+                      <Input
+                        id="confirmNewPin"
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={4}
+                        placeholder="0000"
+                        value={confirmNewPin}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, "")
+                          if (value.length <= 4) {
+                            setConfirmNewPin(value)
+                            setError("")
+                          }
+                        }}
+                        className={error ? "border-red-500" : ""}
+                      />
+                    </div>
+                    {error && (
+                      <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
+                        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={handleChangePin} 
+                        disabled={changePinLoading || oldPin.length !== 4 || newPin.length !== 4 || confirmNewPin.length !== 4}
+                        className="flex-1"
+                      >
+                        {changePinLoading ? "Changing PIN..." : "Change PIN"}
+                      </Button>
+                      <Button 
+                        onClick={() => {
+                          setIsChangingPin(false)
+                          setOldPin("")
+                          setNewPin("")
+                          setConfirmNewPin("")
+                          setError("")
+                        }} 
+                        variant="outline"
+                        disabled={changePinLoading}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Your new PIN will be securely hashed and stored. Make sure to remember it!
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="pin">Enter 4-Digit PIN</Label>
+                  <Input
+                    id="pin"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={4}
+                    placeholder="0000"
+                    value={pin}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, "")
+                      if (value.length <= 4) {
+                        setPinValue(value)
+                        setError("")
+                      }
+                    }}
+                    className={error ? "border-red-500" : ""}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enter a 4-digit numeric PIN
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPin">Confirm PIN</Label>
+                  <Input
+                    id="confirmPin"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={4}
+                    placeholder="0000"
+                    value={confirmPin}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, "")
+                      if (value.length <= 4) {
+                        setConfirmPin(value)
+                        setError("")
+                      }
+                    }}
+                    className={error ? "border-red-500" : ""}
+                  />
+                </div>
+                {error && (
+                  <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
+                    <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                  </div>
+                )}
+                <Button 
+                  onClick={handleSetPin} 
+                  disabled={setPinLoading || pin.length !== 4 || confirmPin.length !== 4}
+                  className="w-full"
+                >
+                  {setPinLoading ? "Setting PIN..." : "Set PIN"}
+                </Button>
+                <p className="text-xs text-muted-foreground text-center">
+                  Your PIN will be securely hashed and stored. Make sure to remember it!
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+    )
+  }
+
   const renderAppsTab = () => (
     <motion.div
       key="apps"
@@ -377,6 +671,8 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
         return renderGeneralTab()
       case "security":
         return renderSecurityTab()
+      case "pin":
+        return renderPinTab()
       case "notifications":
         return renderNotificationsTab()
       case "apps":

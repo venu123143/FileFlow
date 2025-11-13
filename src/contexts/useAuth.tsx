@@ -1,4 +1,4 @@
-import React, { useReducer, useContext, createContext, type ReactNode } from 'react';
+import React, { useReducer, useContext, createContext, useCallback, type ReactNode } from 'react';
 import { CONSTANTS } from '@/constants/constants';
 import { useAuthStore } from '@/store/auth.store';
 import { type IUser, type SignupDto, type GetAllUsersAttributes, type IUserListItem } from '@/types/user.types';
@@ -6,7 +6,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import authApi from '@/api/auth.api';
 import { toast } from 'sonner';
 import { useSocket } from "@/contexts/SocketContext";
-
+export interface PinSessionData {
+    user_id: string;
+    email: string;
+    pin_verified: boolean;
+    verified_at: string;
+}
 
 const userStr = localStorage.getItem(CONSTANTS.STORAGE_KEYS.USER_DATA);
 const user = userStr ? JSON.parse(userStr) as IUser : null;
@@ -14,6 +19,7 @@ const user = userStr ? JSON.parse(userStr) as IUser : null;
 interface AuthState {
     user: IUser | null;
     loading: boolean;
+    pinSession: PinSessionData | null;
 }
 
 type AuthAction =
@@ -21,11 +27,13 @@ type AuthAction =
     | { type: 'LOGIN_SUCCESS'; user: IUser }
     | { type: 'LOGOUT' }
     | { type: 'REGISTER_START' }
-    | { type: 'SET_LOADING'; loading: boolean };
+    | { type: 'SET_LOADING'; loading: boolean }
+    | { type: 'SET_PIN_SESSION'; pinSession: PinSessionData };
 
 const initialState: AuthState = {
     user: user,
     loading: false,
+    pinSession: null,
 };
 
 function authReducer(state: AuthState, action: AuthAction): AuthState {
@@ -39,6 +47,8 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
             return { ...state, user: null, loading: false };
         case 'SET_LOADING':
             return { ...state, loading: action.loading };
+        case 'SET_PIN_SESSION':
+            return { ...state, pinSession: action.pinSession };
         default:
             return state;
     }
@@ -52,6 +62,14 @@ interface AuthContextType extends AuthState {
     logoutLoading: boolean;
     VerifyEmail: (token: string) => Promise<boolean | undefined>;
     getAllUsers: (attributes: GetAllUsersAttributes) => Promise<IUserListItem[]>;
+    setPin: (pin: string) => Promise<{ success: boolean; error?: string }>;
+    verifyPin: (pin: string) => Promise<{ success: boolean; error?: string }>;
+    changePin: (oldPin: string, newPin: string) => Promise<{ success: boolean; error?: string }>;
+    setPinLoading: boolean;
+    verifyPinLoading: boolean;
+    changePinLoading: boolean;
+    getPinSession: () => Promise<{ success: boolean; user: IUser; session: PinSessionData } | { success: false; error: string }>;
+    isPinSessionValid: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -162,6 +180,52 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         },
     });
 
+    const { mutateAsync: setPinMutationFn, isPending: setPinLoading } = useMutation({
+        mutationFn: async (pin: string) => {
+            const result = await authApi.setPin(pin);
+            return result.data;
+        },
+        onSuccess: () => {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            toast.success("PIN set successfully");
+        },
+        onError: () => {
+            dispatch({ type: 'SET_LOADING', loading: false });
+        },
+    });
+
+    const { mutateAsync: verifyPinMutationFn, isPending: verifyPinLoading } = useMutation({
+        mutationFn: async (pin: string) => {
+            const result = await authApi.verifyPin(pin);
+            return result.data;
+        },
+        onSuccess: (data) => {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            // Update session state if session data is returned
+            if (data?.session) {
+                dispatch({ type: 'SET_PIN_SESSION', pinSession: data.session });
+            }
+            toast.success("PIN verified successfully. Session created.");
+        },
+        onError: () => {
+            dispatch({ type: 'SET_LOADING', loading: false });
+        },
+    });
+
+    const { mutateAsync: changePinMutationFn, isPending: changePinLoading } = useMutation({
+        mutationFn: async ({ oldPin, newPin }: { oldPin: string; newPin: string }) => {
+            const result = await authApi.changePin(oldPin, newPin);
+            return result.data;
+        },
+        onSuccess: () => {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            toast.success("PIN changed successfully");
+        },
+        onError: () => {
+            dispatch({ type: 'SET_LOADING', loading: false });
+        },
+    });
+
 
     const login = async (email: string, password: string) => {
         try {
@@ -217,6 +281,66 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
+    const setPin = async (pin: string) => {
+        try {
+            dispatch({ type: 'SET_LOADING', loading: true });
+            await setPinMutationFn(pin);
+            return { success: true };
+        } catch (error: any) {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            const errorMessage = error?.response?.data?.message || error?.message || "Failed to set PIN. Please try again.";
+            return { success: false, error: errorMessage };
+        }
+    };
+
+    const verifyPin = async (pin: string) => {
+        try {
+            dispatch({ type: 'SET_LOADING', loading: true });
+            await verifyPinMutationFn(pin);
+            return { success: true };
+        } catch (error: any) {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            const errorMessage = error?.response?.data?.message || error?.message || "Invalid PIN. Please try again.";
+            return { success: false, error: errorMessage };
+        }
+    };
+
+    const changePin = async (oldPin: string, newPin: string) => {
+        try {
+            dispatch({ type: 'SET_LOADING', loading: true });
+            await changePinMutationFn({ oldPin, newPin });
+            return { success: true };
+        } catch (error: any) {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            const errorMessage = error?.response?.data?.message || error?.message || "Failed to change PIN. Please try again.";
+            return { success: false, error: errorMessage };
+        }
+    };
+    const getPinSession = useCallback(async (): Promise<{ success: true; user: IUser; session: PinSessionData } | { success: false; error: string }> => {
+        try {
+            dispatch({ type: 'SET_LOADING', loading: true });
+            const result = await authApi.getSession();
+            dispatch({ type: 'SET_PIN_SESSION', pinSession: result.data.session });
+            return { success: true as const, user: result.data.user, session: result.data.session };
+        } catch (error: any) {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            const errorMessage = error?.response?.data?.message || error?.message || "Failed to get PIN session. Please try again.";
+            return { success: false as const, error: errorMessage };
+        }
+    }, []);
+
+    const isPinSessionValid = (): boolean => {
+        if (!state.pinSession || !state.pinSession.pin_verified) {
+            return false;
+        }
+        
+        const verifiedAt = new Date(state.pinSession.verified_at);
+        const now = new Date();
+        const diffInMinutes = (now.getTime() - verifiedAt.getTime()) / (1000 * 60);
+        
+        return diffInMinutes <= 20;
+    };
+
     const value: AuthContextType = {
         ...state,
         login,
@@ -226,9 +350,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         logoutLoading,
         getAllUsers,
         VerifyEmail,
+        setPin,
+        verifyPin,
+        changePin,
+        setPinLoading,
+        verifyPinLoading,
+        changePinLoading,
+        getPinSession,
+        isPinSessionValid,
     };
 
-    return <AuthContext.Provider value={value}>{children},</AuthContext.Provider>;
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
