@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { motion } from "framer-motion"
 import {
   Grid3X3,
@@ -10,11 +10,6 @@ import {
   SortAsc,
   Download,
   Trash2,
-  FileText,
-  Music,
-  Archive,
-  FolderIcon,
-  Plus,
   Upload,
   Lock,
   Shield,
@@ -26,124 +21,35 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { FileManager } from "@/components/file-manager/FileManager"
+import { BreadcrumbNavigation } from "@/components/file-manager/BreadcrumbNavigation"
 import { privatePageConfig, defaultViewConfig } from "@/config/page-configs"
 import { useFile } from "@/contexts/fileContext"
+import { transformFileSystemNodesToPrivateFileItems } from "@/lib/utils"
 import { toast } from "sonner"
 import type { PrivateFileItem, FileActionHandlers, FileItem } from "@/types/file-manager"
 import { VerifyPinModal } from "@/components/session/VerifyPin"
 import { useAuth } from "@/contexts/useAuth"
-
-const mockPrivateFiles: PrivateFileItem[] = [
-  {
-    id: "1",
-    name: "Personal Journal.docx",
-    type: "file",
-    fileType: "document",
-    size: "1.2 MB",
-    modified: "1 hour ago",
-    icon: FileText,
-    thumbnail: null,
-    starred: true,
-    shared: false,
-    parentPath: [],
-    variant: "private",
-    encrypted: true,
-    sensitive: true,
-  },
-  {
-    id: "2",
-    name: "Family Photos",
-    type: "folder",
-    fileType: "folder",
-    size: "234 MB",
-    modified: "3 hours ago",
-    icon: FolderIcon,
-    thumbnail: null,
-    starred: false,
-    shared: false,
-    parentPath: [],
-    variant: "private",
-    encrypted: true,
-    sensitive: false,
-  },
-  {
-    id: "3",
-    name: "Tax Documents 2024.pdf",
-    type: "file",
-    fileType: "pdf",
-    size: "5.8 MB",
-    modified: "2 days ago",
-    icon: FileText,
-    thumbnail: null,
-    starred: true,
-    shared: false,
-    parentPath: [],
-    variant: "private",
-    encrypted: true,
-    sensitive: true,
-  },
-  {
-    id: "4",
-    name: "Private Notes.txt",
-    type: "file",
-    fileType: "text",
-    size: "45 KB",
-    modified: "1 week ago",
-    icon: FileText,
-    thumbnail: null,
-    starred: false,
-    shared: false,
-    parentPath: [],
-    variant: "private",
-    encrypted: false,
-    sensitive: false,
-  },
-  {
-    id: "5",
-    name: "Confidential Recording.mp3",
-    type: "file",
-    fileType: "audio",
-    size: "23.4 MB",
-    modified: "2 weeks ago",
-    icon: Music,
-    thumbnail: null,
-    starred: false,
-    shared: false,
-    parentPath: [],
-    variant: "private",
-    encrypted: true,
-    sensitive: true,
-  },
-  {
-    id: "6",
-    name: "Personal Backup.zip",
-    type: "file",
-    fileType: "archive",
-    size: "156 MB",
-    modified: "1 month ago",
-    icon: Archive,
-    thumbnail: null,
-    starred: false,
-    shared: false,
-    parentPath: [],
-    variant: "private",
-    encrypted: true,
-    sensitive: false,
-  },
-]
+import { useSocket } from "@/contexts/SocketContext"
+import { ArrowLeft } from "lucide-react"
+import { ACCESS_LEVEL } from "@/types/file.types"
+import { AddNewFolder } from "@/components/file-manager/AddNewFolder"
+import { useNavigate } from "react-router-dom"
 
 export function PrivateFilesPage() {
+  const { socket } = useSocket()
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
+  const [currentPath, setCurrentPath] = useState<Array<{ id: string, name: string }>>([])
   const [showSensitiveOnly, setShowSensitiveOnly] = useState(false)
   const [isPinVerified, setIsPinVerified] = useState(false)
   const [showPinModal, setShowPinModal] = useState(false)
   const [isCheckingSession, setIsCheckingSession] = useState(true)
   const hasCheckedSession = useRef(false)
 
-  const { deleteFileOrFolder } = useFile()
+  const { deleteFileOrFolder, privateFiles, createFolder } = useFile()
   const { user, getPinSession } = useAuth()
+  const navigate = useNavigate()
 
   // Check for active PIN session on mount (only once)
   useEffect(() => {
@@ -205,11 +111,28 @@ export function PrivateFilesPage() {
     setShowPinModal(false)
   }
 
-  const filteredFiles = mockPrivateFiles.filter((file) => {
-    const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesSensitive = !showSensitiveOnly || file.sensitive
-    return matchesSearch && matchesSensitive
-  })
+  // Transform dynamic data to PrivateFileItem format
+  const transformedPrivateFiles = useMemo(() => {
+    return transformFileSystemNodesToPrivateFileItems(privateFiles)
+  }, [privateFiles])
+
+  // Get current items based on currentPath (similar to all-files-page)
+  let currentItems = useMemo(() => {
+    let items: PrivateFileItem[] = transformedPrivateFiles
+    for (const folder of currentPath) {
+      const foundFolder = items.find((item) => item.id === folder.id && item.type === "folder")
+      if (foundFolder?.children) {
+        items = foundFolder.children as PrivateFileItem[]
+      }
+    }
+    return items
+  }, [currentPath, transformedPrivateFiles])
+
+  const filteredFiles = useMemo(() => {
+    const matchesSearch = (file: PrivateFileItem) => file.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSensitive = (file: PrivateFileItem) => !showSensitiveOnly || file.sensitive
+    return currentItems.filter((file) => matchesSearch(file) && matchesSensitive(file))
+  }, [currentItems, searchQuery, showSensitiveOnly])
 
   const toggleFileSelection = (fileId: string) => {
     setSelectedFiles((prev) => (prev.includes(fileId) ? prev.filter((id) => id !== fileId) : [...prev, fileId]))
@@ -219,8 +142,66 @@ export function PrivateFilesPage() {
     setSelectedFiles(selectedFiles.length === filteredFiles.length ? [] : filteredFiles.map((f) => f.id))
   }
 
-  const encryptedCount = mockPrivateFiles.filter((f) => f.encrypted).length
-  const sensitiveCount = mockPrivateFiles.filter((f) => f.sensitive).length
+  const handleItemClick = (item: FileItem) => {
+    if (item.type === "folder") {
+      setCurrentPath([...currentPath, { id: item.id, name: item.name }])
+      setSelectedFiles([])
+      setSearchQuery("")
+    } else {
+      if (!socket) return;
+      socket?.emit("last_accessed", { file_id: item.id })
+    }
+  }
+
+  const handleBreadcrumbNavigate = (index: number) => {
+    if (index === -1) {
+      setCurrentPath([])
+    } else {
+      setCurrentPath(currentPath.slice(0, index + 1))
+    }
+    setSelectedFiles([])
+    setSearchQuery("")
+  }
+
+  const handleBackClick = () => {
+    if (currentPath.length > 0) {
+      setCurrentPath(currentPath.slice(0, -1))
+      setSelectedFiles([])
+    }
+  }
+
+  const encryptedCount = filteredFiles.filter((f) => f.encrypted).length
+  const sensitiveCount = filteredFiles.filter((f) => f.sensitive).length
+
+  const handleCreateFolder = async (folderName: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      // Find the parent folder ID based on current path
+      let parentId: string | undefined = undefined
+
+      // Get the last folder in the current path as the parent
+      if (currentPath.length > 0) {
+        const lastFolder = currentPath[currentPath.length - 1]
+        parentId = lastFolder.id
+      }
+
+      const result = await createFolder({
+        name: folderName.trim(),
+        parent_id: parentId,
+        access_level: ACCESS_LEVEL.PRIVATE // Set access level to private for private files page
+      })
+
+      if (result.success) {
+        toast.success("Private folder created successfully!")
+      }
+
+      return result
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error?.message || 'Failed to create folder'
+      }
+    }
+  }
 
   const handleDeleteFile = async (file: FileItem) => {
     try {
@@ -240,7 +221,7 @@ export function PrivateFilesPage() {
 
   const actionHandlers: FileActionHandlers = {
     onFileSelect: toggleFileSelection,
-    onItemClick: (item) => console.log("Clicked on private item:", item.name),
+    onItemClick: handleItemClick,
     onDownload: (file) => console.log("Download file:", file.name),
     onShare: (file) => console.log("Share file:", file.name),
     onDelete: handleDeleteFile,
@@ -294,27 +275,58 @@ export function PrivateFilesPage() {
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
           <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <Lock className="h-6 w-6 text-muted-foreground" />
-                <h1 className="text-2xl font-semibold text-foreground">Private Files</h1>
+            <div className="flex items-center gap-4">
+              {currentPath.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleBackClick}
+                  className="p-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              )}
+              <div>
+                <div className="flex items-center gap-2">
+                  <Lock className="h-6 w-6 text-muted-foreground" />
+                  <h1 className="text-2xl font-semibold text-foreground">Private Files</h1>
+                </div>
+                <p className="text-muted-foreground">
+                  {filteredFiles.length} private items • {encryptedCount} encrypted • {sensitiveCount} sensitive
+                </p>
               </div>
-              <p className="text-muted-foreground">
-                {filteredFiles.length} private items • {encryptedCount} encrypted • {sensitiveCount} sensitive
-              </p>
             </div>
             <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  const lastItem = currentPath[currentPath.length - 1];
+                  const folderId = lastItem?.id ?? "root";
+                  const folderName = lastItem?.name ?? "root";
+                  navigate(`/all-files/${folderId}`, {
+                    state: { 
+                      folder_id: folderId, 
+                      folder_name: folderName,
+                      access_level: ACCESS_LEVEL.PRIVATE
+                    }
+                  });
+                }}
+              >
                 <Upload className="h-4 w-4 mr-2" />
                 Upload Private
               </Button>
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                New Private Folder
-              </Button>
+              <AddNewFolder
+                onAddFolder={handleCreateFolder}
+                buttonText="New Private Folder"
+              />
             </div>
           </div>
         </motion.div>
+
+        {currentPath.length > 0 && (
+          <BreadcrumbNavigation currentPath={currentPath} onNavigate={handleBreadcrumbNavigate} />
+        )}
 
 
 
@@ -411,6 +423,7 @@ export function PrivateFilesPage() {
           viewConfig={defaultViewConfig}
           actionHandlers={actionHandlers}
           viewMode={viewMode}
+          onCreateFolder={handleCreateFolder}
         />
       </div>
     </>

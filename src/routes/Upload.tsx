@@ -6,7 +6,7 @@ const Upload = () => {
     const { folder_id } = useParams<{ folder_id: string }>();
     const location = useLocation();
     const navigate = useNavigate();
-    const { folder_name } = location.state || {};
+    const { folder_name, access_level } = location.state || {};
 
     const allowedTypes: FileConfig[] = [
         {
@@ -56,6 +56,7 @@ const Upload = () => {
                     allowedTypes={allowedTypes}
                     maxFiles={10}
                     folderId={folder_id}
+                    accessLevel={access_level}
                 />
 
             </div>

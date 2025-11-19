@@ -19,6 +19,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useUpload } from '@/contexts/UploadContext';
 import { useFile } from '@/contexts/fileContext';
+import type { AccessLevel } from '@/types/file.types';
 
 export type FileType = 'excel' | 'pdf' | 'image' | 'video' | 'audio' | 'archive' | 'text' | 'any';
 
@@ -32,6 +33,7 @@ interface FileUploaderProps {
     allowedTypes?: FileConfig[];
     maxFiles?: number;
     folderId?: string;
+    accessLevel?: AccessLevel; // 'public' | 'private' | 'protected'
 }
 
 const DEFAULT_FILE_CONFIGS: FileConfig[] = [
@@ -46,6 +48,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     allowedTypes = DEFAULT_FILE_CONFIGS,
     maxFiles = 10,
     folderId,
+    accessLevel,
 }) => {
     const { createFile } = useFile();
     const navigate = useNavigate();
@@ -64,7 +67,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         autoClearCompleted
     } = useUpload();
 
-    const { fileStates } = state;
+    const { fileStates, error: uploadError } = state;
 
     // Check if any uploads are in progress
     useEffect(() => {
@@ -173,81 +176,95 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         const fileType = getFileType(file);
 
         try {
-            if (fileType === 'video') {
-                // Use chunked upload for video files
-                const result = await handleUpload(file, folderId);
-                if (result) {
-                    await createFile({
-                        name: file.name,
-                        parent_id: folderId === "root" ? null : folderId,
-                        file_info: result
-                    });
-                    updateFileState(file.name, {
-                        url: result.storage_path,
-                        status: 'completed',
-                        progress: 100,
-                        lastUploadedChunk: Math.ceil(file.size / (5 * 1024 * 1024))
-                    });
-                    setCompletedFiles(prev => new Set([...prev, file.name]));
+            switch (fileType) {
+                case 'video': {
+                    // Use chunked upload for video files
+                    const result = await handleUpload(file, folderId);
+                    if (result) {
+                        await createFile({
+                            name: file.name,
+                            parent_id: folderId === "root" ? null : folderId,
+                            access_level: accessLevel,
+                            file_info: result
+                        });
+                        updateFileState(file.name, {
+                            url: result.storage_path,
+                            status: 'completed',
+                            progress: 100,
+                            lastUploadedChunk: Math.ceil(file.size / (5 * 1024 * 1024))
+                        });
+                        setCompletedFiles(prev => new Set([...prev, file.name]));
+                    }
+                    break;
                 }
-            } else {
-                // Use direct upload for non-video files (images, excel, pdf, text, etc.)
-                // Initialize file state if not exists
-                if (!fileStates[file.name]) {
+                case 'excel':
+                case 'pdf':
+                case 'image':
+                case 'audio':
+                case 'archive':
+                case 'text':
+                case 'any':
+                default: {
+                    // Use direct upload for non-video files (images, excel, pdf, text, etc.)
+                    // Initialize file state if not exists
+                    if (!fileStates[file.name]) {
+                        updateFileState(file.name, {
+                            uploadId: null,
+                            url: null,
+                            fileKey: null,
+                            progress: 0,
+                            status: 'uploading',
+                            error: null,
+                            lastUploadedChunk: 0,
+                            totalChunks: 1,
+                            fileName: file.name,
+                            fileSize: file.size,
+                            fileType: file.type
+                        });
+                    } else {
+                        updateFileState(file.name, {
+                            status: 'uploading',
+                            progress: 0,
+                            error: null
+                        });
+                    }
+
+                    // Update progress to show upload started
                     updateFileState(file.name, {
-                        uploadId: null,
-                        url: null,
-                        fileKey: null,
-                        progress: 0,
-                        status: 'uploading',
-                        error: null,
-                        lastUploadedChunk: 0,
-                        totalChunks: 1,
-                        fileName: file.name,
-                        fileSize: file.size,
-                        fileType: file.type
-                    });
-                } else {
-                    updateFileState(file.name, {
-                        status: 'uploading',
-                        progress: 0,
-                        error: null
-                    });
-                }
-
-                // Update progress to show upload started
-                updateFileState(file.name, {
-                    progress: 50
-                });
-
-                const uploadedFiles = await uploadFiles([file]);
-
-                if (uploadedFiles && uploadedFiles.length > 0) {
-                    const uploadedFile = uploadedFiles[0];
-
-                    // Create file entry in database
-                    await createFile({
-                        name: file.name,
-                        parent_id: folderId === "root" ? null : folderId,
-                        file_info: {
-                            file_type: file.type,
-                            file_size: file.size,
-                            storage_path: uploadedFile.url,
-                            thumbnail_path: uploadedFile.url,
-                            duration: undefined
-                        }
+                        progress: 50
                     });
 
-                    updateFileState(file.name, {
-                        url: uploadedFile.url,
-                        status: 'completed',
-                        progress: 100,
-                        lastUploadedChunk: 1,
-                        totalChunks: 1 // Set to 1 for direct uploads
-                    });
-                    setCompletedFiles(prev => new Set([...prev, file.name]));
-                } else {
-                    throw new Error('Upload failed - no file returned');
+                    const uploadedFiles = await uploadFiles([file]);
+
+                    if (uploadedFiles && uploadedFiles.length > 0) {
+                        const uploadedFile = uploadedFiles[0];
+
+                        // Create file entry in database
+                        await createFile({
+                            name: file.name,
+                            parent_id: folderId === "root" ? null : folderId,
+                            access_level: accessLevel,
+                            file_info: {
+                                file_type: file.type,
+                                file_size: file.size,
+                                storage_path: uploadedFile.url,
+                                thumbnail_path: uploadedFile.url,
+                                duration: undefined
+                            }
+                        });
+
+                        updateFileState(file.name, {
+                            url: uploadedFile.url,
+                            status: 'completed',
+                            progress: 100,
+                            lastUploadedChunk: 1,
+                            totalChunks: 1 // Set to 1 for direct uploads
+                        });
+                        setCompletedFiles(prev => new Set([...prev, file.name]));
+                    } else {
+                        throw new Error(uploadError || 'Upload failed - no file returned');
+                    }
+                    break;
                 }
             }
         } catch (error: any) {

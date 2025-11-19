@@ -41,7 +41,13 @@ const getAllSharedFilesWithMe = async () => {
 };
 
 const getFileSystemTree = async () => {
-    const response = await apiClient.get("/file-flow/file/all");
+    const response = await apiClient.get("/file-flow/file/all?accessLevel=protected");
+    return response.data;
+};
+
+
+const getPrivateFiles = async () => {
+    const response = await apiClient.get("/file-flow/file/all?accessLevel=private");
     return response.data;
 };
 
@@ -77,6 +83,7 @@ export default {
     renameFolder,
     moveFileOrFolder,
     createFile,
+    getPrivateFiles,
     shareFileOrFolder,
     getAllSharedFiles,
     getAllSharedFilesByMe,

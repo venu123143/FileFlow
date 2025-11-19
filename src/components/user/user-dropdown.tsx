@@ -36,6 +36,7 @@ export function UserDropdown({ name = "Sophie Chamberlain", email = "hi@sophie.c
       await handleLogout()
     } else {
       setIsOpen(false)
+      navigate(href)
     }
   }
   return (

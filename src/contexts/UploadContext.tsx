@@ -306,6 +306,7 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     parts.push({ PartNumber: chunkResponse.PartNumber, ETag: chunkResponse.ETag });
                     updateFileState(file.name, { lastUploadedChunk: chunkNumber + 1 });
                 } catch (error: any) {
+                    console.error('Failed to upload chunk', error);
                     updateFileState(file.name, {
                         status: 'error',
                         error: `Failed to upload chunk ${chunkNumber + 1}: ${error.message}`
@@ -384,7 +385,7 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 throw new Error(response.data?.message || 'Upload failed - invalid response');
             }
         } catch (error: any) {
-            dispatch({ type: 'ERROR', payload: error?.message || 'Network error' });
+            dispatch({ type: 'ERROR', payload: error?.response?.data?.message || 'Network error' });
             return [];
         }
     };
