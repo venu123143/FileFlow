@@ -14,6 +14,7 @@ import type {
 
 interface FileState {
     fileSystemTree: FileSystemNode[];
+    privateFiles: FileSystemNode[];
     trash: FileSystemNode[];
     sharedFiles: SharedFileSystemNode[];
     sharedFilesByMe: SharedFileSystemNode[];
@@ -24,6 +25,7 @@ interface FileState {
 
 type FileAction =
     | { type: 'SET_FILE_SYSTEM_TREE'; fileSystemTree: FileSystemNode[] }
+    | { type: 'SET_PRIVATE_FILES'; privateFiles: FileSystemNode[] }
     | { type: 'SET_TRASH'; trash: FileSystemNode[] }
     | { type: 'SET_SHARED_FILES'; sharedFiles: SharedFileSystemNode[] }
     | { type: 'SET_SHARED_FILES_BY_ME'; sharedFilesByMe: SharedFileSystemNode[] }
@@ -33,6 +35,7 @@ type FileAction =
 
 const initialState: FileState = {
     fileSystemTree: [],
+    privateFiles: [],
     trash: [],
     sharedFiles: [],
     sharedFilesByMe: [],
@@ -45,6 +48,8 @@ function fileReducer(state: FileState, action: FileAction): FileState {
     switch (action.type) {
         case 'SET_FILE_SYSTEM_TREE':
             return { ...state, fileSystemTree: action.fileSystemTree };
+        case 'SET_PRIVATE_FILES':
+            return { ...state, privateFiles: action.privateFiles };
         case 'SET_TRASH':
             return { ...state, trash: action.trash };
         case 'SET_SHARED_FILES':
@@ -74,6 +79,7 @@ interface FileContextType extends FileState {
     getAllSharedFilesByMe: () => Promise<SharedFileSystemNode[]>;
     getAllSharedFilesWithMe: () => Promise<SharedFileSystemNode[]>;
     getFileSystemTree: () => Promise<FileSystemNode[]>;
+    getPrivateFiles: () => Promise<FileSystemNode[]>;
     getTrash: () => Promise<FileSystemNode[]>;
     getRecents: (page?: number, limit?: number) => Promise<FileState['recents']>;
     deleteFileOrFolder: (id: string) => MutationResult;
@@ -100,6 +106,23 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         gcTime: 10 * 60 * 1000, // 10 minutes
         enabled: !!user, // Only enable the query when user is authenticated
     });
+
+    const { data: privateFilesData, isLoading: privateFilesLoading } = useQuery<FileSystemNode[]>({
+        queryKey: ['privateFiles'],
+        queryFn: async () => {
+            const result = await fileApi.getPrivateFiles();
+            return result.data;
+        },
+        retry: 2,
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        gcTime: 10 * 60 * 1000, // 10 minutes
+        enabled: !!user, // Only enable the query when user is authenticated
+    });
+    React.useEffect(() => {
+        if (privateFilesData) {
+            dispatch({ type: 'SET_PRIVATE_FILES', privateFiles: privateFilesData });
+        }
+    }, [privateFilesData]);
 
     const { data: trashData, isLoading: trashLoading } = useQuery<FileSystemNode[]>({
         queryKey: ['trash'],
@@ -484,9 +507,30 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
+    const getPrivateFiles = async () => {
+        try {
+            dispatch({ type: 'SET_LOADING', loading: true });
+            const data = await queryClient.fetchQuery({
+                queryKey: ['privateFiles'],
+                queryFn: async () => {
+                    const result = await fileApi.getPrivateFiles();
+                    return result.data;
+                },
+            });
+            dispatch({ type: 'SET_PRIVATE_FILES', privateFiles: data });
+            dispatch({ type: 'SET_LOADING', loading: false });
+            return data;
+        }
+        catch (error: any) {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to get private files.';
+            throw new Error(errorMessage);
+        }
+    };
+
     const value: FileContextType = {
         ...state,
-        loading: state.loading || fileSystemTreeLoading || trashLoading,
+        loading: state.loading || fileSystemTreeLoading || trashLoading || privateFilesLoading,
         createFolder,
         renameFolder,
         moveFileOrFolder,
@@ -496,6 +540,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         getAllSharedFilesByMe,
         getAllSharedFilesWithMe,
         getFileSystemTree,
+        getPrivateFiles,
         getTrash,
         getRecents,
         deleteFileOrFolder,

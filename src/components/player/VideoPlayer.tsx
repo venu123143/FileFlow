@@ -44,6 +44,51 @@ const customStyles = `
     background-color: #ef4444;
   }
   
+  /* Ensure timer is always visible */
+  .video-js .vjs-current-time,
+  .video-js .vjs-duration {
+    display: inline-block !important;
+    padding: 0 0.5em;
+  }
+  
+  .video-js .vjs-time-divider {
+    display: inline-block !important;
+    padding: 0 0.2em;
+  }
+  
+  /* Skip indicator styles */
+  .video-skip-indicator {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 2em;
+    font-weight: bold;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+    z-index: 1000;
+    animation: fadeOut 0.5s ease-out forwards;
+  }
+  
+  .video-skip-indicator.left {
+    left: 20%;
+  }
+  
+  .video-skip-indicator.right {
+    right: 20%;
+  }
+  
+  @keyframes fadeOut {
+    0% {
+      opacity: 1;
+      transform: translateY(-50%) scale(1.2);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-50%) scale(1);
+    }
+  }
+  
   /* Mobile optimizations */
   @media (max-width: 640px) {
     .video-js .vjs-control-bar {
@@ -130,6 +175,7 @@ export function VideoPlayer({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playerRef = useRef<any | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const doubleClickHandlerRef = useRef<((event: MouseEvent) => void) | null>(null);
 
   useEffect(() => {
     // Add custom styles to document
@@ -208,6 +254,49 @@ export function VideoPlayer({
         if (onError) onError(error);
       });
 
+      // Double-click handler for skip forward/backward
+      const handleDoubleClick = (event: MouseEvent) => {
+        const playerEl = player.el() as HTMLElement | null;
+        if (!playerEl) return;
+
+        const rect = playerEl.getBoundingClientRect();
+        const clickX = event.clientX - rect.left;
+        const playerWidth = rect.width;
+        const isLeftSide = clickX < playerWidth / 2;
+
+        const currentTime = player.currentTime();
+        const duration = player.duration();
+
+        if (typeof currentTime === 'number' && typeof duration === 'number') {
+          let newTime: number;
+          let skipText: string;
+
+          if (isLeftSide) {
+            // Skip backward 10 seconds
+            newTime = Math.max(0, currentTime - 10);
+            skipText = '-10s';
+          } else {
+            // Skip forward 10 seconds
+            newTime = Math.min(duration, currentTime + 10);
+            skipText = '+10s';
+          }
+
+          player.currentTime(newTime);
+
+          // Show skip indicator
+          showSkipIndicator(playerEl, skipText, isLeftSide);
+        }
+      };
+
+      // Store handler reference for cleanup
+      doubleClickHandlerRef.current = handleDoubleClick;
+
+      // Listen for double-click events on the player element
+      const playerEl = player.el() as HTMLElement | null;
+      if (playerEl) {
+        playerEl.addEventListener('dblclick', handleDoubleClick);
+      }
+
       // Keyboard shortcuts
       player.on('keydown', (e: any) => {
         const event = e as KeyboardEvent;
@@ -268,12 +357,59 @@ export function VideoPlayer({
     }
 
     return () => {
+      // Clean up double-click listener
+      if (playerRef.current && doubleClickHandlerRef.current) {
+        const playerEl = playerRef.current.el() as HTMLElement | null;
+        if (playerEl) {
+          playerEl.removeEventListener('dblclick', doubleClickHandlerRef.current);
+        }
+        doubleClickHandlerRef.current = null;
+      }
       if (playerRef.current) {
         playerRef.current.dispose();
         playerRef.current = null;
       }
     };
   }, [url, autoplay, muted, controls, loop, preload, poster]);
+
+  // Helper function to show skip indicator
+  function showSkipIndicator(playerEl: HTMLElement, text: string, isLeft: boolean) {
+    // Remove existing indicator if any
+    const existingIndicator = playerEl.querySelector('.video-skip-indicator') as HTMLElement | null;
+    if (existingIndicator) {
+      existingIndicator.remove();
+    }
+
+    // Create new indicator
+    const indicator = document.createElement('div');
+    indicator.className = `video-skip-indicator ${isLeft ? 'left' : 'right'}`;
+    indicator.textContent = text;
+    indicator.style.position = 'absolute';
+    indicator.style.top = '50%';
+    indicator.style.transform = 'translateY(-50%)';
+    indicator.style.fontSize = '2em';
+    indicator.style.fontWeight = 'bold';
+    indicator.style.color = 'white';
+    indicator.style.textShadow = '2px 2px 4px rgba(0, 0, 0, 0.8)';
+    indicator.style.pointerEvents = 'none';
+    indicator.style.zIndex = '1000';
+    indicator.style.animation = 'fadeOut 0.5s ease-out forwards';
+
+    if (isLeft) {
+      indicator.style.left = '20%';
+    } else {
+      indicator.style.right = '20%';
+    }
+
+    playerEl.appendChild(indicator);
+
+    // Remove after animation
+    setTimeout(() => {
+      if (indicator.parentNode) {
+        indicator.remove();
+      }
+    }, 500);
+  }
 
   // Helper function to determine video type
   function getVideoType(url: string): string {
