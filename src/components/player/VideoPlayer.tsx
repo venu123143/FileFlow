@@ -176,6 +176,18 @@ export function VideoPlayer({
   const playerRef = useRef<any | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const doubleClickHandlerRef = useRef<((event: MouseEvent) => void) | null>(null);
+  const touchStartHandlerRef = useRef<((event: TouchEvent) => void) | null>(null);
+  const touchHandlerRef = useRef<{
+    lastTapTime: number;
+    lastTapX: number;
+    lastTapY: number;
+    tapTimeout: NodeJS.Timeout | null;
+  }>({
+    lastTapTime: 0,
+    lastTapX: 0,
+    lastTapY: 0,
+    tapTimeout: null
+  });
 
   useEffect(() => {
     // Add custom styles to document
@@ -254,13 +266,10 @@ export function VideoPlayer({
         if (onError) onError(error);
       });
 
-      // Double-click handler for skip forward/backward
-      const handleDoubleClick = (event: MouseEvent) => {
-        const playerEl = player.el() as HTMLElement | null;
-        if (!playerEl) return;
-
+      // Skip handler function (shared for both mouse and touch)
+      const handleSkip = (x: number, playerEl: HTMLElement) => {
         const rect = playerEl.getBoundingClientRect();
-        const clickX = event.clientX - rect.left;
+        const clickX = x - rect.left;
         const playerWidth = rect.width;
         const isLeftSide = clickX < playerWidth / 2;
 
@@ -288,13 +297,76 @@ export function VideoPlayer({
         }
       };
 
-      // Store handler reference for cleanup
-      doubleClickHandlerRef.current = handleDoubleClick;
+      // Double-click handler for skip forward/backward (desktop)
+      const handleDoubleClick = (event: MouseEvent) => {
+        const playerEl = player.el() as HTMLElement | null;
+        if (!playerEl) return;
+        handleSkip(event.clientX, playerEl);
+      };
 
-      // Listen for double-click events on the player element
+      // Double-tap handler for skip forward/backward (mobile)
+      const handleTouchStart = (event: TouchEvent) => {
+        const playerEl = player.el() as HTMLElement | null;
+        if (!playerEl) return;
+
+        const touch = event.touches[0];
+        if (!touch) return;
+
+        const currentTime = Date.now();
+        const tapX = touch.clientX;
+        const tapY = touch.clientY;
+        const { lastTapTime, lastTapX, lastTapY, tapTimeout } = touchHandlerRef.current;
+
+        // Clear any existing timeout
+        if (tapTimeout) {
+          clearTimeout(tapTimeout);
+          touchHandlerRef.current.tapTimeout = null;
+        }
+
+        // Check if this is a double-tap (within 300ms and similar position)
+        const timeDiff = currentTime - lastTapTime;
+        const xDiff = Math.abs(tapX - lastTapX);
+        const yDiff = Math.abs(tapY - lastTapY);
+        const maxDistance = 50; // Maximum distance between taps to be considered a double-tap
+
+        if (
+          timeDiff < 300 &&
+          timeDiff > 0 &&
+          xDiff < maxDistance &&
+          yDiff < maxDistance
+        ) {
+          // Double-tap detected
+          event.preventDefault();
+          handleSkip(tapX, playerEl);
+          // Reset tap tracking
+          touchHandlerRef.current.lastTapTime = 0;
+          touchHandlerRef.current.lastTapX = 0;
+          touchHandlerRef.current.lastTapY = 0;
+        } else {
+          // Store this tap for potential double-tap
+          touchHandlerRef.current.lastTapTime = currentTime;
+          touchHandlerRef.current.lastTapX = tapX;
+          touchHandlerRef.current.lastTapY = tapY;
+
+          // Set timeout to reset if no second tap
+          touchHandlerRef.current.tapTimeout = setTimeout(() => {
+            touchHandlerRef.current.lastTapTime = 0;
+            touchHandlerRef.current.lastTapX = 0;
+            touchHandlerRef.current.lastTapY = 0;
+          }, 300);
+        }
+      };
+
+      // Store handler references for cleanup
+      doubleClickHandlerRef.current = handleDoubleClick;
+      touchStartHandlerRef.current = handleTouchStart;
+
+      // Listen for double-click events on the player element (desktop)
       const playerEl = player.el() as HTMLElement | null;
       if (playerEl) {
         playerEl.addEventListener('dblclick', handleDoubleClick);
+        // Listen for touch events (mobile)
+        playerEl.addEventListener('touchstart', handleTouchStart, { passive: false });
       }
 
       // Keyboard shortcuts
@@ -357,15 +429,26 @@ export function VideoPlayer({
     }
 
     return () => {
-      // Clean up double-click listener
-      if (playerRef.current && doubleClickHandlerRef.current) {
+      // Clean up event listeners
+      if (playerRef.current) {
         const playerEl = playerRef.current.el() as HTMLElement | null;
         if (playerEl) {
-          playerEl.removeEventListener('dblclick', doubleClickHandlerRef.current);
+          // Remove double-click listener (desktop)
+          if (doubleClickHandlerRef.current) {
+            playerEl.removeEventListener('dblclick', doubleClickHandlerRef.current);
+            doubleClickHandlerRef.current = null;
+          }
+          // Remove touch listener (mobile)
+          if (touchStartHandlerRef.current) {
+            playerEl.removeEventListener('touchstart', touchStartHandlerRef.current);
+            touchStartHandlerRef.current = null;
+          }
         }
-        doubleClickHandlerRef.current = null;
-      }
-      if (playerRef.current) {
+        // Clear touch handler timeout
+        if (touchHandlerRef.current.tapTimeout) {
+          clearTimeout(touchHandlerRef.current.tapTimeout);
+          touchHandlerRef.current.tapTimeout = null;
+        }
         playerRef.current.dispose();
         playerRef.current = null;
       }
