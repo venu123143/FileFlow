@@ -50,6 +50,11 @@ export function PrivateFilesPage() {
   const { user, getPinSession } = useAuth()
   const navigate = useNavigate()
 
+  const handlePinModalClose = () => {
+    // Navigate back to previous route when modal is closed without verification
+    navigate(-1)
+  }
+
   // Check for active PIN session on mount (only once)
   useEffect(() => {
     // Prevent multiple calls
@@ -260,6 +265,7 @@ export function PrivateFilesPage() {
         <VerifyPinModal
           isOpen={showPinModal}
           onVerified={handlePinVerified}
+          onClose={handlePinModalClose}
           title="Verify PIN to Access Private Files"
           description="This page contains sensitive information. Please verify your PIN to continue."
           required={true}
@@ -279,6 +285,7 @@ export function PrivateFilesPage() {
       <VerifyPinModal
         isOpen={showPinModal && !isPinVerified}
         onVerified={handlePinVerified}
+        onClose={handlePinModalClose}
         title="Verify PIN to Access Private Files"
         description="This page contains sensitive information. Please verify your PIN to continue."
         required={true}

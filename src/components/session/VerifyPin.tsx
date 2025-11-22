@@ -12,6 +12,7 @@ import { toast } from "sonner"
 interface VerifyPinModalProps {
   isOpen: boolean
   onVerified: () => void
+  onClose?: () => void // Callback when modal is closed without verification
   title?: string
   description?: string
   required?: boolean // If true, modal cannot be closed until verified
@@ -20,6 +21,7 @@ interface VerifyPinModalProps {
 export function VerifyPinModal({
   isOpen,
   onVerified,
+  onClose,
   title = "Verify PIN",
   description = "Please enter your 4-digit PIN to continue",
   required = true,
@@ -27,12 +29,14 @@ export function VerifyPinModal({
   const { verifyPin, verifyPinLoading, user } = useAuth()
   const [pin, setPin] = useState("")
   const [error, setError] = useState("")
+  const [isVerified, setIsVerified] = useState(false)
 
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
       setPin("")
       setError("")
+      setIsVerified(false)
     }
   }, [isOpen])
 
@@ -65,6 +69,7 @@ export function VerifyPinModal({
     if (result.success) {
       setPin("")
       setError("")
+      setIsVerified(true)
       toast.success("PIN verified successfully")
       onVerified()
     } else {
@@ -78,11 +83,11 @@ export function VerifyPinModal({
     }
   }
 
-  // Prevent closing if required and not verified
+  // Handle modal close
   const handleOpenChange = (open: boolean) => {
-    if (!open && required) {
-      // Prevent closing - do nothing
-      return
+    if (!open && !isVerified) {
+      // If modal is closing without verification, call onClose callback (e.g., navigate back)
+      onClose?.()
     }
   }
 
@@ -93,21 +98,6 @@ export function VerifyPinModal({
       <DialogContent 
         showCloseButton={!required}
         className="sm:max-w-md"
-        onInteractOutside={(e) => {
-          if (required) {
-            e.preventDefault()
-          }
-        }}
-        onEscapeKeyDown={(e) => {
-          if (required) {
-            e.preventDefault()
-          }
-        }}
-        onPointerDownOutside={(e) => {
-          if (required) {
-            e.preventDefault()
-          }
-        }}
       >
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
