@@ -1,21 +1,23 @@
 import "./css/App.css";
-import { Suspense } from "react";
+import { Suspense, lazy } from "react";
 import { ProtectedRoute } from "@/components/layouts/index";
 import { USER_ROLES } from "@/types/user.types";
 import { Routes, Route } from "react-router-dom";
-import NotFound from "@/routes/Notfound";
-import Home from "@/routes/Home";
-import DeletedFiles from "@/routes/DeletedFiles";
-import AllFiles from "@/routes/AllFiles";
-import PrivateFiles from "@/routes/PrivateFiles";
-import Settings from "@/routes/Settings";
-import SharedFiles from "@/routes/SharedFiles";
-import Notifications from "@/routes/Notifications";
 import Login from "@/routes/auth/Login";
 import Register from "@/routes/auth/Register";
-import Unauthorized from "@/routes/Unauthorized";
-import Upload from "@/routes/Upload";
 import UploadPopup from "@/components/upload/UploadPopup";
+
+// Lazy load routes
+const NotFound = lazy(() => import("@/routes/Notfound"));
+const Home = lazy(() => import("@/routes/Home"));
+const DeletedFiles = lazy(() => import("@/routes/DeletedFiles"));
+const AllFiles = lazy(() => import("@/routes/AllFiles"));
+const PrivateFiles = lazy(() => import("@/routes/PrivateFiles"));
+const Settings = lazy(() => import("@/routes/Settings"));
+const SharedFiles = lazy(() => import("@/routes/SharedFiles"));
+const Notifications = lazy(() => import("@/routes/Notifications"));
+const Unauthorized = lazy(() => import("@/routes/Unauthorized"));
+const Upload = lazy(() => import("@/routes/Upload"));
 
 // Loading component for Suspense fallback
 const Loading = () => (
