@@ -1,7 +1,7 @@
 "use client"
 import { useState, useMemo } from "react"
 import type { FileItem, FileActionHandlers } from "@/types/file-manager"
-import type { SharePermission } from "@/types/file.types"
+import { ACCESS_LEVEL, type SharePermission, type AccessLevel } from "@/types/file.types"
 import { FileManagerHeader } from "@/components/file-manager/FileManagerHeader"
 import { BreadcrumbNavigation } from "@/components/file-manager/BreadcrumbNavigation"
 import { Toolbar } from "@/components/file-manager/Toolbar"
@@ -32,8 +32,7 @@ export default function AllFilesPage() {
   // Share file popup state
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [fileToShare, setFileToShare] = useState<FileItem | null>(null)
-
-  const { createFolder, fileSystemTree, deleteFileOrFolder, renameFolder, moveFileOrFolder, shareFileOrFolder } = useFile();
+  const { createFolder, fileSystemTree, deleteFileOrFolder, renameFolder, moveFileOrFolder, shareFileOrFolder, updateFileAccessLevel } = useFile();
   const navigate = useNavigate();
 
   // Transform dynamic data to FileItem format
@@ -124,7 +123,7 @@ export default function AllFilesPage() {
     const folderId = lastItem?.id ?? "root";
     const folderName = lastItem?.name ?? "root";
     navigate(`/all-files/${folderId}`, {
-      state: { folder_id: folderId, folder_name: folderName }
+      state: { folder_id: folderId, folder_name: folderName, access_level: ACCESS_LEVEL.PROTECTED }
     });
   }
 
@@ -227,6 +226,18 @@ export default function AllFilesPage() {
     setFileToShare(null);
   }
 
+  const handleChangeAccessLevel = async (file: FileItem, accessLevel: string) => {
+    try {
+      const result = await updateFileAccessLevel(file.id, { access_level: accessLevel as AccessLevel });
+      if (!result.success) {
+        // You could show a toast notification here
+        console.error(result.error);
+      }
+    } catch (error: any) {
+      console.error("Failed to update access level:", error);
+    }
+  }
+
   const actionHandlers: FileActionHandlers = {
     onFileSelect: toggleFileSelection,
     onItemClick: handleItemClick,
@@ -235,6 +246,7 @@ export default function AllFilesPage() {
     onMove: handleMoveFile,
     onRename: handleRenameFile,
     onDelete: handleDeleteFile,
+    onChangeAccessLevel: handleChangeAccessLevel,
   }
 
   return (

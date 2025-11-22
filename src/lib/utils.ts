@@ -98,6 +98,7 @@ export function transformFileSystemNodeToFileItem(node: FileSystemNode, parentPa
     shared: node.access_level === "public", // Simplified assumption
     parentPath,
     variant: "standard",
+    access_level: node.access_level,
     children: node.children ? node.children.map(child => transformFileSystemNodeToFileItem(child, [...parentPath, node.name])) : undefined,
   }
 }

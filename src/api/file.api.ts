@@ -78,6 +78,11 @@ const getRecents = async (page: number = 1, limit: number = 20) => {
     return response.data;
 };
 
+const updateFileAccessLevel = async (id: string, data: any) => {
+    const response = await apiClient.patch(`/file-flow/file/${id}/update-access-level`, data);
+    return response.data;
+};
+
 export default {
     createFolder,
     renameFolder,
@@ -94,4 +99,5 @@ export default {
     restoreFileOrFolder,
     emptyTrash,
     getRecents,
+    updateFileAccessLevel,
 };

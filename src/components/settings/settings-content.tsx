@@ -9,21 +9,30 @@ import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/contexts/useAuth"
-import { 
-  User, 
-  Shield, 
-  Bell, 
-  Smartphone, 
-  HardDrive, 
-  Globe, 
-  Lock, 
-  Eye, 
+import { useTheme } from "@/contexts/ThemeContext"
+import {
+  User,
+  Shield,
+  Bell,
+  Smartphone,
+  HardDrive,
+  Globe,
+  Lock,
+  Eye,
   Download,
   Upload,
   Settings,
   Palette,
   Key,
-  CheckCircle2
+  CheckCircle2,
+  Sun,
+  Moon,
+  Monitor,
+  Mail,
+  UserCircle,
+  Calendar,
+  CheckCircle,
+  XCircle,
 } from "lucide-react"
 
 interface SettingsContentProps {
@@ -32,6 +41,7 @@ interface SettingsContentProps {
 
 export function SettingsContent({ activeTab }: SettingsContentProps) {
   const { user, setPin, changePin, setPinLoading, changePinLoading, saveUser } = useAuth()
+  const { theme, setTheme, resolvedTheme } = useTheme()
   const [pin, setPinValue] = useState("")
   const [confirmPin, setConfirmPin] = useState("")
   const [oldPin, setOldPin] = useState("")
@@ -42,18 +52,18 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
 
   const handleSetPin = async () => {
     setError("")
-    
+
     // Validation
     if (!pin || pin.length !== 4) {
       setError("PIN must be exactly 4 digits")
       return
     }
-    
+
     if (!/^\d+$/.test(pin)) {
       setError("PIN must contain only numbers")
       return
     }
-    
+
     if (pin !== confirmPin) {
       setError("PINs do not match")
       return
@@ -76,23 +86,23 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
 
   const handleChangePin = async () => {
     setError("")
-    
+
     // Validation
     if (!oldPin || oldPin.length !== 4) {
       setError("Old PIN must be exactly 4 digits")
       return
     }
-    
+
     if (!newPin || newPin.length !== 4) {
       setError("New PIN must be exactly 4 digits")
       return
     }
-    
+
     if (!/^\d+$/.test(oldPin) || !/^\d+$/.test(newPin)) {
       setError("PINs must contain only numbers")
       return
     }
-    
+
     if (newPin !== confirmNewPin) {
       setError("New PINs do not match")
       return
@@ -131,25 +141,110 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
             Profile Settings
           </CardTitle>
           <CardDescription>
-            Manage your account information and preferences
+            Your account information and details
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {user?.display_name && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <UserCircle className="h-4 w-4 text-muted-foreground" />
+                  Display Name
+                </Label>
+                <Input
+                  id="displayName"
+                  value={user.display_name || "Not set"}
+                  readOnly
+                  className="bg-muted"
+                />
+              </div>
+            )}
             <div className="space-y-2">
-              <Label htmlFor="displayName">Display Name</Label>
-              <Input id="displayName" placeholder="Enter your display name" />
+              <Label className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+                Email Address
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={user?.email || ""}
+                readOnly
+                className="bg-muted cursor-not-allowed"
+              />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input id="email" type="email" placeholder="your@email.com" />
+              <Label className="flex items-center gap-2">
+                <Shield className="h-4 w-4 text-muted-foreground" />
+                Role
+              </Label>
+              <Input
+                id="role"
+                value={user?.role || ""}
+                readOnly
+                className="bg-muted cursor-not-allowed"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Key className="h-4 w-4 text-muted-foreground" />
+                User ID
+              </Label>
+              <Input
+                id="userId"
+                value={user?.id || ""}
+                readOnly
+                className="bg-muted font-mono text-xs cursor-not-allowed"
+              />
+            </div>
+            {user?.last_login && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  Last Login
+                </Label>
+                <Input
+                  id="lastLogin"
+                  value={new Date(user.last_login).toLocaleString()}
+                  readOnly
+                  className="bg-muted cursor-not-allowed"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+              <div className="flex items-center gap-2">
+                {user?.email_verified ? (
+                  <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                )}
+                <div>
+                  <p className="text-sm font-medium">Email Verified</p>
+                  <p className="text-xs text-muted-foreground">
+                    {user?.email_verified ? "Verified" : "Not verified"}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+              <div className="flex items-center gap-2">
+                {user?.is_active ? (
+                  <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                )}
+                <div>
+                  <p className="text-sm font-medium">Account Status</p>
+                  <p className="text-xs text-muted-foreground">
+                    {user?.is_active ? "Active" : "Inactive"}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="bio">Bio</Label>
-            <Input id="bio" placeholder="Tell us about yourself" />
-          </div>
-          <Button>Save Changes</Button>
         </CardContent>
       </Card>
 
@@ -172,9 +267,9 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
           <div className="w-full bg-muted rounded-full h-2">
             <div className="bg-primary h-2 rounded-full" style={{ width: '45.2%' }}></div>
           </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <Badge variant="secondary">Free Plan</Badge>
-            <span>•</span>
+            <span className="hidden sm:inline">•</span>
             <span>100 GB total storage</span>
           </div>
         </CardContent>
@@ -191,20 +286,46 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
             Customize the look and feel of your application
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Dark Mode</Label>
-              <p className="text-sm text-muted-foreground">Switch between light and dark themes</p>
+        <CardContent className="space-y-6">
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Theme</Label>
+              <p className="text-sm text-muted-foreground">Choose your preferred color scheme</p>
             </div>
-            <Switch />
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Compact Mode</Label>
-              <p className="text-sm text-muted-foreground">Reduce spacing for more content</p>
+            <div className="flex flex-col sm:flex-row gap-1.5 p-1.5 bg-muted rounded-lg">
+              <Button
+                onClick={() => setTheme('light')}
+                variant={theme === 'light' ? 'default' : 'ghost'}
+                size="sm"
+                className="flex-1 p-2"
+              >
+                <Sun className="h-4 w-4" />
+                <span className="hidden sm:inline">Light</span>
+              </Button>
+              <Button
+                onClick={() => setTheme('dark')}
+                variant={theme === 'dark' ? 'default' : 'ghost'}
+                size="sm"
+                className="flex-1 p-2"
+              >
+                <Moon className="h-4 w-4" />
+                <span className="hidden sm:inline">Dark</span>
+              </Button>
+              <Button
+                onClick={() => setTheme('system')}
+                variant={theme === 'system' ? 'default' : 'ghost'}
+                size="sm"
+                className="flex-1 p-2"
+              >
+                <Monitor className="h-4 w-4" />
+                <span className="hidden sm:inline">System</span>
+              </Button>
             </div>
-            <Switch />
+            {theme === 'system' && (
+              <p className="text-xs text-muted-foreground">
+                Currently using {resolvedTheme === 'dark' ? 'dark' : 'light'} mode based on your system preference
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -260,7 +381,7 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="space-y-0.5">
               <Label>Enable 2FA</Label>
               <p className="text-sm text-muted-foreground">Use an authenticator app for additional security</p>
@@ -283,14 +404,14 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="space-y-0.5">
               <Label>Public Profile</Label>
               <p className="text-sm text-muted-foreground">Allow others to see your profile</p>
             </div>
             <Switch />
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="space-y-0.5">
               <Label>Analytics</Label>
               <p className="text-sm text-muted-foreground">Help improve the app with usage data</p>
@@ -323,21 +444,21 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="space-y-0.5">
               <Label>Security Alerts</Label>
               <p className="text-sm text-muted-foreground">Get notified about security events</p>
             </div>
             <Switch defaultChecked />
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="space-y-0.5">
               <Label>Storage Updates</Label>
               <p className="text-sm text-muted-foreground">Receive storage usage notifications</p>
             </div>
             <Switch defaultChecked />
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="space-y-0.5">
               <Label>Product Updates</Label>
               <p className="text-sm text-muted-foreground">Stay informed about new features</p>
@@ -359,14 +480,14 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="space-y-0.5">
               <Label>File Sharing</Label>
               <p className="text-sm text-muted-foreground">When someone shares files with you</p>
             </div>
             <Switch defaultChecked />
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="space-y-0.5">
               <Label>Storage Warnings</Label>
               <p className="text-sm text-muted-foreground">When approaching storage limits</p>
@@ -405,9 +526,9 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
               <div className="space-y-4">
                 {!isChangingPin ? (
                   <>
-                    <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
-                      <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                      <div>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+                      <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5 sm:mt-0" />
+                      <div className="flex-1 min-w-0">
                         <p className="font-medium text-green-900 dark:text-green-100">PIN Already Set</p>
                         <p className="text-sm text-green-700 dark:text-green-300">
                           You have already set a PIN for your account. Your session will be created when you verify your PIN.
@@ -415,8 +536,8 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
                       </div>
                     </div>
                     <div className="pt-4 border-t">
-                      <Button 
-                        onClick={() => setIsChangingPin(true)} 
+                      <Button
+                        onClick={() => setIsChangingPin(true)}
                         variant="outline"
                         className="w-full"
                       >
@@ -491,24 +612,25 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
                         <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
                       </div>
                     )}
-                    <div className="flex gap-2">
-                      <Button 
-                        onClick={handleChangePin} 
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button
+                        onClick={handleChangePin}
                         disabled={changePinLoading || oldPin.length !== 4 || newPin.length !== 4 || confirmNewPin.length !== 4}
-                        className="flex-1"
+                        className="flex-1 w-full sm:w-auto"
                       >
                         {changePinLoading ? "Changing PIN..." : "Change PIN"}
                       </Button>
-                      <Button 
+                      <Button
                         onClick={() => {
                           setIsChangingPin(false)
                           setOldPin("")
                           setNewPin("")
                           setConfirmNewPin("")
                           setError("")
-                        }} 
+                        }}
                         variant="outline"
                         disabled={changePinLoading}
+                        className="w-full sm:w-auto"
                       >
                         Cancel
                       </Button>
@@ -567,8 +689,8 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
                     <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
                   </div>
                 )}
-                <Button 
-                  onClick={handleSetPin} 
+                <Button
+                  onClick={handleSetPin}
                   disabled={setPinLoading || pin.length !== 4 || confirmPin.length !== 4}
                   className="w-full"
                 >
@@ -607,31 +729,31 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="border rounded-lg p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Download className="h-5 w-5 text-blue-600" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="font-medium">Google Drive</p>
                   <p className="text-sm text-muted-foreground">Connected for file sync</p>
                 </div>
               </div>
-              <Button variant="outline" size="sm">Disconnect</Button>
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">Disconnect</Button>
             </div>
           </div>
           <div className="border rounded-lg p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Upload className="h-5 w-5 text-green-600" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="font-medium">Dropbox</p>
                   <p className="text-sm text-muted-foreground">Connected for backup</p>
                 </div>
               </div>
-              <Button variant="outline" size="sm">Disconnect</Button>
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">Disconnect</Button>
             </div>
           </div>
         </CardContent>
@@ -651,10 +773,12 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="apiKey">API Key</Label>
-            <div className="flex gap-2">
-              <Input id="apiKey" value="sk_...abc123" readOnly />
-              <Button variant="outline" size="sm">Copy</Button>
-              <Button variant="outline" size="sm">Regenerate</Button>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Input id="apiKey" value="sk_...abc123" readOnly className="flex-1" />
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="flex-1 sm:flex-initial">Copy</Button>
+                <Button variant="outline" size="sm" className="flex-1 sm:flex-initial">Regenerate</Button>
+              </div>
             </div>
           </div>
           <p className="text-sm text-muted-foreground">
