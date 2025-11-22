@@ -7,10 +7,12 @@ import { UploadProvider } from "@/contexts/UploadContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/useAuth";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { FileProvider } from "@/contexts/fileContext";  
+import { FileProvider } from "@/contexts/fileContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { NotificationUIProvider } from "@/contexts/NotificationUIContext";
 import { SocketProvider } from "@/contexts/SocketContext";
+
+import { ApiTokenProvider } from "@/contexts/ApiTokenContext";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +31,7 @@ const AppProviders = ({ children }: { children: ReactNode }) => {
             </>
         ),
         (children: ReactNode) => <AuthProvider>{children}</AuthProvider>,
+        (children: ReactNode) => <ApiTokenProvider>{children}</ApiTokenProvider>,
         (children: ReactNode) => <FileProvider>{children}</FileProvider>,
         (children: ReactNode) => <NotificationUIProvider>{children}</NotificationUIProvider>,
         (children: ReactNode) => <NotificationProvider>{children}</NotificationProvider>,
