@@ -16,12 +16,8 @@ import {
   Bell,
   Smartphone,
   HardDrive,
-  Globe,
   Lock,
   Eye,
-  Download,
-  Upload,
-  Settings,
   Palette,
   Key,
   CheckCircle2,
@@ -34,6 +30,7 @@ import {
   CheckCircle,
   XCircle,
 } from "lucide-react"
+import { ApiTokenSettings } from "./api-token-settings"
 
 interface SettingsContentProps {
   activeTab: string
@@ -707,85 +704,17 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
     )
   }
 
-  const renderAppsTab = () => (
+  const renderApiTokenTab = () => (
     <motion.div
-      key="apps"
+      key="api-token"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      {/* Connected Apps */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Globe className="h-5 w-5" />
-            Connected Applications
-          </CardTitle>
-          <CardDescription>
-            Manage third-party applications connected to your account
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="border rounded-lg p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Download className="h-5 w-5 text-blue-600" />
-                </div>
-                <div className="min-w-0">
-                  <p className="font-medium">Google Drive</p>
-                  <p className="text-sm text-muted-foreground">Connected for file sync</p>
-                </div>
-              </div>
-              <Button variant="outline" size="sm" className="w-full sm:w-auto">Disconnect</Button>
-            </div>
-          </div>
-          <div className="border rounded-lg p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Upload className="h-5 w-5 text-green-600" />
-                </div>
-                <div className="min-w-0">
-                  <p className="font-medium">Dropbox</p>
-                  <p className="text-sm text-muted-foreground">Connected for backup</p>
-                </div>
-              </div>
-              <Button variant="outline" size="sm" className="w-full sm:w-auto">Disconnect</Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* API Access */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            API Access
-          </CardTitle>
-          <CardDescription>
-            Manage API keys and integrations
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="apiKey">API Key</Label>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Input id="apiKey" value="sk_...abc123" readOnly className="flex-1" />
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1 sm:flex-initial">Copy</Button>
-                <Button variant="outline" size="sm" className="flex-1 sm:flex-initial">Regenerate</Button>
-              </div>
-            </div>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Use this API key to integrate FileFlow with your applications
-          </p>
-        </CardContent>
-      </Card>
+      <ApiTokenSettings />
     </motion.div>
   )
 
@@ -799,8 +728,8 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
         return renderPinTab()
       case "notifications":
         return renderNotificationsTab()
-      case "apps":
-        return renderAppsTab()
+      case "api-token":
+        return renderApiTokenTab()
       default:
         return renderGeneralTab()
     }
