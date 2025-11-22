@@ -12,7 +12,6 @@ import {
   Trash2,
   Upload,
   Lock,
-  Shield,
   EyeOff,
 } from "lucide-react"
 
@@ -31,7 +30,7 @@ import { VerifyPinModal } from "@/components/session/VerifyPin"
 import { useAuth } from "@/contexts/useAuth"
 import { useSocket } from "@/contexts/SocketContext"
 import { ArrowLeft } from "lucide-react"
-import { ACCESS_LEVEL } from "@/types/file.types"
+import { ACCESS_LEVEL, type AccessLevel } from "@/types/file.types"
 import { AddNewFolder } from "@/components/file-manager/AddNewFolder"
 import { useNavigate } from "react-router-dom"
 
@@ -47,7 +46,7 @@ export function PrivateFilesPage() {
   const [isCheckingSession, setIsCheckingSession] = useState(true)
   const hasCheckedSession = useRef(false)
 
-  const { deleteFileOrFolder, privateFiles, createFolder } = useFile()
+  const { deleteFileOrFolder, privateFiles, createFolder, updateFileAccessLevel } = useFile()
   const { user, getPinSession } = useAuth()
   const navigate = useNavigate()
 
@@ -72,14 +71,14 @@ export function PrivateFilesPage() {
       try {
         // Try to get the current session
         const sessionResult = await getPinSession()
-        
+
         if (sessionResult.success && sessionResult.session) {
           // Check if session is valid (within 20 minutes)
           const verifiedAt = new Date(sessionResult.session.verified_at)
           const now = new Date()
           const diffInMinutes = (now.getTime() - verifiedAt.getTime()) / (1000 * 60)
           const isValid = sessionResult.session.pin_verified && diffInMinutes <= 20
-          
+
           if (isValid) {
             // Session is valid (within 20 minutes), auto-verify
             setIsPinVerified(true)
@@ -219,23 +218,36 @@ export function PrivateFilesPage() {
     }
   }
 
+  const handleChangeAccessLevel = async (file: FileItem, accessLevel: string) => {
+    try {
+      const result = await updateFileAccessLevel(file.id, { access_level: accessLevel as AccessLevel });
+      if (result.success) {
+        toast.success("Access level updated successfully!");
+      } else {
+        toast.error(result.error || "Failed to update access level");
+      }
+    } catch (error: any) {
+      console.error("Failed to update access level:", error);
+      toast.error("An error occurred while updating access level");
+    }
+  }
+
   const actionHandlers: FileActionHandlers = {
     onFileSelect: toggleFileSelection,
     onItemClick: handleItemClick,
     onDownload: (file) => console.log("Download file:", file.name),
     onShare: (file) => console.log("Share file:", file.name),
     onDelete: handleDeleteFile,
-    onEncrypt: (file) => console.log("Encrypt file:", file.name),
-    onDecrypt: (file) => console.log("Decrypt file:", file.name),
+    onChangeAccessLevel: handleChangeAccessLevel,
   }
 
   // Show loading state while checking session
   if (isCheckingSession) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
+      <div className="p-4 sm:p-6 flex items-center justify-center min-h-[400px]">
         <div className="text-center space-y-4">
-          <Lock className="h-12 w-12 text-muted-foreground mx-auto animate-pulse" />
-          <p className="text-muted-foreground">Checking session...</p>
+          <Lock className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mx-auto animate-pulse" />
+          <p className="text-sm sm:text-base text-muted-foreground">Checking session...</p>
         </div>
       </div>
     )
@@ -252,10 +264,10 @@ export function PrivateFilesPage() {
           description="This page contains sensitive information. Please verify your PIN to continue."
           required={true}
         />
-        <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <div className="p-4 sm:p-6 flex items-center justify-center min-h-[400px]">
           <div className="text-center space-y-4">
-            <Lock className="h-12 w-12 text-muted-foreground mx-auto" />
-            <p className="text-muted-foreground">Please verify your PIN to access private files</p>
+            <Lock className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mx-auto" />
+            <p className="text-sm sm:text-base text-muted-foreground px-4">Please verify your PIN to access private files</p>
           </div>
         </div>
       </>
@@ -271,50 +283,56 @@ export function PrivateFilesPage() {
         description="This page contains sensitive information. Please verify your PIN to continue."
         required={true}
       />
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               {currentPath.length > 0 && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handleBackClick}
-                  className="p-2"
+                  className="p-2 flex-shrink-0"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
               )}
-              <div>
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <Lock className="h-6 w-6 text-muted-foreground" />
-                  <h1 className="text-2xl font-semibold text-foreground">Private Files</h1>
+                  <Lock className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground flex-shrink-0" />
+                  <h1 className="text-xl sm:text-2xl font-semibold text-foreground truncate">Private Files</h1>
                 </div>
-                <p className="text-muted-foreground">
-                  {filteredFiles.length} private items • {encryptedCount} encrypted • {sensitiveCount} sensitive
+                <p className="text-sm sm:text-base text-muted-foreground mt-1">
+                  <span className="whitespace-nowrap">{filteredFiles.length} private items</span>
+                  <span className="hidden sm:inline"> • </span>
+                  <span className="block sm:inline">{encryptedCount} encrypted</span>
+                  <span className="hidden sm:inline"> • </span>
+                  <span className="block sm:inline">{sensitiveCount} sensitive</span>
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Button 
-                variant="outline" 
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => {
                   const lastItem = currentPath[currentPath.length - 1];
                   const folderId = lastItem?.id ?? "root";
                   const folderName = lastItem?.name ?? "root";
                   navigate(`/all-files/${folderId}`, {
-                    state: { 
-                      folder_id: folderId, 
+                    state: {
+                      folder_id: folderId,
                       folder_name: folderName,
                       access_level: ACCESS_LEVEL.PRIVATE
                     }
                   });
                 }}
+                className="flex-1 sm:flex-initial"
               >
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Private
+                <Upload className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Upload Private</span>
+                <span className="sm:hidden">Upload</span>
               </Button>
               <AddNewFolder
                 onAddFolder={handleCreateFolder}
@@ -335,39 +353,52 @@ export function PrivateFilesPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.2 }}
-          className="flex items-center justify-between gap-4"
+          className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4"
         >
-          <div className="flex items-center gap-3 flex-1">
-            <div className="relative flex-1 max-w-md">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 flex-1">
+            <div className="relative flex-1 sm:max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search private files..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-10 w-full"
               />
             </div>
-            <Button
-              variant={showSensitiveOnly ? "default" : "outline"}
-              size="sm"
-              onClick={() => setShowSensitiveOnly(!showSensitiveOnly)}
-            >
-              <EyeOff className="h-4 w-4 mr-2" />
-              Sensitive Only
-            </Button>
-            <Button variant="outline" size="sm">
-              <Filter className="h-4 w-4 mr-2" />
-              Filter
-            </Button>
-            <Button variant="outline" size="sm">
-              <SortAsc className="h-4 w-4 mr-2" />
-              Sort
-            </Button>
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              <Button
+                variant={showSensitiveOnly ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowSensitiveOnly(!showSensitiveOnly)}
+                className="flex-1 sm:flex-initial"
+              >
+                <EyeOff className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Sensitive Only</span>
+                <span className="sm:hidden">Sensitive</span>
+              </Button>
+              <Button variant="outline" size="sm" className="flex-1 sm:flex-initial">
+                <Filter className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Filter</span>
+              </Button>
+              <Button variant="outline" size="sm" className="flex-1 sm:flex-initial">
+                <SortAsc className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Sort</span>
+              </Button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {selectedFiles.length > 0 && <Badge variant="secondary">{selectedFiles.length} selected</Badge>}
-            <div className="flex items-center border rounded-lg">
+          <div className="flex items-center gap-2 justify-between sm:justify-end">
+            {selectedFiles.length > 0 && (
+              <Badge variant="secondary" className="sm:hidden">
+                {selectedFiles.length}
+              </Badge>
+            )}
+            {selectedFiles.length > 0 && (
+              <Badge variant="secondary" className="hidden sm:inline-flex">
+                {selectedFiles.length} selected
+              </Badge>
+            )}
+            <div className="flex items-center border rounded-lg ml-auto sm:ml-0">
               <Button
                 variant={viewMode === "grid" ? "default" : "ghost"}
                 size="sm"
@@ -394,22 +425,23 @@ export function PrivateFilesPage() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
-            className="flex items-center gap-3 p-4 bg-muted rounded-lg"
+            className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 p-4 bg-muted rounded-lg"
           >
-            <Checkbox checked={selectedFiles.length === filteredFiles.length} onCheckedChange={selectAllFiles} />
-            <span className="text-sm font-medium">{selectedFiles.length} private items selected</span>
-            <div className="flex items-center gap-2 ml-auto">
-              <Button variant="outline" size="sm">
-                <Shield className="h-4 w-4 mr-2" />
-                Encrypt
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <Checkbox checked={selectedFiles.length === filteredFiles.length} onCheckedChange={selectAllFiles} />
+              <span className="text-sm font-medium truncate">
+                <span className="hidden sm:inline">{selectedFiles.length} private items selected</span>
+                <span className="sm:hidden">{selectedFiles.length} selected</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
+              <Button variant="outline" size="sm" className="flex-1 sm:flex-initial">
+                <Download className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Download</span>
               </Button>
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Download
-              </Button>
-              <Button variant="outline" size="sm">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
+              <Button variant="outline" size="sm" className="flex-1 sm:flex-initial">
+                <Trash2 className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Delete</span>
               </Button>
             </div>
           </motion.div>

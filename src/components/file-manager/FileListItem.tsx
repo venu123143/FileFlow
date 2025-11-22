@@ -3,14 +3,15 @@ import { useState } from "react";
 import { isDeletedFile, isPrivateFile, isSharedFile } from "@/types/file-manager";
 import type { FileItem, PageConfig, ViewConfig, FileActionHandlers } from "@/types/file-manager";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { VideoPlayerModal } from "@/components/player/VideoPlayerModal";
 import { ImageViewer } from "@/components/custom/ImageViewer";
 import { isVideoFile, getVideoFileUrl } from "@/lib/video-utils";
 import { isImageFile, getImageFileUrl } from "@/lib/image-utils";
-import { MoreHorizontal, Download, Share2, Edit, Trash2, RotateCcw, Lock, Unlock, Users, Shield, Play, FolderOpen } from "lucide-react";
+import { ACCESS_LEVEL } from "@/types/file.types";
+import { MoreHorizontal, Download, Share2, Edit, Trash2, RotateCcw, Lock, Users, Shield, Play, FolderOpen, ShieldCheck, Globe, Check } from "lucide-react";
 
 interface FileListItemProps {
   file: FileItem;
@@ -40,10 +41,9 @@ export function FileListItem({
     onRename,
     onDelete,
     onRestore,
-    onEncrypt,
-    onDecrypt,
     onCustomAction,
-    onMove
+    onMove,
+    onChangeAccessLevel
   } = actionHandlers;
 
   const isVideo = isVideoFile(file);
@@ -287,22 +287,35 @@ export function FileListItem({
               Rename
             </DropdownMenuItem>
           )}
+          {onChangeAccessLevel && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <ShieldCheck className="h-4 w-4 mr-2" />
+                Change Access Level
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuItem onClick={() => onChangeAccessLevel(file, ACCESS_LEVEL.PUBLIC)}>
+                  <Globe className="h-4 w-4 mr-2" />
+                  Public
+                  {file.access_level === ACCESS_LEVEL.PUBLIC && <Check className="h-4 w-4 ml-auto" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onChangeAccessLevel(file, ACCESS_LEVEL.PROTECTED)}>
+                  <Users className="h-4 w-4 mr-2" />
+                  Protected
+                  {file.access_level === ACCESS_LEVEL.PROTECTED && <Check className="h-4 w-4 ml-auto" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onChangeAccessLevel(file, ACCESS_LEVEL.PRIVATE)}>
+                  <Lock className="h-4 w-4 mr-2" />
+                  Private
+                  {file.access_level === ACCESS_LEVEL.PRIVATE && <Check className="h-4 w-4 ml-auto" />}
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
           {onRestore && isDeletedFile(file) && (
             <DropdownMenuItem onClick={() => onRestore(file)}>
               <RotateCcw className="h-4 w-4 mr-2" />
               Restore
-            </DropdownMenuItem>
-          )}
-          {onEncrypt && isPrivateFile(file) && !file.encrypted && (
-            <DropdownMenuItem onClick={() => onEncrypt(file)}>
-              <Lock className="h-4 w-4 mr-2" />
-              Encrypt
-            </DropdownMenuItem>
-          )}
-          {onDecrypt && isPrivateFile(file) && file.encrypted && (
-            <DropdownMenuItem onClick={() => onDecrypt(file)}>
-              <Unlock className="h-4 w-4 mr-2" />
-              Decrypt
             </DropdownMenuItem>
           )}
           {renderCustomActions()}

@@ -299,23 +299,23 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
 
-    const getStatusColor = (status: string) => {
+    const getStatusColor = (status: string): React.CSSProperties => {
         switch (status) {
-            case 'completed': return 'text-green-600';
-            case 'error': return 'text-red-600';
-            case 'processing': return 'text-orange-600';
-            case 'uploading': return 'text-blue-600';
-            default: return 'text-gray-600';
+            case 'completed': return { color: 'var(--color-upload-success-icon)' };
+            case 'error': return { color: 'var(--color-upload-button-red)' };
+            case 'processing': return { color: 'var(--color-upload-warning-icon)' };
+            case 'uploading': return { color: 'var(--color-upload-icon-text)' };
+            default: return { color: 'var(--color-upload-text-secondary)' };
         }
     };
 
-    const getProgressBarColor = (status: string) => {
+    const getProgressBarColor = (status: string): React.CSSProperties => {
         switch (status) {
-            case 'completed': return 'bg-green-500';
-            case 'error': return 'bg-red-500';
-            case 'processing': return 'bg-orange-500';
-            case 'uploading': return 'bg-blue-500';
-            default: return 'bg-gray-300';
+            case 'completed': return { backgroundColor: 'var(--color-upload-success-icon)' };
+            case 'error': return { backgroundColor: 'var(--color-upload-button-red)' };
+            case 'processing': return { backgroundColor: 'var(--color-upload-warning-icon)' };
+            case 'uploading': return { backgroundColor: 'var(--color-upload-icon-text)' };
+            default: return { backgroundColor: 'var(--color-upload-progress-bg)' };
         }
     };
 
@@ -353,10 +353,23 @@ const FileUploader: React.FC<FileUploaderProps> = ({
 
             {/* Drop Zone */}
             <div
-                className={`lg:cursor-pointer relative m-6 border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${isDragOver
-                    ? 'border-blue-400 bg-blue-50'
-                    : 'border-gray-300 hover:border-gray-400 hover:bg-gray-100'
-                    }`}
+                className="lg:cursor-pointer relative m-4 sm:m-6 border-2 border-dashed rounded-xl p-6 sm:p-8 text-center transition-all duration-200"
+                style={{
+                    borderColor: isDragOver ? 'var(--color-upload-dropzone-active-border)' : 'var(--color-upload-dropzone-border)',
+                    backgroundColor: isDragOver ? 'var(--color-upload-dropzone-active-bg)' : 'transparent'
+                }}
+                onMouseEnter={(e) => {
+                    if (!isDragOver) {
+                        e.currentTarget.style.borderColor = 'var(--color-upload-dropzone-border-hover)';
+                        e.currentTarget.style.backgroundColor = 'var(--color-upload-dropzone-bg-hover)';
+                    }
+                }}
+                onMouseLeave={(e) => {
+                    if (!isDragOver) {
+                        e.currentTarget.style.borderColor = 'var(--color-upload-dropzone-border)';
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                    }
+                }}
                 onDrop={onDrop}
                 onDragOver={(e) => {
                     e.preventDefault();
@@ -375,22 +388,38 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                 />
 
                 <div className="space-y-4">
-                    <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center ${isDragOver ? 'bg-blue-100' : 'bg-gray-100'
-                        }`}>
-                        <Upload className={`w-8 h-8 ${isDragOver ? 'text-blue-600' : 'text-gray-400'}`} />
+                    <div 
+                        className="w-12 h-12 sm:w-16 sm:h-16 mx-auto rounded-full flex items-center justify-center"
+                        style={{ backgroundColor: 'var(--color-upload-icon-bg)' }}
+                    >
+                        <Upload 
+                            className="w-6 h-6 sm:w-8 sm:h-8"
+                            style={{ color: isDragOver ? 'var(--color-upload-icon-text)' : 'var(--color-upload-icon-text-muted)' }}
+                        />
                     </div>
                     <div>
-                        <p className="text-lg font-medium text-gray-700">
+                        <p 
+                            className="text-base sm:text-lg font-medium"
+                            style={{ color: 'var(--color-upload-text-primary)' }}
+                        >
                             {isDragOver ? 'Release to upload' : 'Drop files here or click to browse'}
                         </p>
-                        <p className="text-sm text-gray-500 mt-1">
+                        <p 
+                            className="text-sm mt-1"
+                            style={{ color: 'var(--color-upload-text-secondary)' }}
+                        >
                             Maximum {maxFiles} file{maxFiles > 1 ? 's' : ''} allowed
                         </p>
                         <div className="flex flex-wrap gap-2 mt-3 justify-center">
                             {allowedTypes.map((config, index) => (
                                 <span
                                     key={index}
-                                    className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-200"
+                                    className="px-2 py-1 text-xs rounded-full border"
+                                    style={{
+                                        backgroundColor: 'var(--color-upload-badge-bg)',
+                                        color: 'var(--color-upload-badge-text)',
+                                        borderColor: 'var(--color-upload-badge-border)'
+                                    }}
                                 >
                                     {config.type} (max {config.maxSize}MB)
                                 </span>
@@ -401,14 +430,29 @@ const FileUploader: React.FC<FileUploaderProps> = ({
             </div>
             {/* Warning Message */}
             {showWarning && (
-                <div className="m-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div 
+                    className="m-4 sm:m-6 p-4 border rounded-lg"
+                    style={{
+                        backgroundColor: 'var(--color-upload-warning-bg)',
+                        borderColor: 'var(--color-upload-warning-border)'
+                    }}
+                >
                     <div className="flex items-start">
-                        <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5 mr-3 flex-shrink-0" />
+                        <AlertTriangle 
+                            className="w-5 h-5 mt-0.5 mr-3 flex-shrink-0"
+                            style={{ color: 'var(--color-upload-warning-icon)' }}
+                        />
                         <div>
-                            <h3 className="text-sm font-medium text-yellow-800">
+                            <h3 
+                                className="text-sm font-medium"
+                                style={{ color: 'var(--color-upload-warning-heading)' }}
+                            >
                                 Upload in Progress
                             </h3>
-                            <p className="mt-1 text-sm text-yellow-700">
+                            <p 
+                                className="mt-1 text-sm"
+                                style={{ color: 'var(--color-upload-warning-text)' }}
+                            >
                                 <strong>Please do not refresh or close this page</strong> while files are being uploaded.
                                 You can freely go to other pages - uploads will continue in the background.
                             </p>
@@ -418,18 +462,40 @@ const FileUploader: React.FC<FileUploaderProps> = ({
             )}
             {/* Close Button - Show when all files are completed */}
             {allFilesCompleted && (
-                <div className="p-6 bg-green-50 border-t border-green-200">
-                    <div className="flex items-center justify-center space-x-3">
-                        <CheckCircle className="w-5 h-5 text-green-600" />
-                        <span className="text-sm font-medium text-green-800">
+                <div 
+                    className="m-4 sm:m-6 p-4 sm:p-6 border rounded-lg"
+                    style={{
+                        backgroundColor: 'var(--color-upload-success-bg)',
+                        borderColor: 'var(--color-upload-success-border)'
+                    }}
+                >
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                        <CheckCircle 
+                            className="w-5 h-5"
+                            style={{ color: 'var(--color-upload-success-icon)' }}
+                        />
+                        <span 
+                            className="text-sm font-medium text-center"
+                            style={{ color: 'var(--color-upload-success-heading)' }}
+                        >
                             All files uploaded successfully!
                         </span>
                         <button
                             onClick={handleClose}
-                            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200"
+                            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-background transition-colors duration-200"
+                            style={{
+                                backgroundColor: 'var(--color-upload-success-button)'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = 'var(--color-upload-success-button-hover)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'var(--color-upload-success-button)';
+                            }}
                         >
                             <CheckCircle className="w-4 h-4 mr-2" />
-                            Close & Return to Files
+                            <span className="hidden sm:inline">Close & Return to Files</span>
+                            <span className="sm:hidden">Close</span>
                         </button>
                     </div>
                 </div>
@@ -437,8 +503,14 @@ const FileUploader: React.FC<FileUploaderProps> = ({
 
             {/* File List */}
             {selectedFiles.length > 0 && (
-                <div className="p-6 bg-gray-50">
-                    <h3 className="text-sm font-medium text-gray-900 mb-4">
+                <div 
+                    className="m-4 sm:m-6 p-4 sm:p-6 rounded-lg"
+                    style={{ backgroundColor: 'var(--color-upload-filelist-bg)' }}
+                >
+                    <h3 
+                        className="text-sm font-medium mb-4"
+                        style={{ color: 'var(--color-upload-text-heading)' }}
+                    >
                         Selected Files ({selectedFiles.length}/{maxFiles})
                     </h3>
                     <div className="space-y-3">
@@ -461,25 +533,47 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                             return (
                                 <div
                                     key={file.name}
-                                    className="bg-white rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow duration-200"
+                                    className="rounded-lg p-4 border hover:shadow-md transition-shadow duration-200"
+                                    style={{
+                                        backgroundColor: 'var(--color-upload-filelist-card)',
+                                        borderColor: 'var(--color-upload-filelist-border)'
+                                    }}
                                 >
                                     <div className="flex items-start justify-between mb-3">
-                                        <div className="flex items-center space-x-3 flex-1 min-w-0">
-                                            <div className="flex-shrink-0 text-gray-600">
+                                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                                            <div 
+                                                className="flex-shrink-0"
+                                                style={{ color: 'var(--color-upload-filelist-icon)' }}
+                                            >
                                                 {getFileIcon(getFileType(file))}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-gray-900 truncate">
+                                                <p 
+                                                    className="text-sm font-medium truncate"
+                                                    style={{ color: 'var(--color-upload-filelist-text)' }}
+                                                >
                                                     {file.name}
                                                 </p>
-                                                <p className="text-xs text-gray-500">
+                                                <p 
+                                                    className="text-xs"
+                                                    style={{ color: 'var(--color-upload-filelist-text-muted)' }}
+                                                >
                                                     {formatFileSize(file.size)}
                                                 </p>
                                             </div>
                                         </div>
                                         <button
                                             onClick={() => handleRemoveFile(file)}
-                                            className="flex-shrink-0 p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors duration-200"
+                                            className="flex-shrink-0 p-1 rounded-full transition-colors duration-200"
+                                            style={{ color: 'var(--color-upload-filelist-text-muted)' }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.color = 'var(--color-upload-remove-hover-text)';
+                                                e.currentTarget.style.backgroundColor = 'var(--color-upload-remove-hover-bg)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.color = 'var(--color-upload-filelist-text-muted)';
+                                                e.currentTarget.style.backgroundColor = 'transparent';
+                                            }}
                                         >
                                             <X className="w-4 h-4" />
                                         </button>
@@ -488,7 +582,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                                     {/* Progress Bar */}
                                     <div className="mb-3">
                                         <div className="flex items-center justify-between mb-1">
-                                            <span className={`text-xs font-medium ${getStatusColor(fileState.status)}`}>
+                                            <span className="text-xs font-medium" style={getStatusColor(fileState.status)}>
                                                 {fileState.status === 'processing' ? 'Processing...'
                                                     : fileState.status === 'error' ? 'Failed'
                                                         : fileState.status === 'completed' ? 'Completed'
@@ -496,26 +590,42 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                                                                 : 'Ready to upload'}
                                             </span>
                                             {fileState.status === 'uploading' && fileState.totalChunks > 1 && (
-                                                <span className="text-xs text-gray-500">
+                                                <span 
+                                                    className="text-xs"
+                                                    style={{ color: 'var(--color-upload-filelist-text-muted)' }}
+                                                >
                                                     Chunk {fileState.lastUploadedChunk}/{fileState.totalChunks}
                                                 </span>
                                             )}
                                         </div>
-                                        <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                        <div 
+                                            className="h-1.5 rounded-full overflow-hidden"
+                                            style={{ backgroundColor: 'var(--color-upload-progress-bg)' }}
+                                        >
                                             <div
-                                                className={`h-full transition-all duration-300 rounded-full ${getProgressBarColor(fileState.status)}`}
-                                                style={{ width: `${fileState.progress}%` }}
+                                                className="h-full transition-all duration-300 rounded-full"
+                                                style={{ 
+                                                    width: `${fileState.progress}%`,
+                                                    ...getProgressBarColor(fileState.status)
+                                                }}
                                             />
                                         </div>
                                     </div>
 
                                     {/* Action Buttons */}
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex space-x-2">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                                        <div className="flex flex-wrap gap-2">
                                             {fileState.status === 'idle' && (
                                                 <button
                                                     onClick={() => handleFileUpload(file)}
-                                                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-colors duration-200"
+                                                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 dark:focus:ring-offset-background transition-colors duration-200"
+                                                    style={{ backgroundColor: 'var(--color-upload-button-blue)' }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'var(--color-upload-button-blue-hover)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'var(--color-upload-button-blue)';
+                                                    }}
                                                 >
                                                     <Upload className="w-3 h-3 mr-1" />
                                                     Upload
@@ -524,7 +634,14 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                                             {fileState.status === 'error' && (
                                                 <button
                                                     onClick={() => handleFileUpload(file)}
-                                                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 transition-colors duration-200"
+                                                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 dark:focus:ring-offset-background transition-colors duration-200"
+                                                    style={{ backgroundColor: 'var(--color-upload-button-red)' }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'var(--color-upload-button-red-hover)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'var(--color-upload-button-red)';
+                                                    }}
                                                 >
                                                     <RotateCcw className="w-3 h-3 mr-1" />
                                                     Retry
@@ -533,7 +650,14 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                                             {fileState.status === 'uploading' && fileState.totalChunks > 1 && (
                                                 <button
                                                     onClick={() => abortUpload(file.name)}
-                                                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-1 transition-colors duration-200"
+                                                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-1 dark:focus:ring-offset-background transition-colors duration-200"
+                                                    style={{ backgroundColor: 'var(--color-upload-button-gray)' }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'var(--color-upload-button-gray-hover)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'var(--color-upload-button-gray)';
+                                                    }}
                                                 >
                                                     <Pause className="w-3 h-3 mr-1" />
                                                     Cancel
@@ -542,7 +666,14 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                                             {fileState.status === 'completed' && fileState.url && (
                                                 <button
                                                     onClick={() => openFile(file)}
-                                                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 transition-colors duration-200"
+                                                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 dark:focus:ring-offset-background transition-colors duration-200"
+                                                    style={{ backgroundColor: 'var(--color-upload-button-green)' }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'var(--color-upload-button-green-hover)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'var(--color-upload-button-green)';
+                                                    }}
                                                 >
                                                     <Play className="w-3 h-3 mr-1" />
                                                     Open
@@ -551,7 +682,11 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                                         </div>
 
                                         {fileState.error && (
-                                            <p className="text-xs text-red-600 truncate max-w-xs" title={fileState.error}>
+                                            <p 
+                                                className="text-xs truncate max-w-xs" 
+                                                title={fileState.error}
+                                                style={{ color: 'var(--color-upload-button-red)' }}
+                                            >
                                                 {fileState.error}
                                             </p>
                                         )}

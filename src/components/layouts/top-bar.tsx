@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useLocation, Link } from "react-router-dom"
-import { Menu } from "lucide-react"
+import { Menu, Sun, Moon } from "lucide-react"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -11,8 +11,10 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
+import { Button } from "@/components/ui/button"
 import { UserDropdown } from "@/components/user/user-dropdown"
 import { useAuth } from '@/contexts/useAuth'
+import { useTheme } from '@/contexts/ThemeContext'
 
 interface TopBarProps {
   onSidebarToggle: () => void
@@ -21,6 +23,7 @@ interface TopBarProps {
 export function TopBar({ onSidebarToggle }: TopBarProps) {
   const location = useLocation()
   const { user } = useAuth()
+  const { resolvedTheme, toggleTheme } = useTheme()
   const generateBreadcrumbs = () => {
     const pathnames = location.pathname.split('/').filter(x => x)
 
@@ -55,13 +58,14 @@ export function TopBar({ onSidebarToggle }: TopBarProps) {
     <div className="h-16 border-b border-border bg-background px-6 flex items-center justify-between">
       <div className="flex items-center gap-4">
         {/* Sidebar Toggle Button */}
-        <button
+        <Button
           onClick={onSidebarToggle}
-          className="p-2 rounded-md hover:bg-accent transition-colors"
+          variant="ghost"
+          size="icon"
           title="Toggle sidebar (Ctrl+B)"
         >
           <Menu className="w-5 h-5" />
-        </button>
+        </Button>
 
         <Breadcrumb className="md:block hidden">
           <BreadcrumbList>
@@ -82,8 +86,22 @@ export function TopBar({ onSidebarToggle }: TopBarProps) {
           </BreadcrumbList>
         </Breadcrumb>
       </div>
-
-      <UserDropdown name={user?.display_name} email={user?.email} />
+      <div className="flex items-center lg:gap-2">
+        {/* Theme Toggle Button */}
+        <Button
+          onClick={toggleTheme}
+          variant="ghost"
+          size="icon"
+          title={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} mode`}
+        >
+          {resolvedTheme === 'dark' ? (
+            <Sun className="w-5 h-5" />
+          ) : (
+            <Moon className="w-5 h-5" />
+          )}
+        </Button>
+        <UserDropdown name={user?.display_name} email={user?.email} />
+      </div>
     </div>
   )
 }

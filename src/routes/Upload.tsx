@@ -32,20 +32,20 @@ const Upload = () => {
     ];
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-            <div className="container mx-auto px-4 py-8">
+        <div className="min-h-screen" style={{ background: 'linear-gradient(to bottom right, var(--color-upload-bg-gradient-from), var(--color-upload-bg-gradient-to))' }}>
+            <div className="container mx-auto px-4 py-6 sm:py-8">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center space-x-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
+                    <div className="flex items-center gap-3 sm:space-x-4">
                         <button
                             onClick={() => navigate(-1)}
-                            className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all duration-200"
+                            className="p-2 hover:bg-accent hover:shadow-sm rounded-lg transition-all duration-200"
                         >
-                            <ArrowLeft className="w-5 h-5 text-gray-600" />
+                            <ArrowLeft className="w-5 h-5 text-muted-foreground" />
                         </button>
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-900">Upload Files to {folder_name}</h1>
-                            <p className="text-sm text-gray-600">Add files to your folder</p>
+                            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Upload Files to {folder_name || 'Folder'}</h1>
+                            <p className="text-sm text-muted-foreground">Add files to your folder</p>
                         </div>
                     </div>
                 </div>

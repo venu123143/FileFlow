@@ -38,20 +38,6 @@ export const privatePageConfig: PageConfig = {
   showSensitive: true,
   emptyStateMessage: "No private files found",
   emptyStateIcon: Lock,
-  customActions: [
-    {
-      label: "Encrypt",
-      icon: Lock,
-      action: () => {},
-      variant: "secondary",
-    },
-    {
-      label: "Decrypt",
-      icon: Lock,
-      action: () => {},
-      variant: "secondary",
-    },
-  ],
 };
 
 // Shared files page configuration

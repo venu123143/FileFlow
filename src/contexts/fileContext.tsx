@@ -10,6 +10,7 @@ import type {
     ShareFileOrFolderInput,
     FileSystemNode,
     SharedFileSystemNode,
+    AccessLevel,
 } from '@/types/file.types';
 
 interface FileState {
@@ -85,6 +86,7 @@ interface FileContextType extends FileState {
     deleteFileOrFolder: (id: string) => MutationResult;
     restoreFileOrFolder: (id: string) => MutationResult;
     emptyTrash: () => MutationResult;
+    updateFileAccessLevel: (id: string, data: { access_level: AccessLevel }) => MutationResult;
 }
 
 const FileContext = createContext<FileContextType | undefined>(undefined);
@@ -528,6 +530,37 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
+    const { mutateAsync: updateFileAccessLevelMutationFn } = useMutation({
+        mutationFn: async ({ id, data }: { id: string; data: { access_level: AccessLevel } }) => {
+            const result = await fileApi.updateFileAccessLevel(id, data);
+            return result.data;
+        },
+        retry: false,
+        onSuccess: async () => {
+            // Refetch both queries to ensure data is up to date after access level change
+            await Promise.all([
+                queryClient.refetchQueries({ queryKey: ['fileSystemTree'] }),
+                queryClient.refetchQueries({ queryKey: ['privateFiles'] }),
+            ]);
+            dispatch({ type: 'SET_LOADING', loading: false });
+        },
+        onError: () => {
+            dispatch({ type: 'SET_LOADING', loading: false });
+        },
+    });
+
+    const updateFileAccessLevel = async (id: string, data: { access_level: AccessLevel }) => {
+        try {
+            dispatch({ type: 'SET_LOADING', loading: true });
+            await updateFileAccessLevelMutationFn({ id, data });
+            return { success: true };
+        } catch (error: any) {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to update file access level.';
+            return { success: false, error: errorMessage };
+        }
+    };
+
     const value: FileContextType = {
         ...state,
         loading: state.loading || fileSystemTreeLoading || trashLoading || privateFilesLoading,
@@ -546,6 +579,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         deleteFileOrFolder,
         restoreFileOrFolder,
         emptyTrash,
+        updateFileAccessLevel,
     };
 
     return <FileContext.Provider value={value}>{children}</FileContext.Provider>;

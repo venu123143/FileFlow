@@ -16,6 +16,7 @@ export interface BaseFileItem {
   parentPath: string[];
   children?: FileItem[];
   file_info?: FileInfo;
+  access_level?: string;
 }
 
 // Extended interfaces for different page types
@@ -110,9 +111,8 @@ export interface FileActionHandlers {
   onDelete?: (file: FileItem) => void;
   onRename?: (file: FileItem) => void;
   onRestore?: (file: FileItem) => void;
-  onEncrypt?: (file: FileItem) => void;
-  onDecrypt?: (file: FileItem) => void;
   onMove?: (file: FileItem) => void;
+  onChangeAccessLevel?: (file: FileItem, accessLevel: string) => void;
   onPermissionChange?: (file: FileItem, permission: string) => void;
   onCustomAction?: (action: string, file: FileItem) => void;
 }
