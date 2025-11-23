@@ -51,7 +51,7 @@ export function ShareFileModal({
             page: 1,
             limit: 20,
             is_active: true,
-            email_verified: true
+            email_verified: false
           })
           setUsers(Array.isArray(result) ? result : [])
           setShowDropdown(true)

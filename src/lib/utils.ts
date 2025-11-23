@@ -1,7 +1,7 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import type { FileSystemNode } from "@/types/file.types"
-import type { StandardFileItem, DeletedFileItem, PrivateFileItem } from "@/types/file-manager"
+import type { FileSystemNode, SharedFileSystemNode } from "@/types/file.types"
+import type { StandardFileItem, DeletedFileItem, PrivateFileItem, SharedFileItem } from "@/types/file-manager"
 import {
   FileText,
   FolderIcon,
@@ -192,4 +192,52 @@ export function transformFileSystemNodeToPrivateFileItem(node: FileSystemNode, p
 // Transform FileSystemNode array to PrivateFileItem array
 export function transformFileSystemNodesToPrivateFileItems(nodes: FileSystemNode[]): PrivateFileItem[] {
   return nodes.map(node => transformFileSystemNodeToPrivateFileItem(node))
+}
+
+// Transform SharedFileSystemNode to SharedFileItem
+export function transformSharedFileSystemNodeToSharedFileItem(node: SharedFileSystemNode, parentPath: string[] = []): SharedFileItem {
+  const isFolder = node.is_folder
+  const fileType = node.file_info?.file_type || null
+  const size = node.file_info?.file_size || 0
+  const thumbnail = node.file_info?.thumbnail_path || null
+
+  // Handle potential null updated_at
+  const modifiedDate = node.updated_at || node.created_at
+
+  return {
+    id: node.id,
+    name: node.name,
+    type: isFolder ? "folder" : "file",
+    fileType: isFolder ? "folder" : getFileTypeCategory(fileType),
+    size: formatFileSize(size),
+    modified: formatRelativeTime(modifiedDate),
+    icon: isFolder ? FolderIcon : getFileIcon(fileType),
+    thumbnail,
+    file_info: node.file_info || undefined,
+    starred: false, // This would need to be fetched from favorites API
+    shared: true,
+    parentPath,
+    variant: "shared",
+    sharedBy: {
+      name: node.shared_by_user?.display_name || "Unknown",
+      avatar: node.shared_by_user?.avatar_url || null,
+      initials: (node.shared_by_user?.display_name || "U").charAt(0).toUpperCase(),
+    },
+    sharedWith: [
+      {
+        name: node.shared_with_user?.display_name || "Unknown",
+        avatar: node.shared_with_user?.avatar_url || null,
+        initials: (node.shared_with_user?.display_name || "U").charAt(0).toUpperCase(),
+      }
+    ],
+    permission: (node.permission_level as "view" | "edit" | "admin") || "view",
+    sharedDate: formatRelativeTime(node.share_created_at),
+    isOwner: false, // This will be overridden in the page component based on current user
+    children: node.children ? node.children.map((child: SharedFileSystemNode) => transformSharedFileSystemNodeToSharedFileItem(child, [...parentPath, node.name])) : undefined,
+  }
+}
+
+// Transform SharedFileSystemNode array to SharedFileItem array
+export function transformSharedFileSystemNodesToSharedFileItems(nodes: SharedFileSystemNode[]): SharedFileItem[] {
+  return nodes.map(node => transformSharedFileSystemNodeToSharedFileItem(node))
 }
