@@ -7,7 +7,6 @@ const tabs = [
   { id: "general", label: "General" },
   { id: "security", label: "Security" },
   { id: "pin", label: "PIN" },
-  { id: "notifications", label: "Notifications" },
   { id: "api-token", label: "API Token" },
 ]
 

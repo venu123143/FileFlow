@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { motion } from "framer-motion"
 import {
   Grid3X3,
@@ -9,13 +9,7 @@ import {
   Filter,
   SortAsc,
   Download,
-  Trash2,
-  FileText,
-  Video,
-  FolderIcon,
   Users,
-  UserPlus,
-  Link,
   Settings,
 } from "lucide-react"
 
@@ -27,99 +21,28 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FileManager } from "@/components/file-manager/FileManager"
 import { sharedPageConfig, defaultViewConfig } from "@/config/page-configs"
 import { useFile } from "@/contexts/fileContext"
-import { toast } from "sonner"
-import type { SharedFileItem, FileActionHandlers, FileItem } from "@/types/file-manager"
+import type { FileActionHandlers, FileItem } from "@/types/file-manager"
+import { transformSharedFileSystemNodesToSharedFileItems } from "@/lib/utils"
+import { useAuth } from "@/contexts/useAuth"
+import { BreadcrumbNavigation } from "@/components/file-manager/BreadcrumbNavigation"
 
-const mockSharedFiles: SharedFileItem[] = [
-  {
-    id: "1",
-    name: "Marketing Campaign.pptx",
-    type: "file",
-    fileType: "presentation",
-    size: "12.4 MB",
-    modified: "2 hours ago",
-    icon: FileText,
-    thumbnail: null,
-    starred: true,
-    shared: true,
-    parentPath: [],
-    variant: "shared",
-    sharedBy: { name: "John Doe", avatar: "/john-avatar.png", initials: "JD" },
-    sharedWith: [
-      { name: "Alice Smith", avatar: "/alice-avatar.png", initials: "AS" },
-      { name: "Bob Wilson", avatar: "/bob-avatar.png", initials: "BW" },
-    ],
-    permission: "edit",
-    sharedDate: "2024-01-15",
-    isOwner: false,
-  },
-  {
-    id: "2",
-    name: "Design Assets",
-    type: "folder",
-    fileType: "folder",
-    size: "234 MB",
-    modified: "1 day ago",
-    icon: FolderIcon,
-    thumbnail: null,
-    starred: false,
-    shared: true,
-    parentPath: [],
-    variant: "shared",
-    sharedBy: { name: "Sophie Chamberlain", avatar: "/sophie-avatar.png", initials: "SC" },
-    sharedWith: [
-      { name: "Design Team", avatar: null, initials: "DT" },
-      { name: "Marketing Team", avatar: null, initials: "MT" },
-    ],
-    permission: "view",
-    sharedDate: "2024-01-10",
-    isOwner: true,
-  },
-  {
-    id: "3",
-    name: "Project Demo.mp4",
-    type: "file",
-    fileType: "video",
-    size: "89.2 MB",
-    modified: "3 days ago",
-    icon: Video,
-    starred: false,
-    shared: true,
-    parentPath: [],
-    variant: "shared",
-    sharedBy: { name: "Mike Johnson", avatar: "/mike-avatar.png", initials: "MJ" },
-    sharedWith: [{ name: "Client Team", avatar: null, initials: "CT" }],
-    permission: "view",
-    sharedDate: "2024-01-08",
-    isOwner: false,
-  },
-  {
-    id: "4",
-    name: "Brand Guidelines.pdf",
-    type: "file",
-    fileType: "pdf",
-    size: "5.8 MB",
-    modified: "1 week ago",
-    icon: FileText,
-    thumbnail: null,
-    starred: true,
-    shared: true,
-    parentPath: [],
-    variant: "shared",
-    sharedBy: { name: "Sophie Chamberlain", avatar: "/sophie-avatar.png", initials: "SC" },
-    sharedWith: [{ name: "Everyone", avatar: null, initials: "EV" }],
-    permission: "view",
-    sharedDate: "2024-01-01",
-    isOwner: true,
-  },
-]
+
 
 export function SharedFilesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState("all")
-  const { getAllSharedFilesWithMe, getAllSharedFilesByMe, getAllSharedFiles, deleteFileOrFolder } = useFile()
+  const [currentPath, setCurrentPath] = useState<Array<{ id: string, name: string }>>([])
+  const {
+    getAllSharedFilesWithMe,
+    getAllSharedFilesByMe,
+    getAllSharedFiles,
+    sharedFiles,
+    sharedFilesByMe,
+    sharedFilesWithMe,
+  } = useFile()
+  const { user } = useAuth()
 
   useEffect(() => {
     getAllSharedFilesWithMe()
@@ -127,14 +50,45 @@ export function SharedFilesPage() {
     getAllSharedFiles()
   }, [])
 
-  const filteredFiles = mockSharedFiles.filter((file) => {
-    const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesTab =
-      activeTab === "all" ||
-      (activeTab === "shared-by-me" && file.isOwner) ||
-      (activeTab === "shared-with-me" && !file.isOwner)
-    return matchesSearch && matchesTab
-  })
+  // Reset path when tab changes
+  useEffect(() => {
+    setCurrentPath([])
+  }, [activeTab])
+
+  const transformedFiles = useMemo(() => {
+    let filesToTransform: any[] = [];
+
+    if (activeTab === "all") {
+      filesToTransform = sharedFiles;
+    } else if (activeTab === "shared-by-me") {
+      filesToTransform = sharedFilesByMe;
+    } else if (activeTab === "shared-with-me") {
+      filesToTransform = sharedFilesWithMe;
+    }
+
+    return transformSharedFileSystemNodesToSharedFileItems(filesToTransform).map(file => ({
+      ...file,
+      isOwner: file.sharedBy.name === user?.display_name // Simple check, ideally check ID
+    }));
+  }, [sharedFiles, sharedFilesByMe, sharedFilesWithMe, activeTab, user]);
+
+  const currentItems = useMemo(() => {
+    let items: FileItem[] = transformedFiles
+    for (const folder of currentPath) {
+      const foundFolder = items.find((item) => item.id === folder.id && item.type === "folder")
+      if (foundFolder?.children) {
+        items = foundFolder.children
+      }
+    }
+    return items
+  }, [currentPath, transformedFiles])
+
+  const filteredFiles = useMemo(() => {
+    return currentItems.filter((file) => {
+      const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase())
+      return matchesSearch
+    })
+  }, [currentItems, searchQuery])
 
   const toggleFileSelection = (fileId: string) => {
     setSelectedFiles((prev) => (prev.includes(fileId) ? prev.filter((id) => id !== fileId) : [...prev, fileId]))
@@ -144,56 +98,49 @@ export function SharedFilesPage() {
     setSelectedFiles(selectedFiles.length === filteredFiles.length ? [] : filteredFiles.map((f) => f.id))
   }
 
-  const sharedByMeCount = mockSharedFiles.filter((f) => f.isOwner).length
-  const sharedWithMeCount = mockSharedFiles.filter((f) => !f.isOwner).length
+  const sharedByMeCount = sharedFilesByMe.length
+  const sharedWithMeCount = sharedFilesWithMe.length
 
-  const handleDeleteFile = async (file: FileItem) => {
-    try {
-      const result = await deleteFileOrFolder(file.id);
-      if (result.success) {
-        toast.success(`${file.type === 'folder' ? 'Folder' : 'File'} deleted successfully!`);
-        // Remove from selected files if it was selected
-        setSelectedFiles(prev => prev.filter(id => id !== file.id));
-      } else {
-        toast.error(result.error || 'Failed to delete item');
-      }
-    } catch (error) {
-      console.error('Delete error:', error);
-      toast.error('An error occurred while deleting the item');
+  const handleItemClick = (item: FileItem) => {
+    if (item.type === "folder") {
+      setCurrentPath([...currentPath, { id: item.id, name: item.name }])
+      setSelectedFiles([])
+      setSearchQuery("")
+    } else {
+      console.log("Clicked on shared item:", item.name)
     }
+  }
+
+  const handleBreadcrumbNavigate = (index: number) => {
+    if (index === -1) {
+      setCurrentPath([])
+    } else {
+      setCurrentPath(currentPath.slice(0, index + 1))
+    }
+    setSelectedFiles([])
+    setSearchQuery("")
   }
 
   const actionHandlers: FileActionHandlers = {
     onFileSelect: toggleFileSelection,
-    onItemClick: (item) => console.log("Clicked on shared item:", item.name),
+    onItemClick: handleItemClick,
     onDownload: (file) => console.log("Download file:", file.name),
     onShare: (file) => console.log("Share file:", file.name),
-    onDelete: handleDeleteFile,
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
               <Users className="h-6 w-6 text-muted-foreground" />
               <h1 className="text-2xl font-semibold text-foreground">Shared with me</h1>
             </div>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground text-sm md:text-base">
               {filteredFiles.length} shared items • {sharedByMeCount} shared by me • {sharedWithMeCount} shared with me
             </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm">
-              <Link className="h-4 w-4 mr-2" />
-              Share Link
-            </Button>
-            <Button size="sm">
-              <UserPlus className="h-4 w-4 mr-2" />
-              Invite People
-            </Button>
           </div>
         </div>
       </motion.div>
@@ -215,36 +162,42 @@ export function SharedFilesPage() {
           </Tabs>
         </motion.div>
 
+        {currentPath.length > 0 && (
+          <BreadcrumbNavigation currentPath={currentPath} onNavigate={handleBreadcrumbNavigate} />
+        )}
+
         {/* Toolbar */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.3 }}
-          className="flex items-center justify-between gap-4"
+          className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
         >
-          <div className="flex items-center gap-3 flex-1">
-            <div className="relative flex-1 max-w-md">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:flex-1">
+            <div className="relative flex-1 w-full md:max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search shared files..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-10 w-full"
               />
             </div>
-            <Button variant="outline" size="sm">
-              <Filter className="h-4 w-4 mr-2" />
-              Filter
-            </Button>
-            <Button variant="outline" size="sm">
-              <SortAsc className="h-4 w-4 mr-2" />
-              Sort
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
+                <Filter className="h-4 w-4 mr-2" />
+                Filter
+              </Button>
+              <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
+                <SortAsc className="h-4 w-4 mr-2" />
+                Sort
+              </Button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
             {selectedFiles.length > 0 && <Badge variant="secondary">{selectedFiles.length} selected</Badge>}
-            <div className="flex items-center border rounded-lg">
+            <div className="flex items-center border rounded-lg ml-auto md:ml-0">
               <Button
                 variant={viewMode === "grid" ? "default" : "ghost"}
                 size="sm"
@@ -271,22 +224,20 @@ export function SharedFilesPage() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
-            className="flex items-center gap-3 p-4 bg-muted rounded-lg"
+            className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 bg-muted rounded-lg"
           >
-            <Checkbox checked={selectedFiles.length === filteredFiles.length} onCheckedChange={selectAllFiles} />
-            <span className="text-sm font-medium">{selectedFiles.length} shared items selected</span>
-            <div className="flex items-center gap-2 ml-auto">
-              <Button variant="outline" size="sm">
+            <div className="flex items-center gap-2">
+              <Checkbox checked={selectedFiles.length === filteredFiles.length} onCheckedChange={selectAllFiles} />
+              <span className="text-sm font-medium">{selectedFiles.length} shared items selected</span>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
+              <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
                 <Settings className="h-4 w-4 mr-2" />
                 Manage Access
               </Button>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
                 <Download className="h-4 w-4 mr-2" />
                 Download
-              </Button>
-              <Button variant="outline" size="sm">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Remove Access
               </Button>
             </div>
           </motion.div>

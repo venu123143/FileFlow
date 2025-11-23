@@ -13,8 +13,6 @@ import { useTheme } from "@/contexts/ThemeContext"
 import {
   User,
   Shield,
-  Bell,
-  Smartphone,
   HardDrive,
   Lock,
   Eye,
@@ -420,82 +418,6 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
     </motion.div>
   )
 
-  const renderNotificationsTab = () => (
-    <motion.div
-      key="notifications"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.3 }}
-      className="space-y-6"
-    >
-      {/* Email Notifications */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            Email Notifications
-          </CardTitle>
-          <CardDescription>
-            Choose which emails you want to receive
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="space-y-0.5">
-              <Label>Security Alerts</Label>
-              <p className="text-sm text-muted-foreground">Get notified about security events</p>
-            </div>
-            <Switch defaultChecked />
-          </div>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="space-y-0.5">
-              <Label>Storage Updates</Label>
-              <p className="text-sm text-muted-foreground">Receive storage usage notifications</p>
-            </div>
-            <Switch defaultChecked />
-          </div>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="space-y-0.5">
-              <Label>Product Updates</Label>
-              <p className="text-sm text-muted-foreground">Stay informed about new features</p>
-            </div>
-            <Switch />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Push Notifications */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Smartphone className="h-5 w-5" />
-            Push Notifications
-          </CardTitle>
-          <CardDescription>
-            Manage notifications on your devices
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="space-y-0.5">
-              <Label>File Sharing</Label>
-              <p className="text-sm text-muted-foreground">When someone shares files with you</p>
-            </div>
-            <Switch defaultChecked />
-          </div>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="space-y-0.5">
-              <Label>Storage Warnings</Label>
-              <p className="text-sm text-muted-foreground">When approaching storage limits</p>
-            </div>
-            <Switch defaultChecked />
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
-  )
-
   const renderPinTab = () => {
     const hasPin = user?.pin_hash
 
@@ -726,8 +648,6 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
         return renderSecurityTab()
       case "pin":
         return renderPinTab()
-      case "notifications":
-        return renderNotificationsTab()
       case "api-token":
         return renderApiTokenTab()
       default:

@@ -156,7 +156,7 @@ const Register = () => {
                               />
                             </div>
                           </FormControl>
-                          <FormMessage className="text-sm" />
+                            <FormMessage className="text-sm" />
                         </FormItem>
                       )}
                     />
@@ -223,7 +223,7 @@ const Register = () => {
                         {password && (
                           <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Password requirements:</p>
-                            <div className="space-y-1">
+                            <div className="space-y-1 space-x-2 flex flex-wrap">
                               {passwordValidations.map((validation, index) => (
                                 <div key={index} className="flex items-center text-xs">
                                   {validation.test ? (

@@ -89,30 +89,42 @@ export interface FileSystemNode {
     children: FileSystemNode[];
 }
 
+export interface SharedUserDetails {
+    id: string;
+    email: string;
+    display_name: string;
+    avatar_url?: string;
+}
 
 export interface SharedFileSystemNode {
     id: string;
     owner_id: string;
-    parent_id?: string;
+    parent_id: string | null;
     name: string;
     is_folder: boolean;
     access_level: string;
-    file_info?: any;
+    file_info?: FileInfo | null;
     description?: string;
-    tags: string[];
-    metadata: any;
+    tags?: string[];
+    metadata?: Record<string, any>;
     last_accessed_at?: Date;
     created_at: Date;
     updated_at: Date;
-    children: SharedFileSystemNode[];
-    // Share-specific fields
+
+    // Share information
     share_id: string;
     shared_by_user_id: string;
     shared_with_user_id: string;
+
+    // User details objects
+    shared_by_user: SharedUserDetails;
+    shared_with_user: SharedUserDetails;
+
     permission_level: string;
     share_message?: string;
     expires_at?: Date;
     share_created_at: Date;
+
+    // Recursive children
+    children: SharedFileSystemNode[];
 }
-
-
