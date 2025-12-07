@@ -70,7 +70,6 @@ export function VerifyPinModal({
       setPin("")
       setError("")
       setIsVerified(true)
-      toast.success("PIN verified successfully")
       onVerified()
     } else {
       setError(result.error || "Invalid PIN. Please try again.")
