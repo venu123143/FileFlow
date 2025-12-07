@@ -141,7 +141,7 @@ export function ActiveSessions() {
             className="space-y-6"
         >
             <Card>
-                <CardHeader className="pb-4">
+                <CardHeader className="p-4 sm:p-6 pb-2 sm:pb-4">
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                         <div className="space-y-1">
                             <CardTitle className="flex items-center gap-2 text-xl">
@@ -158,7 +158,7 @@ export function ActiveSessions() {
                                     variant="destructive"
                                     size="sm"
                                     disabled={logoutAllLoading || sessions.length === 0}
-                                    className="shrink-0"
+                                    className="shrink-0 w-full sm:w-auto"
                                 >
                                     {logoutAllLoading ? (
                                         <>
@@ -194,16 +194,16 @@ export function ActiveSessions() {
                     </div>
                 </CardHeader>
                 <Separator />
-                <CardContent className="pt-6">
+                <CardContent className="p-4 sm:p-6 pt-2 sm:pt-0">
                     {loading ? (
-                        <div className="flex items-center justify-center py-16">
+                        <div className="flex items-center justify-center py-12 sm:py-16">
                             <div className="flex flex-col items-center gap-3">
                                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                                 <p className="text-sm text-muted-foreground">Loading sessions...</p>
                             </div>
                         </div>
                     ) : sessions.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <div className="flex flex-col items-center justify-center py-12 sm:py-16 text-center">
                             <div className="p-3 rounded-full bg-muted mb-4">
                                 <AlertCircle className="h-8 w-8 text-muted-foreground" />
                             </div>
@@ -229,11 +229,14 @@ export function ActiveSessions() {
                                                 expired && "opacity-50 border-dashed"
                                             )}
                                         >
-                                            <CardContent className="p-5">
-                                                <div className="flex items-start gap-4">
+                                            <CardContent className="p-4 sm:p-5">
+                                                <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
                                                     <div className={cn(
-                                                        "p-3 rounded-lg shrink-0",
-                                                        expired ? "bg-muted" : "bg-primary/10"
+                                                        "p-3 rounded-lg shrink-0 flex items-center justify-center",
+                                                        expired ? "bg-muted" : "bg-primary/10",
+                                                        // On mobile, maybe we want the icon to be separate or just top-left?
+                                                        // Keeping it left is standard, but let's ensure it doesn't squash content.
+                                                        // Actually, sticking with row is usually better for lists, but let's make it robust.
                                                     )}>
                                                         <div className={cn(
                                                             expired ? "text-muted-foreground" : "text-primary"
@@ -242,12 +245,12 @@ export function ActiveSessions() {
                                                         </div>
                                                     </div>
 
-                                                    <div className="flex-1 min-w-0 space-y-3">
-                                                        <div className="flex items-start justify-between gap-4">
+                                                    <div className="flex-1 min-w-0 space-y-3 w-full">
+                                                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
                                                             <div className="flex-1 min-w-0">
                                                                 <div className="flex items-center gap-2 flex-wrap mb-1">
                                                                     <h4 className="font-semibold text-base">
-                                                                        {getBrowserName(session.user_agent)} on {getDeviceType(session.user_agent)}
+                                                                        {getBrowserName(session.user_agent)} <span className="text-muted-foreground font-normal">on</span> {getDeviceType(session.user_agent)}
                                                                     </h4>
                                                                     {expired ? (
                                                                         <Badge variant="destructive" className="text-xs">
@@ -260,7 +263,7 @@ export function ActiveSessions() {
                                                                     ) : null}
                                                                 </div>
                                                                 {session.user_agent && (
-                                                                    <p className="text-xs text-muted-foreground truncate mt-1">
+                                                                    <p className="text-xs text-muted-foreground break-all sm:truncate mt-1">
                                                                         {session.user_agent}
                                                                     </p>
                                                                 )}
@@ -273,7 +276,7 @@ export function ActiveSessions() {
                                                                             variant="ghost"
                                                                             size="sm"
                                                                             disabled={revokingId === session.id}
-                                                                            className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                                            className="shrink-0 w-full sm:w-auto text-destructive hover:text-destructive hover:bg-destructive/10 border border-destructive/20 sm:border-transparent"
                                                                         >
                                                                             {revokingId === session.id ? (
                                                                                 <>

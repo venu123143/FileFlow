@@ -214,7 +214,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             if (data?.session) {
                 dispatch({ type: 'SET_PIN_SESSION', pinSession: data.session });
             }
-            toast.success("PIN verified successfully. Session created.");
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
