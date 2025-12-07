@@ -59,7 +59,9 @@ interface AuthContextType extends AuthState {
     register: (data: any) => Promise<{ success: boolean; error?: string }>;
     saveUser: (user: IUser) => void;
     logout: () => Promise<void>;
+    logoutAll: () => Promise<void>;
     logoutLoading: boolean;
+    logoutAllLoading: boolean;
     VerifyEmail: (token: string) => Promise<boolean | undefined>;
     getAllUsers: (attributes: GetAllUsersAttributes) => Promise<IUserListItem[]>;
     setPin: (pin: string) => Promise<{ success: boolean; error?: string }>;
@@ -70,6 +72,8 @@ interface AuthContextType extends AuthState {
     changePinLoading: boolean;
     getPinSession: () => Promise<{ success: boolean; user: IUser; session: PinSessionData } | { success: false; error: string }>;
     isPinSessionValid: () => boolean;
+    getActiveSessions: () => Promise<any[]>;
+    revokeToken: (refreshToken: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -104,7 +108,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         onSuccess: async (data) => {
             if (data) {
                 saveUser(data.user);
-                setToken(data.jwt);
+                setToken({
+                    access_token: data.access_token,
+                    refresh_token: data.refresh_token,
+                    expires_at: data.expires_at,
+                    refresh_expires_at: data.refresh_expires_at
+                });
                 dispatch({ type: 'LOGIN_SUCCESS', user: data.user });
                 toast.success("Login successful! Welcome back.");
             }
@@ -316,6 +325,55 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return { success: false, error: errorMessage };
         }
     };
+
+    const { mutateAsync: logoutAllMutationFn, isPending: logoutAllLoading } = useMutation({
+        mutationFn: async () => {
+            const result = await authApi.revokeAllTokens();
+            return result.data;
+        },
+        onSuccess: () => {
+            // Clear all local data and state
+            localStorage.removeItem(CONSTANTS.STORAGE_KEYS.USER_DATA);
+            disconnectSocket();
+            removeToken();
+            dispatch({ type: 'LOGOUT' });
+            queryClient.clear();
+            toast.success("Logged out from all devices successfully");
+        },
+        onError: () => {
+            toast.error("Failed to logout from all devices");
+        },
+    });
+
+    const logoutAll = async () => {
+        try {
+            await logoutAllMutationFn();
+        } catch (error) {
+            console.error('Logout all error:', error);
+        }
+    };
+
+    const getActiveSessions = async () => {
+        try {
+            const result = await authApi.getActiveSessions();
+            return result.data?.sessions || [];
+        } catch (error) {
+            console.error('Get active sessions error:', error);
+            return [];
+        }
+    };
+
+    const revokeToken = async (refreshToken: string) => {
+        try {
+            await authApi.revokeToken(refreshToken);
+            return { success: true };
+        } catch (error: any) {
+            const errorMessage = error?.response?.data?.message || error?.message || "Failed to revoke session";
+            toast.error(errorMessage);
+            return { success: false, error: errorMessage };
+        }
+    };
+
     const getPinSession = useCallback(async (): Promise<{ success: true; user: IUser; session: PinSessionData } | { success: false; error: string }> => {
         try {
             dispatch({ type: 'SET_LOADING', loading: true });
@@ -333,11 +391,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (!state.pinSession || !state.pinSession.pin_verified) {
             return false;
         }
-        
+
         const verifiedAt = new Date(state.pinSession.verified_at);
         const now = new Date();
         const diffInMinutes = (now.getTime() - verifiedAt.getTime()) / (1000 * 60);
-        
+
         return diffInMinutes <= 20;
     };
 
@@ -347,7 +405,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         register,
         saveUser,
         logout,
+        logoutAll,
         logoutLoading,
+        logoutAllLoading,
         getAllUsers,
         VerifyEmail,
         setPin,
@@ -358,6 +418,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         changePinLoading,
         getPinSession,
         isPinSessionValid,
+        getActiveSessions,
+        revokeToken,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -5,8 +5,10 @@ export const USER_ROLES = {
 } as const;
 
 export interface JwtToken {
-    jwt_token: string;
-    expiresAt: number
+    access_token: string;
+    refresh_token: string;
+    expires_at: number;
+    refresh_expires_at: number;
 }
 export type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES];
 

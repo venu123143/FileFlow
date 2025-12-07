@@ -8,6 +8,7 @@ const tabs = [
   { id: "security", label: "Security" },
   { id: "pin", label: "PIN" },
   { id: "api-token", label: "API Token" },
+  { id: "sessions", label: "Sessions" },
 ]
 
 interface SettingsTabsProps {

@@ -1,6 +1,5 @@
 
 import { io, Socket } from "socket.io-client";
-import { toast } from "sonner";
 import { getAuthState } from '@/store/auth.store';
 
 const createSocket = (url: string): Promise<Socket> => {
@@ -11,11 +10,11 @@ const createSocket = (url: string): Promise<Socket> => {
             transports: ['websocket'],
             timeout: 10000,
             autoConnect: false, // Prevent auto-connection
-            reconnection: false, // Disable automatic reconnection
-            reconnectionAttempts: 0,
-            reconnectionDelay: 0,
+            reconnection: true, // Disable automatic reconnection
+            reconnectionAttempts: 2,
+            reconnectionDelay: 1000,
             auth: {
-                token: token?.jwt_token
+                token: token?.access_token
             }
         });
 
@@ -26,20 +25,16 @@ const createSocket = (url: string): Promise<Socket> => {
         });
 
         socket.on('connect_error', (error) => {
-            const endTime = performance.now();
-            const duration = endTime - startTime;
-            console.error(`Connection error after ${duration.toFixed(2)} ms:`, error);
-            toast.error(`Failed to connect: ${error.message || error}`);
+            console.error(`Failed to connect: ${error.message || error}`);
             reject(error);
         });
 
         socket.on('disconnect', (reason) => {
-            toast.warning(`Socket disconnected: ${reason}`, { closeButton: true });
             console.warn(`Socket disconnected: ${reason}`);
         });
 
         socket.on('close', (reason) => {
-            toast.warning(`Socket closed: ${reason}`, { closeButton: true });
+            console.warn(`Socket closed: ${reason}`);
         });
 
         socket.connect(); // This is necessary unless autoConnect: false is removed

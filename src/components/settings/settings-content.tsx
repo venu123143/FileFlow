@@ -29,6 +29,7 @@ import {
   XCircle,
 } from "lucide-react"
 import { ApiTokenSettings } from "./api-token-settings"
+import { ActiveSessions } from "./active-sessions"
 
 interface SettingsContentProps {
   activeTab: string
@@ -640,6 +641,10 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
     </motion.div>
   )
 
+  const renderSessionsTab = () => (
+    <ActiveSessions />
+  )
+
   const renderContent = () => {
     switch (activeTab) {
       case "general":
@@ -650,6 +655,8 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
         return renderPinTab()
       case "api-token":
         return renderApiTokenTab()
+      case "sessions":
+        return renderSessionsTab()
       default:
         return renderGeneralTab()
     }

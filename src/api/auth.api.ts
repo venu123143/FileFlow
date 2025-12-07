@@ -82,5 +82,67 @@ const getSession = async () => {
     }
 };
 
+/**
+ * Refresh access token using refresh token
+ */
+const refreshToken = async (refreshToken: string) => {
+    try {
+        const response = await apiClient.post('/auth/refresh', { refresh_token: refreshToken });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+};
 
-export default { login, register, verifyEmail, logout, getAllUsers, setPin, verifyPin, changePin, getSession };
+/**
+ * Revoke a specific refresh token (logout from single device)
+ */
+const revokeToken = async (refreshToken: string) => {
+    try {
+        const response = await apiClient.post('/auth/revoke', { refresh_token: refreshToken });
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Revoke all refresh tokens (logout from all devices)
+ */
+const revokeAllTokens = async () => {
+    try {
+        const response = await apiClient.post('/auth/revoke-all');
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Get all active sessions for the authenticated user
+ */
+const getActiveSessions = async () => {
+    try {
+        const response = await apiClient.get('/auth/sessions');
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
+
+export default {
+    login,
+    register,
+    verifyEmail,
+    logout,
+    getAllUsers,
+    setPin,
+    verifyPin,
+    changePin,
+    getSession,
+    refreshToken,
+    revokeToken,
+    revokeAllTokens,
+    getActiveSessions
+};

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useAuth } from './useAuth';
 import { useSocket } from "@/contexts/SocketContext";
 import { useNotificationUI } from "./NotificationUIContext";
+import { getAuthState } from '@/store/auth.store';
 
 // 🔹 Notification Types
 export const NotificationType = {
@@ -162,6 +163,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     const [state, dispatch] = useReducer(notificationReducer, initialState);
     const queryClient = useQueryClient();
     const { user } = useAuth();
+    const { token } = getAuthState();
     const { socket, initializeSocket } = useSocket();
     const { showNotification } = useNotificationUI();
 
@@ -170,14 +172,14 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
 
     useEffect(() => {
-        if (!user) return;
+        if (!token?.access_token) return;
         void initializeSocket();
-    }, [user, initializeSocket]);
+    }, [token, initializeSocket]);
 
     // 🔹 Socket listener with improved error handling
     useEffect(() => {
         if (!socket) return;
- 
+
         const handleNewNotification = (notification: NotificationAttributes) => {
             // Show custom notification UI instead of toast
             showNotification(notification);
