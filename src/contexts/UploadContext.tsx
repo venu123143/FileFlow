@@ -214,12 +214,12 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const completedFiles = Object.values(state.fileStates).filter(
             file => file.status === 'completed'
         );
-        
+
         if (completedFiles.length > 0) {
             const timeoutId = setTimeout(() => {
                 dispatch({ type: 'CLEAR_ALL_COMPLETED' });
             }, 5000); // 5 seconds delay
-            
+
             // Return cleanup function
             return () => clearTimeout(timeoutId);
         }
@@ -378,7 +378,7 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     fileName: files[index]?.name || 'unknown',
                     url: fileData.storage_path
                 }));
-                
+
                 dispatch({ type: 'UPLOAD_SUCCESS', payload: uploadedFiles });
                 return uploadedFiles;
             } else {
@@ -392,11 +392,11 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     const deleteFile = async (fileName: string) => {
         dispatch({ type: 'DELETE_START' });
- 
+
         try {
             const response = await apiClient.delete(`/upload/file/${fileName}`, {
                 headers: {
-                    Authorization: token?.jwt_token ? `Bearer ${token.jwt_token}` : undefined,
+                    Authorization: token?.access_token ? `Bearer ${token.access_token}` : undefined,
                 },
             });
 

@@ -29,9 +29,9 @@ export function useQueryState<T>(key: string, parser: Parser<T>, serializer: Ser
 /**
  * Helper function to serialize values to JSON for query params
  */
-export const jsonSerializer = <T>(v: T) => JSON.stringify(v);
+// export const jsonSerializer = <T>(v: T) => JSON.stringify(v);
 
 /**
  * Helper function to parse JSON from query params
  */
-export const jsonParser = <T>(v: string | null, defaultValue: T): T => v ? JSON.parse(v) : defaultValue;
+{/* export const jsonParser = <T>(v: string | null, defaultValue: T): T => v ? JSON.parse(v) : defaultValue; */ }
