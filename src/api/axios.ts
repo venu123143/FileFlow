@@ -15,10 +15,11 @@ const apiClient = axios.create({
 // Refresh Token Queue Handling
 // ----------------------------
 let isRefreshing = false;
-let failedQueue: Array<{
+interface IFailedQueueItem {
     resolve: (token: string) => void;
     reject: (error: any) => void;
-}> = [];
+}
+let failedQueue: IFailedQueueItem[] = [];
 
 const processQueue = (error: any, token: string | null = null) => {
     failedQueue.forEach(({ resolve, reject }) => {
