@@ -1,4 +1,5 @@
 "use client"
+import { useState } from "react"
 import { motion } from "framer-motion"
 import {
   Clock,
@@ -12,8 +13,8 @@ import {
   Star,
   Upload,
   FolderPlus,
-  Search,
   Activity,
+  Lock,
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
@@ -23,7 +24,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/contexts/useAuth"
-// recent files are now loaded via RecentFiles component
+import { ACCESS_LEVEL } from "@/types/file.types"
+import { AddNewFolder } from "@/components/file-manager/AddNewFolder"
+import { useFile } from "@/contexts/fileContext"
+import { toast } from "sonner"
 
 const quickStats = [
   { label: "Total Files", value: "1,247", icon: FileText, change: "+12%", color: "from-blue-500 to-blue-600" },
@@ -44,12 +48,59 @@ const quickActions = [
   { label: "Upload Files", icon: Upload, color: "from-blue-500 to-blue-600", description: "Add new files" },
   { label: "New Folder", icon: FolderPlus, color: "from-green-500 to-green-600", description: "Create folder" },
   { label: "Share Files", icon: Users, color: "from-purple-500 to-purple-600", description: "Share with team" },
-  { label: "Search Files", icon: Search, color: "from-orange-500 to-orange-600", description: "Find anything" },
+  { label: "Private Files", icon: Lock, color: "from-orange-500 to-orange-600", description: "Secure your files" },
 ]
 
 export function HomeDashboard() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { createFolder } = useFile()
+  const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false)
+
+  const navigateToUploadFile = ({ folderId, folderName }: { folderId: string, folderName: string }) => {
+    navigate(`/all-files/${folderId}`, {
+      state: { folder_id: folderId, folder_name: folderName, access_level: ACCESS_LEVEL.PROTECTED }
+    });
+  }
+
+  const handleCreateFolder = async (folderName: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      // Create folder at root level (no parent_id)
+      const result = await createFolder({
+        name: folderName.trim(),
+        parent_id: undefined
+      })
+      if (result.success) {
+        toast.success("Folder created successfully")
+        navigate('/all-files')
+      }
+      return result
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error?.message || 'Failed to create folder'
+      }
+    }
+  }
+
+  const handleQuickActionClick = (label: string) => {
+    switch (label) {
+      case "Upload Files":
+        navigateToUploadFile({ folderId: "root", folderName: "root" });
+        break;
+      case "New Folder":
+        setIsCreateFolderModalOpen(true);
+        break;
+      case "Share Files":
+        navigate('/shared-files');
+        break;
+      case "Private Files":
+        navigate('/private-files');
+        break;
+      default:
+        break;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
@@ -86,6 +137,7 @@ export function HomeDashboard() {
                 transition={{ duration: 0.3, delay: 0.1 + index * 0.05 }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
+                onClick={() => handleQuickActionClick(action.label)}
               >
                 <Card
                   className={cn(
@@ -267,7 +319,15 @@ export function HomeDashboard() {
           </motion.div>
         </div>
 
-
+        {/* Create Folder Modal */}
+        {isCreateFolderModalOpen && <AddNewFolder
+          onAddFolder={handleCreateFolder}
+          variant="button"
+          buttonText="New Folder"
+          className="shrink-0"
+          isOpen={isCreateFolderModalOpen}
+          onClose={() => setIsCreateFolderModalOpen(false)}
+        />}
       </div>
     </div>
   )
