@@ -27,7 +27,7 @@ export function VideoPlayerModal({
 
   const handleError = (err: any) => {
     setIsLoading(false);
-    setError('Failed to load video. Please try again.');
+    setError(err?.message ?? 'Failed to load video. Please try again.');
   };
 
   if (!isOpen) return null;
@@ -35,11 +35,11 @@ export function VideoPlayerModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/80 backdrop-blur-sm"
         onClick={onClose}
       />
-      
+
       {/* Modal Content */}
       <div className="relative z-10 w-[95vw] sm:w-[85vw] md:w-[75vw] lg:w-[65vw] xl:w-[55vw] max-w-4xl bg-black rounded-lg overflow-hidden shadow-2xl">
         {/* Header */}
@@ -57,7 +57,7 @@ export function VideoPlayerModal({
             </svg>
           </button>
         </div>
-        
+
         {/* Video Container */}
         <div className="relative bg-black" style={{ aspectRatio: '16/9' }}>
           {isLoading && (
@@ -65,7 +65,7 @@ export function VideoPlayerModal({
               <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-600 border-t-white" />
             </div>
           )}
-          
+
           {error && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
               <div className="text-center">
@@ -85,7 +85,7 @@ export function VideoPlayerModal({
               </div>
             </div>
           )}
-          
+
           <VideoPlayer
             url={videoUrl}
             poster={poster}
