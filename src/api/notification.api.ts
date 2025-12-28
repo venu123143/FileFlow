@@ -1,7 +1,7 @@
 // src/api/notification.ts
 import apiClient from "@/api/axios";
 
-const getUserNotifications = async (params?: { limit?: number; offset?: number; unreadOnly?: boolean; }) => {
+const getUserNotifications = async (params?: { limit?: number; cursor?: string; unreadOnly?: boolean; }) => {
     const response = await apiClient.get("/notification", { params });
     return response.data;
 };

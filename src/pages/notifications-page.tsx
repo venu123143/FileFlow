@@ -250,7 +250,6 @@ export default function NotificationsPage() {
         loading,
         loadingMore,
         hasMore,
-        totalCount,
         loadMoreNotifications,
         markAsRead,
         markAllAsRead,
@@ -400,7 +399,7 @@ export default function NotificationsPage() {
                         <div>
                             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Notifications</h1>
                             <p className="text-sm sm:text-base text-muted-foreground">
-                                {unreadCount} unread • {totalCount} total
+                                {unreadCount} unread • {notifications.length} loaded
                             </p>
                         </div>
                     </div>

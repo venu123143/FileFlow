@@ -109,6 +109,10 @@ const uploadReducer = (state: UploadState, action: UploadAction): UploadState =>
             };
 
         case 'UPDATE_FILE_STATE':
+            // Don't update if file doesn't exist in state (prevent partial states)
+            if (!state.fileStates[action.payload.fileName]) {
+                return state;
+            }
             return {
                 ...state,
                 fileStates: {
@@ -164,6 +168,10 @@ const uploadReducer = (state: UploadState, action: UploadAction): UploadState =>
         case 'ERROR':
             return { ...state, loading: false, error: action.payload, success: false };
         case 'SET_BUTTON_LOADING':
+            // Don't update if file doesn't exist in state (prevent partial states)
+            if (!state.fileStates[action.payload.fileName]) {
+                return state;
+            }
             return {
                 ...state,
                 fileStates: {
@@ -261,9 +269,13 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }, [state.fileStates]);
 
     const handleUpload = useCallback(async (file: File, folderId?: string) => {
+        // Always initialize file first to ensure complete state
         if (!state.fileStates[file.name]) {
             initializeFile(file.name, file.size, file.type);
         }
+
+        // Wait for next tick to ensure state is updated
+        await new Promise(resolve => setTimeout(resolve, 0));
 
         try {
             let uploadId = state.fileStates[file.name]?.uploadId;
@@ -295,7 +307,7 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     key: key!
                 });
                 parts = uploadedPartsResponse.parts || [];
-
+                
                 // Fix: Calculate correct startChunk from already uploaded parts
                 startChunk = parts.length > 0 ? Math.max(...parts.map(part => part.PartNumber)) : 0;
 

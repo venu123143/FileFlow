@@ -177,6 +177,27 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     const handleFileUpload = async (file: File) => {
         const fileType = getFileType(file);
 
+        // Initialize file state first if it doesn't exist
+        if (!fileStates[file.name]) {
+            updateFileState(file.name, {
+                uploadId: null,
+                url: null,
+                fileKey: null,
+                progress: 0,
+                status: 'idle',
+                error: null,
+                lastUploadedChunk: 0,
+                totalChunks: Math.ceil(file.size / (5 * 1024 * 1024)),
+                fileName: file.name,
+                fileSize: file.size,
+                fileType: file.type,
+                isUploading: false,
+                isRetrying: false,
+                isAborting: false,
+                isRemoving: false
+            });
+        }
+
         // Set button loading state
         setButtonLoading(file.name, 'upload', true);
 
@@ -539,18 +560,37 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                     <div className="space-y-3">
                         {selectedFiles.map((file) => {
                             const fileState = fileStates[file.name] || (completedFiles.has(file.name) ? {
+                                uploadId: null,
+                                url: null,
+                                fileKey: null,
                                 progress: 100,
-                                status: 'completed',
+                                status: 'completed' as const,
                                 error: null,
                                 totalChunks: Math.ceil(file.size / (5 * 1024 * 1024)),
                                 lastUploadedChunk: Math.ceil(file.size / (5 * 1024 * 1024)),
-                                url: null
+                                fileName: file.name,
+                                fileSize: file.size,
+                                fileType: file.type,
+                                isUploading: false,
+                                isRetrying: false,
+                                isAborting: false,
+                                isRemoving: false
                             } : {
+                                uploadId: null,
+                                url: null,
+                                fileKey: null,
                                 progress: 0,
-                                status: 'idle',
+                                status: 'idle' as const,
                                 error: null,
                                 totalChunks: Math.ceil(file.size / (5 * 1024 * 1024)),
-                                lastUploadedChunk: 0
+                                lastUploadedChunk: 0,
+                                fileName: file.name,
+                                fileSize: file.size,
+                                fileType: file.type,
+                                isUploading: false,
+                                isRetrying: false,
+                                isAborting: false,
+                                isRemoving: false
                             });
 
                             return (
