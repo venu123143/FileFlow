@@ -14,15 +14,29 @@ import { SocketProvider } from "@/contexts/SocketContext";
 
 import { ApiTokenProvider } from "@/contexts/ApiTokenContext";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+    defaultOptions: {
+        mutations: {
+            retry: 0, // Don't auto-retry upload mutations
+            // onError: (error) => {
+            //     console.error('Mutation error:', error);
+            // }
+        },
+        queries: {
+            retry: 1,
+            staleTime: 5 * 60 * 1000, // 5 minutes
+            refetchOnWindowFocus: false,
+        }
+    }
+});
 
 const AppProviders = ({ children }: { children: ReactNode }) => {
     const providers = [
         (children: ReactNode) => <BrowserRouter>{children}</BrowserRouter>,
         (children: ReactNode) => <ErrorBoundary>{children}</ErrorBoundary>,
         (children: ReactNode) => <ThemeProvider>{children}</ThemeProvider>,
-        (children: ReactNode) => <UploadProvider>{children}</UploadProvider>,
         (children: ReactNode) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>,
+        (children: ReactNode) => <UploadProvider>{children}</UploadProvider>,
         (children: ReactNode) => <SocketProvider>{children}</SocketProvider>,
         (children: ReactNode) => (
             <>
@@ -35,6 +49,7 @@ const AppProviders = ({ children }: { children: ReactNode }) => {
         (children: ReactNode) => <FileProvider>{children}</FileProvider>,
         (children: ReactNode) => <NotificationUIProvider>{children}</NotificationUIProvider>,
         (children: ReactNode) => <NotificationProvider>{children}</NotificationProvider>,
+
     ];
 
     return providers.reduceRight((acc, Provider) => Provider(acc), children);

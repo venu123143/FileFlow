@@ -43,14 +43,14 @@ interface NotificationState {
     unreadCount: number;
     loading: boolean;
     hasMore: boolean;
-    totalCount: number;
+    nextCursor: string | null;
     loadingMore: boolean;
 }
 
 type NotificationAction =
-    | { type: 'SET_NOTIFICATIONS'; notifications: NotificationAttributes[]; totalCount: number; hasMore: boolean }
+    | { type: 'SET_NOTIFICATIONS'; notifications: NotificationAttributes[]; nextCursor: string | null; hasMore: boolean }
     | { type: 'ADD_NOTIFICATION'; notification: NotificationAttributes }
-    | { type: 'APPEND_NOTIFICATIONS'; notifications: NotificationAttributes[]; hasMore: boolean; totalCount?: number }
+    | { type: 'APPEND_NOTIFICATIONS'; notifications: NotificationAttributes[]; hasMore: boolean; nextCursor: string | null }
     | { type: 'MARK_AS_READ'; id: string }
     | { type: 'MARK_ALL_AS_READ' }
     | { type: 'SET_LOADING'; loading: boolean }
@@ -62,7 +62,7 @@ const initialState: NotificationState = {
     unreadCount: 0,
     loading: true,
     hasMore: false,
-    totalCount: 0,
+    nextCursor: null,
     loadingMore: false,
 };
 
@@ -83,7 +83,7 @@ const notificationReducer = (state: NotificationState, action: NotificationActio
                 ...state,
                 notifications,
                 unreadCount,
-                totalCount: action.totalCount,
+                nextCursor: action.nextCursor,
                 hasMore: action.hasMore,
                 loading: false,
             };
@@ -104,7 +104,7 @@ const notificationReducer = (state: NotificationState, action: NotificationActio
                 notifications: combinedNotifications,
                 unreadCount,
                 hasMore: action.hasMore,
-                totalCount: action.totalCount ?? state.totalCount,
+                nextCursor: action.nextCursor,
             };
         }
         case 'ADD_NOTIFICATION': {
@@ -117,7 +117,6 @@ const notificationReducer = (state: NotificationState, action: NotificationActio
                 ...state,
                 notifications: newNotifications,
                 unreadCount: state.unreadCount + (action.notification.is_read ? 0 : 1),
-                totalCount: state.totalCount + 1,
             };
         }
         case 'MARK_AS_READ': {
@@ -150,7 +149,7 @@ const notificationReducer = (state: NotificationState, action: NotificationActio
 };
 
 interface NotificationContextType extends NotificationState {
-    fetchNotifications: (params?: { limit?: number; offset?: number; unreadOnly?: boolean }) => Promise<NotificationAttributes[]>;
+    fetchNotifications: (params?: { limit?: number; cursor?: string; unreadOnly?: boolean }) => Promise<NotificationAttributes[]>;
     loadMoreNotifications: () => Promise<void>;
     markAsRead: (id: string) => Promise<{ success: boolean; error?: string }>;
     markAllAsRead: () => Promise<{ success: boolean; error?: string }>;
@@ -168,7 +167,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     const { showNotification } = useNotificationUI();
 
     // Memoized query key
-    const notificationsQueryKey = useMemo(() => ['notifications', { limit: 20, offset: 0 }], []);
+    const notificationsQueryKey = useMemo(() => ['notifications', { limit: 20 }], []);
 
 
     useEffect(() => {
@@ -198,7 +197,6 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 return {
                     ...oldData,
                     notifications: [notification, ...oldData.notifications],
-                    totalCount: oldData.totalCount + 1,
                 };
             });
         };
@@ -216,14 +214,14 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         };
     }, [socket, queryClient, notificationsQueryKey]);
 
-    // 🔹 Optimized query with better caching
+    // 🔹 Optimized query with better caching (cursor-based)
     const { data: notificationsData, isLoading: notificationsLoading, isRefetching, refetch } = useQuery({
         queryKey: notificationsQueryKey,
         queryFn: async () => {
-            const result = await notificationApi.getUserNotifications({ limit: 20, offset: 0 });
+            const result = await notificationApi.getUserNotifications({ limit: 20 });
             return {
                 notifications: result.data?.notifications || result.notifications || [],
-                totalCount: result.data?.totalCount || 0,
+                nextCursor: result.data?.nextCursor || null,
                 hasMore: result.data?.hasMore || false,
             };
         },
@@ -242,7 +240,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         dispatch({
             type: 'SET_NOTIFICATIONS',
             notifications: notificationsData.notifications,
-            totalCount: notificationsData.totalCount,
+            nextCursor: notificationsData.nextCursor,
             hasMore: notificationsData.hasMore,
         });
     }, [notificationsData]);
@@ -327,22 +325,22 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         }
     });
 
-    // 🔹 Optimized actions with better error handling
-    const fetchNotifications = useCallback(async (params?: { limit?: number; offset?: number; unreadOnly?: boolean }) => {
+    // 🔹 Optimized actions with better error handling (cursor-based)
+    const fetchNotifications = useCallback(async (params?: { limit?: number; cursor?: string; unreadOnly?: boolean }) => {
         try {
             dispatch({ type: 'SET_LOADING', loading: true });
 
-            const result = await notificationApi.getUserNotifications(params || { limit: 20, offset: 0 });
+            const result = await notificationApi.getUserNotifications(params || { limit: 20 });
             const data = {
                 notifications: result.data?.notifications || result.notifications || [],
-                totalCount: result.data?.totalCount || 0,
+                nextCursor: result.data?.nextCursor || null,
                 hasMore: result.data?.hasMore || false,
             };
 
             dispatch({
                 type: 'SET_NOTIFICATIONS',
                 notifications: data.notifications,
-                totalCount: data.totalCount,
+                nextCursor: data.nextCursor,
                 hasMore: data.hasMore,
             });
 
@@ -359,23 +357,25 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     }, [queryClient, notificationsQueryKey]);
 
     const loadMoreNotifications = useCallback(async () => {
-        if (state.loadingMore || !state.hasMore) return;
+        if (state.loadingMore || !state.hasMore || !state.nextCursor) return;
 
         try {
             dispatch({ type: 'SET_LOADING_MORE', loadingMore: true });
-            const offset = state.notifications.length;
 
-            const result = await notificationApi.getUserNotifications({ limit: 20, offset });
+            const result = await notificationApi.getUserNotifications({ 
+                limit: 20, 
+                cursor: state.nextCursor 
+            });
             const newNotifications = result.data?.notifications || result.notifications || [];
             const hasMore = result.data?.hasMore || false;
-            const totalCount = result.data?.totalCount || state.totalCount;
+            const nextCursor = result.data?.nextCursor || null;
 
             // Immediate UI update
             dispatch({
                 type: 'APPEND_NOTIFICATIONS',
                 notifications: newNotifications,
                 hasMore,
-                totalCount,
+                nextCursor,
             });
 
             // Update query cache in background
@@ -385,7 +385,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                     ...oldData,
                     notifications: [...oldData.notifications, ...newNotifications],
                     hasMore,
-                    totalCount,
+                    nextCursor,
                 };
             });
         } catch (error: any) {
@@ -394,7 +394,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             // Ensure spinner hides only after state/cache are updated
             dispatch({ type: 'SET_LOADING_MORE', loadingMore: false });
         }
-    }, [state.loadingMore, state.hasMore, state.notifications.length, state.totalCount, queryClient, notificationsQueryKey]);
+    }, [state.loadingMore, state.hasMore, state.nextCursor, queryClient, notificationsQueryKey]);
 
     const markAsRead = useCallback(async (id: string) => {
         try {

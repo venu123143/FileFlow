@@ -185,6 +185,7 @@ export function transformFileSystemNodeToPrivateFileItem(node: FileSystemNode, p
     variant: "private",
     encrypted,
     sensitive,
+    access_level: node.access_level,
     children: node.children ? node.children.map(child => transformFileSystemNodeToPrivateFileItem(child, [...parentPath, node.name])) : undefined,
   }
 }

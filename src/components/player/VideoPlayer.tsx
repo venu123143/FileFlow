@@ -262,7 +262,6 @@ export function VideoPlayer({
       });
 
       player.on('error', (error: any) => {
-        console.error('Video error:', error);
         if (onError) onError(error);
       });
 

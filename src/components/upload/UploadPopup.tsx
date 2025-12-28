@@ -9,7 +9,8 @@ import {
     RotateCcw,
     Trash2,
     CheckCircle,
-    AlertCircle
+    AlertCircle,
+    Loader2
 } from 'lucide-react';
 import { useUpload } from '@/contexts/UploadContext';
 import { useLocation } from 'react-router-dom';
@@ -23,7 +24,8 @@ const UploadPopup: React.FC = () => {
         setPopupMinimized,
         setPopupVisible,
         clearAllCompleted,
-        handleUpload
+        handleUpload,
+        setButtonLoading
     } = useUpload();
 
     const { fileStates, isPopupMinimized, isPopupVisible } = state;
@@ -81,11 +83,36 @@ const UploadPopup: React.FC = () => {
     const handleRetry = async (fileName: string) => {
         const fileState = fileStates[fileName];
         if (fileState) {
-            // Create a File object from the stored metadata
-            const file = new File([], fileState.fileName, { type: fileState.fileType });
-            Object.defineProperty(file, 'size', { value: fileState.fileSize });
-            await handleUpload(file);
+            // Set button loading state
+            setButtonLoading(fileName, 'retry', true);
+
+            try {
+                // Create a File object from the stored metadata for retry
+                const file = new File([], fileState.fileName, { type: fileState.fileType });
+                Object.defineProperty(file, 'size', { value: fileState.fileSize });
+
+                // The handleUpload function will automatically resume from the last uploaded chunk
+                // because it checks for existing uploadId and fileKey in the state
+                await handleUpload(file);
+            } finally {
+                setButtonLoading(fileName, 'retry', false);
+            }
         }
+    };
+
+    const handleAbort = async (fileName: string) => {
+        setButtonLoading(fileName, 'abort', true);
+        try {
+            await abortUpload(fileName);
+        } finally {
+            setButtonLoading(fileName, 'abort', false);
+        }
+    };
+
+    const handleRemove = (fileName: string) => {
+        setButtonLoading(fileName, 'remove', true);
+        removeFile(fileName);
+        // No need to set loading to false as the file will be removed
     };
 
     return (
@@ -178,29 +205,44 @@ const UploadPopup: React.FC = () => {
                                     <div className="flex items-center space-x-1">
                                         {fileState.status === 'uploading' && (
                                             <button
-                                                onClick={() => abortUpload(fileState.fileName)}
-                                                className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                                onClick={() => handleAbort(fileState.fileName)}
+                                                disabled={fileState.isAborting}
+                                                className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                                                 title="Cancel upload"
                                             >
-                                                <Pause className="w-4 h-4" />
+                                                {fileState.isAborting ? (
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                ) : (
+                                                    <Pause className="w-4 h-4" />
+                                                )}
                                             </button>
                                         )}
                                         {fileState.status === 'error' && (
                                             <button
                                                 onClick={() => handleRetry(fileState.fileName)}
-                                                className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                                                disabled={fileState.isRetrying}
+                                                className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                                                 title="Retry upload"
                                             >
-                                                <RotateCcw className="w-4 h-4" />
+                                                {fileState.isRetrying ? (
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                ) : (
+                                                    <RotateCcw className="w-4 h-4" />
+                                                )}
                                             </button>
                                         )}
                                         {(fileState.status === 'completed' || fileState.status === 'error') && (
                                             <button
-                                                onClick={() => removeFile(fileState.fileName)}
-                                                className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                                onClick={() => handleRemove(fileState.fileName)}
+                                                disabled={fileState.isRemoving}
+                                                className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                                                 title="Remove"
                                             >
-                                                <Trash2 className="w-4 h-4" />
+                                                {fileState.isRemoving ? (
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                ) : (
+                                                    <Trash2 className="w-4 h-4" />
+                                                )}
                                             </button>
                                         )}
                                     </div>

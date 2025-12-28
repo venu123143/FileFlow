@@ -17,16 +17,10 @@ export const ApiTokenProvider: React.FC<{ children: ReactNode }> = ({ children }
     const [loading, setLoading] = useState(false);
 
     const fetchTokens = useCallback(async () => {
-        try {
-            setLoading(true);
-            const response = await apiTokenApi.listTokens();
-            setTokens(response.data);
-        } catch (error: any) {
-            console.error("Failed to fetch tokens:", error);
-            // toast.error("Failed to load API tokens.");
-        } finally {
-            setLoading(false);
-        }
+        setLoading(true);
+        const response = await apiTokenApi.listTokens();
+        setTokens(response.data);
+        setLoading(false);
     }, []);
 
     const generateToken = async (data: GenerateTokenDto) => {

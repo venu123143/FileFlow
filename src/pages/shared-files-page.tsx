@@ -106,8 +106,6 @@ export function SharedFilesPage() {
       setCurrentPath([...currentPath, { id: item.id, name: item.name }])
       setSelectedFiles([])
       setSearchQuery("")
-    } else {
-      console.log("Clicked on shared item:", item.name)
     }
   }
 
