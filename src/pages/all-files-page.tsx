@@ -1,7 +1,7 @@
 "use client"
 import { useState, useMemo } from "react"
 import type { FileItem, FileActionHandlers } from "@/types/file-manager"
-import type { SharePermission } from "@/types/file.types"
+import { ACCESS_LEVEL, type SharePermission, type AccessLevel } from "@/types/file.types"
 import { FileManagerHeader } from "@/components/file-manager/FileManagerHeader"
 import { BreadcrumbNavigation } from "@/components/file-manager/BreadcrumbNavigation"
 import { Toolbar } from "@/components/file-manager/Toolbar"
@@ -16,11 +16,13 @@ import { useFile } from "@/contexts/fileContext"
 import { transformFileSystemNodesToFileItems } from "@/lib/utils"
 import { useNavigate } from "react-router-dom"
 import { useSocket } from "@/contexts/SocketContext";
+import { useFileDownload } from "@/hooks/useFileDownload";
 
 export default function AllFilesPage() {
   const { socket } = useSocket();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
+  const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("ASC")
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
   const [currentPath, setCurrentPath] = useState<Array<{ id: string, name: string }>>([])
   // Rename popup state
@@ -32,8 +34,8 @@ export default function AllFilesPage() {
   // Share file popup state
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [fileToShare, setFileToShare] = useState<FileItem | null>(null)
-
-  const { createFolder, fileSystemTree, deleteFileOrFolder, renameFolder, moveFileOrFolder, shareFileOrFolder } = useFile();
+  const { createFolder, fileSystemTree, deleteFileOrFolder, renameFolder, moveFileOrFolder, shareFileOrFolder, updateFileAccessLevel } = useFile();
+  const { downloadFile } = useFileDownload();
   const navigate = useNavigate();
 
   // Transform dynamic data to FileItem format
@@ -52,10 +54,52 @@ export default function AllFilesPage() {
     return items
   }, [currentPath, transformedFileSystem])
 
+  // Helper function to convert size string to bytes for proper sorting
+  const sizeToBytes = (sizeStr: string): number => {
+    if (!sizeStr || sizeStr === '-') return 0;
+
+    const units: { [key: string]: number } = {
+      'B': 1,
+      'KB': 1024,
+      'MB': 1024 * 1024,
+      'GB': 1024 * 1024 * 1024,
+      'TB': 1024 * 1024 * 1024 * 1024,
+    };
+
+    const match = sizeStr.trim().match(/^([\d.]+)\s*([A-Z]+)$/i);
+    if (!match) return 0;
+
+    const value = parseFloat(match[1]);
+    const unit = match[2].toUpperCase();
+
+    return value * (units[unit] || 0);
+  };
+
   const filteredFiles = useMemo(() => {
     // search filter 
-    return currentItems.filter((file) => file.name.toLowerCase().includes(searchQuery.toLowerCase()))
-  }, [currentItems, searchQuery])
+    let filtered = currentItems.filter((file) =>
+      file.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Sort by size
+    filtered.sort((a, b) => {
+      // Folders always come first
+      if (a.type === 'folder' && b.type !== 'folder') return -1;
+      if (a.type !== 'folder' && b.type === 'folder') return 1;
+
+      // If both are folders or both are files, sort by size
+      const sizeA = sizeToBytes(a.size);
+      const sizeB = sizeToBytes(b.size);
+
+      if (sortDirection === "ASC") {
+        return sizeA - sizeB;
+      } else {
+        return sizeB - sizeA;
+      }
+    });
+
+    return filtered;
+  }, [currentItems, searchQuery, sortDirection])
 
   const toggleFileSelection = (fileId: string) => {
     setSelectedFiles((prev) => (prev.includes(fileId) ? prev.filter((id) => id !== fileId) : [...prev, fileId]))
@@ -124,7 +168,7 @@ export default function AllFilesPage() {
     const folderId = lastItem?.id ?? "root";
     const folderName = lastItem?.name ?? "root";
     navigate(`/all-files/${folderId}`, {
-      state: { folder_id: folderId, folder_name: folderName }
+      state: { folder_id: folderId, folder_name: folderName, access_level: ACCESS_LEVEL.PROTECTED }
     });
   }
 
@@ -227,14 +271,19 @@ export default function AllFilesPage() {
     setFileToShare(null);
   }
 
+  const handleChangeAccessLevel = async (file: FileItem, accessLevel: string) => {
+    await updateFileAccessLevel(file.id, { access_level: accessLevel as AccessLevel });
+  }
+
   const actionHandlers: FileActionHandlers = {
     onFileSelect: toggleFileSelection,
     onItemClick: handleItemClick,
-    onDownload: (file) => console.log("Download", file.name),
+    onDownload: downloadFile,
     onShare: handleShareFile,
     onMove: handleMoveFile,
     onRename: handleRenameFile,
     onDelete: handleDeleteFile,
+    onChangeAccessLevel: handleChangeAccessLevel,
   }
 
   return (
@@ -258,6 +307,8 @@ export default function AllFilesPage() {
           selectedFilesCount={selectedFiles.length}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
+          sortDirection={sortDirection}
+          onSortChange={setSortDirection}
         />
 
         <BulkActionsBar

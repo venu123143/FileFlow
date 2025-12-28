@@ -44,6 +44,52 @@
   --error-container: 0 0% 100%;
   --error-icon: 0 84.2% 60.2%;
   --error-icon-background: 0 84.2% 95%;
+
+  /* Upload component colors - preserving original light mode */
+  --upload-bg-gradient-from: 249 250 251; /* gray-50 */
+  --upload-bg-gradient-to: 243 244 246; /* gray-100 */
+  --upload-dropzone-border: 209 213 219; /* gray-300 */
+  --upload-dropzone-border-hover: 156 163 175; /* gray-400 */
+  --upload-dropzone-bg-hover: 243 244 246; /* gray-100 */
+  --upload-dropzone-active-border: 96 165 250; /* blue-400 */
+  --upload-dropzone-active-bg: 239 246 255; /* blue-50 */
+  --upload-icon-bg: 219 234 254; /* blue-100 */
+  --upload-icon-text: 37 99 235; /* blue-600 */
+  --upload-icon-text-muted: 156 163 175; /* gray-400 */
+  --upload-text-primary: 55 65 81; /* gray-700 */
+  --upload-text-secondary: 107 114 128; /* gray-500 */
+  --upload-text-heading: 17 24 39; /* gray-900 */
+  --upload-badge-bg: 239 246 255; /* blue-50 */
+  --upload-badge-text: 29 78 216; /* blue-700 */
+  --upload-badge-border: 191 219 254; /* blue-200 */
+  --upload-warning-bg: 254 252 232; /* yellow-50 */
+  --upload-warning-border: 254 240 138; /* yellow-200 */
+  --upload-warning-icon: 217 119 6; /* yellow-600 */
+  --upload-warning-heading: 133 77 14; /* yellow-800 */
+  --upload-warning-text: 161 98 7; /* yellow-700 */
+  --upload-success-bg: 240 253 244; /* green-50 */
+  --upload-success-border: 187 247 208; /* green-200 */
+  --upload-success-icon: 22 163 74; /* green-600 */
+  --upload-success-heading: 22 101 52; /* green-800 */
+  --upload-success-button: 22 163 74; /* green-600 */
+  --upload-success-button-hover: 20 83 45; /* green-700 */
+  --upload-filelist-bg: 249 250 251; /* gray-50 */
+  --upload-filelist-card: 255 255 255; /* white */
+  --upload-filelist-border: 229 231 235; /* gray-200 */
+  --upload-filelist-text: 17 24 39; /* gray-900 */
+  --upload-filelist-text-muted: 107 114 128; /* gray-500 */
+  --upload-filelist-icon: 75 85 99; /* gray-600 */
+  --upload-progress-bg: 229 231 235; /* gray-200 */
+  --upload-button-blue: 37 99 235; /* blue-600 */
+  --upload-button-blue-hover: 29 78 216; /* blue-700 */
+  --upload-button-red: 220 38 38; /* red-600 */
+  --upload-button-red-hover: 185 28 28; /* red-700 */
+  --upload-button-gray: 75 85 99; /* gray-600 */
+  --upload-button-gray-hover: 55 65 81; /* gray-700 */
+  --upload-button-green: 22 163 74; /* green-600 */
+  --upload-button-green-hover: 20 83 45; /* green-700 */
+  --upload-remove-hover-text: 220 38 38; /* red-600 */
+  --upload-remove-hover-bg: 254 242 242; /* red-50 */
 }
 
 .dark {
@@ -86,6 +132,52 @@
   --error-container: 217.2 32.6% 17.5%;
   --error-icon: 0 62.8% 50%;
   --error-icon-background: 0 62.8% 15%;
+
+  /* Upload component colors - dark mode */
+  --upload-bg-gradient-from: 17 24 39; /* dark gray */
+  --upload-bg-gradient-to: 31 41 55; /* darker gray */
+  --upload-dropzone-border: 55 65 81; /* gray-700 */
+  --upload-dropzone-border-hover: 75 85 99; /* gray-600 */
+  --upload-dropzone-bg-hover: 31 41 55; /* gray-800 */
+  --upload-dropzone-active-border: 96 165 250; /* blue-400 */
+  --upload-dropzone-active-bg: 30 58 138; /* blue-900/30 */
+  --upload-icon-bg: 30 58 138; /* blue-900/30 */
+  --upload-icon-text: 96 165 250; /* blue-400 */
+  --upload-icon-text-muted: 107 114 128; /* gray-500 */
+  --upload-text-primary: 209 213 219; /* gray-300 */
+  --upload-text-secondary: 156 163 175; /* gray-400 */
+  --upload-text-heading: 249 250 251; /* gray-50 */
+  --upload-badge-bg: 30 58 138; /* blue-900/30 */
+  --upload-badge-text: 147 197 253; /* blue-300 */
+  --upload-badge-border: 30 64 175; /* blue-800 */
+  --upload-warning-bg: 113 63 18; /* yellow-900/20 */
+  --upload-warning-border: 133 77 14; /* yellow-800 */
+  --upload-warning-icon: 234 179 8; /* yellow-500 */
+  --upload-warning-heading: 250 204 21; /* yellow-400 */
+  --upload-warning-text: 234 179 8; /* yellow-500 */
+  --upload-success-bg: 20 83 45; /* green-900/20 */
+  --upload-success-border: 22 101 52; /* green-800 */
+  --upload-success-icon: 34 197 94; /* green-500 */
+  --upload-success-heading: 74 222 128; /* green-400 */
+  --upload-success-button: 34 197 94; /* green-500 */
+  --upload-success-button-hover: 22 163 74; /* green-600 */
+  --upload-filelist-bg: 17 24 39; /* gray-900 */
+  --upload-filelist-card: 31 41 55; /* gray-800 */
+  --upload-filelist-border: 55 65 81; /* gray-700 */
+  --upload-filelist-text: 249 250 251; /* gray-50 */
+  --upload-filelist-text-muted: 156 163 175; /* gray-400 */
+  --upload-filelist-icon: 156 163 175; /* gray-400 */
+  --upload-progress-bg: 55 65 81; /* gray-700 */
+  --upload-button-blue: 37 99 235; /* blue-600 */
+  --upload-button-blue-hover: 29 78 216; /* blue-700 */
+  --upload-button-red: 239 68 68; /* red-500 */
+  --upload-button-red-hover: 220 38 38; /* red-600 */
+  --upload-button-gray: 75 85 99; /* gray-600 */
+  --upload-button-gray-hover: 107 114 128; /* gray-500 */
+  --upload-button-green: 34 197 94; /* green-500 */
+  --upload-button-green-hover: 22 163 74; /* green-600 */
+  --upload-remove-hover-text: 239 68 68; /* red-500 */
+  --upload-remove-hover-bg: 127 29 29; /* red-900/30 */
 
 }
 
@@ -132,6 +224,52 @@
   --error-container: hsl(var(--error-container));
   --error-icon: hsl(var(--error-icon));
   --error-icon-background: hsl(var(--error-icon-background));
+
+  /* Upload component color mappings */
+  --color-upload-bg-gradient-from: rgb(var(--upload-bg-gradient-from));
+  --color-upload-bg-gradient-to: rgb(var(--upload-bg-gradient-to));
+  --color-upload-dropzone-border: rgb(var(--upload-dropzone-border));
+  --color-upload-dropzone-border-hover: rgb(var(--upload-dropzone-border-hover));
+  --color-upload-dropzone-bg-hover: rgb(var(--upload-dropzone-bg-hover));
+  --color-upload-dropzone-active-border: rgb(var(--upload-dropzone-active-border));
+  --color-upload-dropzone-active-bg: rgb(var(--upload-dropzone-active-bg));
+  --color-upload-icon-bg: rgb(var(--upload-icon-bg));
+  --color-upload-icon-text: rgb(var(--upload-icon-text));
+  --color-upload-icon-text-muted: rgb(var(--upload-icon-text-muted));
+  --color-upload-text-primary: rgb(var(--upload-text-primary));
+  --color-upload-text-secondary: rgb(var(--upload-text-secondary));
+  --color-upload-text-heading: rgb(var(--upload-text-heading));
+  --color-upload-badge-bg: rgb(var(--upload-badge-bg));
+  --color-upload-badge-text: rgb(var(--upload-badge-text));
+  --color-upload-badge-border: rgb(var(--upload-badge-border));
+  --color-upload-warning-bg: rgb(var(--upload-warning-bg));
+  --color-upload-warning-border: rgb(var(--upload-warning-border));
+  --color-upload-warning-icon: rgb(var(--upload-warning-icon));
+  --color-upload-warning-heading: rgb(var(--upload-warning-heading));
+  --color-upload-warning-text: rgb(var(--upload-warning-text));
+  --color-upload-success-bg: rgb(var(--upload-success-bg));
+  --color-upload-success-border: rgb(var(--upload-success-border));
+  --color-upload-success-icon: rgb(var(--upload-success-icon));
+  --color-upload-success-heading: rgb(var(--upload-success-heading));
+  --color-upload-success-button: rgb(var(--upload-success-button));
+  --color-upload-success-button-hover: rgb(var(--upload-success-button-hover));
+  --color-upload-filelist-bg: rgb(var(--upload-filelist-bg));
+  --color-upload-filelist-card: rgb(var(--upload-filelist-card));
+  --color-upload-filelist-border: rgb(var(--upload-filelist-border));
+  --color-upload-filelist-text: rgb(var(--upload-filelist-text));
+  --color-upload-filelist-text-muted: rgb(var(--upload-filelist-text-muted));
+  --color-upload-filelist-icon: rgb(var(--upload-filelist-icon));
+  --color-upload-progress-bg: rgb(var(--upload-progress-bg));
+  --color-upload-button-blue: rgb(var(--upload-button-blue));
+  --color-upload-button-blue-hover: rgb(var(--upload-button-blue-hover));
+  --color-upload-button-red: rgb(var(--upload-button-red));
+  --color-upload-button-red-hover: rgb(var(--upload-button-red-hover));
+  --color-upload-button-gray: rgb(var(--upload-button-gray));
+  --color-upload-button-gray-hover: rgb(var(--upload-button-gray-hover));
+  --color-upload-button-green: rgb(var(--upload-button-green));
+  --color-upload-button-green-hover: rgb(var(--upload-button-green-hover));
+  --color-upload-remove-hover-text: rgb(var(--upload-remove-hover-text));
+  --color-upload-remove-hover-bg: rgb(var(--upload-remove-hover-bg));
 }
 
 html, body, #root {

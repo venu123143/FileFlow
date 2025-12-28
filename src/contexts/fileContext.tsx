@@ -1,41 +1,48 @@
 import React, { useReducer, useContext, createContext, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import fileApi from '@/api/file.api';
-import { toast } from 'sonner';
 import { useAuth } from './useAuth';
-import type {
-    CreateFolderInput,
-    RenameFolderInput,
-    MoveFileOrFolderInput,
-    CreateFileInput,
-    ShareFileOrFolderInput,
-    FileSystemNode,
-    SharedFileSystemNode,
+import {
+    type CreateFolderInput,
+    type RenameFolderInput,
+    type MoveFileOrFolderInput,
+    type CreateFileInput,
+    type ShareFileOrFolderInput,
+    type FileSystemNode,
+    type SharedFileSystemNode,
+    type AccessLevel,
+    ACCESS_LEVEL,
 } from '@/types/file.types';
 
 interface FileState {
     fileSystemTree: FileSystemNode[];
+    privateFiles: FileSystemNode[];
     trash: FileSystemNode[];
     sharedFiles: SharedFileSystemNode[];
     sharedFilesByMe: SharedFileSystemNode[];
     sharedFilesWithMe: SharedFileSystemNode[];
+    recents: { files: Array<Pick<FileSystemNode, 'id' | 'name' | 'access_level' | 'file_info' | 'created_at' | 'last_accessed_at'>>; metadata: { total: number; page: number; limit: number; totalPages: number } } | null;
     loading: boolean;
 }
 
 type FileAction =
     | { type: 'SET_FILE_SYSTEM_TREE'; fileSystemTree: FileSystemNode[] }
+    | { type: 'SET_PRIVATE_FILES'; privateFiles: FileSystemNode[] }
     | { type: 'SET_TRASH'; trash: FileSystemNode[] }
     | { type: 'SET_SHARED_FILES'; sharedFiles: SharedFileSystemNode[] }
     | { type: 'SET_SHARED_FILES_BY_ME'; sharedFilesByMe: SharedFileSystemNode[] }
     | { type: 'SET_SHARED_FILES_WITH_ME'; sharedFilesWithMe: SharedFileSystemNode[] }
+    | { type: 'SET_RECENTS'; recents: FileState['recents'] }
     | { type: 'SET_LOADING'; loading: boolean };
 
 const initialState: FileState = {
     fileSystemTree: [],
+    privateFiles: [],
     trash: [],
     sharedFiles: [],
     sharedFilesByMe: [],
     sharedFilesWithMe: [],
+    recents: null,
     loading: false,
 };
 
@@ -43,6 +50,8 @@ function fileReducer(state: FileState, action: FileAction): FileState {
     switch (action.type) {
         case 'SET_FILE_SYSTEM_TREE':
             return { ...state, fileSystemTree: action.fileSystemTree };
+        case 'SET_PRIVATE_FILES':
+            return { ...state, privateFiles: action.privateFiles };
         case 'SET_TRASH':
             return { ...state, trash: action.trash };
         case 'SET_SHARED_FILES':
@@ -51,6 +60,8 @@ function fileReducer(state: FileState, action: FileAction): FileState {
             return { ...state, sharedFilesByMe: action.sharedFilesByMe };
         case 'SET_SHARED_FILES_WITH_ME':
             return { ...state, sharedFilesWithMe: action.sharedFilesWithMe };
+        case 'SET_RECENTS':
+            return { ...state, recents: action.recents };
         case 'SET_LOADING':
             return { ...state, loading: action.loading };
         default:
@@ -70,10 +81,13 @@ interface FileContextType extends FileState {
     getAllSharedFilesByMe: () => Promise<SharedFileSystemNode[]>;
     getAllSharedFilesWithMe: () => Promise<SharedFileSystemNode[]>;
     getFileSystemTree: () => Promise<FileSystemNode[]>;
+    getPrivateFiles: () => Promise<FileSystemNode[]>;
     getTrash: () => Promise<FileSystemNode[]>;
+    getRecents: (page?: number, limit?: number) => Promise<FileState['recents']>;
     deleteFileOrFolder: (id: string) => MutationResult;
     restoreFileOrFolder: (id: string) => MutationResult;
     emptyTrash: () => MutationResult;
+    updateFileAccessLevel: (id: string, data: { access_level: AccessLevel }) => MutationResult;
 }
 
 const FileContext = createContext<FileContextType | undefined>(undefined);
@@ -95,6 +109,23 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         gcTime: 10 * 60 * 1000, // 10 minutes
         enabled: !!user, // Only enable the query when user is authenticated
     });
+
+    const { data: privateFilesData, isLoading: privateFilesLoading } = useQuery<FileSystemNode[]>({
+        queryKey: ['privateFiles'],
+        queryFn: async () => {
+            const result = await fileApi.getPrivateFiles();
+            return result.data;
+        },
+        retry: 2,
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        gcTime: 10 * 60 * 1000, // 10 minutes
+        enabled: !!user, // Only enable the query when user is authenticated
+    });
+    React.useEffect(() => {
+        if (privateFilesData) {
+            dispatch({ type: 'SET_PRIVATE_FILES', privateFiles: privateFilesData });
+        }
+    }, [privateFilesData]);
 
     const { data: trashData, isLoading: trashLoading } = useQuery<FileSystemNode[]>({
         queryKey: ['trash'],
@@ -129,11 +160,14 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return result.data;
         },
         retry: false,
-        onSuccess: () => {
+        onSuccess: (data: FileSystemNode) => {
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success('Folder created successfully!');
             // Invalidate and refetch file system tree
-            queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
+            if (data.access_level === ACCESS_LEVEL.PRIVATE) {
+                queryClient.invalidateQueries({ queryKey: ['privateFiles'] });
+            } else {
+                queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
+            }
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
@@ -148,7 +182,6 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         retry: false,
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success('Folder renamed successfully!');
             // Invalidate and refetch file system tree
             queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
         },
@@ -165,7 +198,6 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         retry: false,
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success('File or folder moved successfully!');
             // Invalidate and refetch file system tree
             queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
         },
@@ -182,7 +214,6 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         retry: false,
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success('File created successfully!');
             // Invalidate and refetch file system tree
             queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
         },
@@ -199,7 +230,6 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         retry: false,
         onSuccess: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success('File or folder shared successfully!');
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
@@ -216,7 +246,6 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
             queryClient.invalidateQueries({ queryKey: ['trash'] });
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success('File or folder deleted successfully!');
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
@@ -233,7 +262,6 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
             queryClient.invalidateQueries({ queryKey: ['trash'] });
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success('File or folder restored successfully!');
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
@@ -249,7 +277,6 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['trash'] });
             dispatch({ type: 'SET_LOADING', loading: false });
-            toast.success('Trash emptied successfully!');
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });
@@ -427,6 +454,28 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
+    const getRecents = async (page: number = 1, limit: number = 20) => {
+        try {
+            dispatch({ type: 'SET_LOADING', loading: true });
+            const data = await queryClient.fetchQuery({
+                queryKey: ['recents', page, limit],
+                queryFn: async () => {
+                    const result = await fileApi.getRecents(page, limit);
+                    return result.data as FileState['recents'];
+                },
+                staleTime: 2 * 60 * 1000, // 2 minutes
+                gcTime: 5 * 60 * 1000,
+            });
+            dispatch({ type: 'SET_RECENTS', recents: data });
+            dispatch({ type: 'SET_LOADING', loading: false });
+            return data;
+        } catch (error: any) {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to get recents.';
+            throw new Error(errorMessage);
+        }
+    };
+
     const deleteFileOrFolder = async (id: string) => {
         try {
             dispatch({ type: 'SET_LOADING', loading: true });
@@ -465,9 +514,61 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
+    const getPrivateFiles = async () => {
+        try {
+            dispatch({ type: 'SET_LOADING', loading: true });
+            const data = await queryClient.fetchQuery({
+                queryKey: ['privateFiles'],
+                queryFn: async () => {
+                    const result = await fileApi.getPrivateFiles();
+                    return result.data;
+                },
+            });
+            dispatch({ type: 'SET_PRIVATE_FILES', privateFiles: data });
+            dispatch({ type: 'SET_LOADING', loading: false });
+            return data;
+        }
+        catch (error: any) {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to get private files.';
+            throw new Error(errorMessage);
+        }
+    };
+
+    const { mutateAsync: updateFileAccessLevelMutationFn } = useMutation({
+        mutationFn: async ({ id, data }: { id: string; data: { access_level: AccessLevel } }) => {
+            const result = await fileApi.updateFileAccessLevel(id, data);
+            return result.data;
+        },
+        retry: false,
+        onSuccess: async () => {
+            // Refetch both queries to ensure data is up to date after access level change
+            await Promise.all([
+                queryClient.refetchQueries({ queryKey: ['fileSystemTree'] }),
+                queryClient.refetchQueries({ queryKey: ['privateFiles'] }),
+            ]);
+            dispatch({ type: 'SET_LOADING', loading: false });
+        },
+        onError: () => {
+            dispatch({ type: 'SET_LOADING', loading: false });
+        },
+    });
+
+    const updateFileAccessLevel = async (id: string, data: { access_level: AccessLevel }) => {
+        try {
+            dispatch({ type: 'SET_LOADING', loading: true });
+            await updateFileAccessLevelMutationFn({ id, data });
+            return { success: true };
+        } catch (error: any) {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to update file access level.';
+            return { success: false, error: errorMessage };
+        }
+    };
+
     const value: FileContextType = {
         ...state,
-        loading: state.loading || fileSystemTreeLoading || trashLoading,
+        loading: state.loading || fileSystemTreeLoading || trashLoading || privateFilesLoading,
         createFolder,
         renameFolder,
         moveFileOrFolder,
@@ -477,10 +578,13 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         getAllSharedFilesByMe,
         getAllSharedFilesWithMe,
         getFileSystemTree,
+        getPrivateFiles,
         getTrash,
+        getRecents,
         deleteFileOrFolder,
         restoreFileOrFolder,
         emptyTrash,
+        updateFileAccessLevel,
     };
 
     return <FileContext.Provider value={value}>{children}</FileContext.Provider>;

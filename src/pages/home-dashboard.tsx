@@ -1,4 +1,5 @@
 "use client"
+import { useState } from "react"
 import { motion } from "framer-motion"
 import {
   Clock,
@@ -12,24 +13,21 @@ import {
   Star,
   Upload,
   FolderPlus,
-  Search,
   Activity,
+  Lock,
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
+import RecentFiles from "@/components/file-manager/RecentFiles"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-
-const recentFiles = [
-  { name: "Project Proposal.pdf", type: "pdf", size: "2.4 MB", modified: "2 hours ago", icon: FileText, color: "text-red-500", bgColor: "bg-red-50" },
-  { name: "Dashboard Mockup.fig", type: "figma", size: "15.2 MB", modified: "4 hours ago", icon: ImageIcon, color: "text-purple-500", bgColor: "bg-purple-50" },
-  { name: "Team Meeting.mp4", type: "video", size: "124 MB", modified: "1 day ago", icon: Video, color: "text-blue-500", bgColor: "bg-blue-50" },
-  { name: "Brand Assets.zip", type: "archive", size: "45.8 MB", modified: "2 days ago", icon: Archive, color: "text-orange-500", bgColor: "bg-orange-50" },
-  { name: "Presentation.pptx", type: "presentation", size: "8.1 MB", modified: "3 days ago", icon: FileText, color: "text-pink-500", bgColor: "bg-pink-50" },
-]
+import { useAuth } from "@/contexts/useAuth"
+import { ACCESS_LEVEL } from "@/types/file.types"
+import { AddNewFolder } from "@/components/file-manager/AddNewFolder"
+import { useFile } from "@/contexts/fileContext"
+import { toast } from "sonner"
 
 const quickStats = [
   { label: "Total Files", value: "1,247", icon: FileText, change: "+12%", color: "from-blue-500 to-blue-600" },
@@ -50,12 +48,59 @@ const quickActions = [
   { label: "Upload Files", icon: Upload, color: "from-blue-500 to-blue-600", description: "Add new files" },
   { label: "New Folder", icon: FolderPlus, color: "from-green-500 to-green-600", description: "Create folder" },
   { label: "Share Files", icon: Users, color: "from-purple-500 to-purple-600", description: "Share with team" },
-  { label: "Search Files", icon: Search, color: "from-orange-500 to-orange-600", description: "Find anything" },
+  { label: "Private Files", icon: Lock, color: "from-orange-500 to-orange-600", description: "Secure your files" },
 ]
 
 export function HomeDashboard() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const { createFolder } = useFile()
+  const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false)
 
+  const navigateToUploadFile = ({ folderId, folderName }: { folderId: string, folderName: string }) => {
+    navigate(`/all-files/${folderId}`, {
+      state: { folder_id: folderId, folder_name: folderName, access_level: ACCESS_LEVEL.PROTECTED }
+    });
+  }
+
+  const handleCreateFolder = async (folderName: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      // Create folder at root level (no parent_id)
+      const result = await createFolder({
+        name: folderName.trim(),
+        parent_id: undefined
+      })
+      if (result.success) {
+        toast.success("Folder created successfully")
+        navigate('/all-files')
+      }
+      return result
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error?.message || 'Failed to create folder'
+      }
+    }
+  }
+
+  const handleQuickActionClick = (label: string) => {
+    switch (label) {
+      case "Upload Files":
+        navigateToUploadFile({ folderId: "root", folderName: "root" });
+        break;
+      case "New Folder":
+        setIsCreateFolderModalOpen(true);
+        break;
+      case "Share Files":
+        navigate('/shared-files');
+        break;
+      case "Private Files":
+        navigate('/private-files');
+        break;
+      default:
+        break;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
@@ -69,7 +114,7 @@ export function HomeDashboard() {
         >
           <div>
             <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-              Good morning, Sophie ✨
+              Good morning, {user?.display_name} ✨
             </h1>
             <p className="text-slate-600 dark:text-slate-400 mt-2 text-sm sm:text-base">
               Here's what's happening with your files today.
@@ -92,6 +137,7 @@ export function HomeDashboard() {
                 transition={{ duration: 0.3, delay: 0.1 + index * 0.05 }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
+                onClick={() => handleQuickActionClick(action.label)}
               >
                 <Card
                   className={cn(
@@ -196,37 +242,7 @@ export function HomeDashboard() {
                 </Button>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {recentFiles.map((file, index) => (
-                    <motion.div
-                      key={file.name}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: 0.4 + index * 0.05 }}
-                      whileHover={{ x: 2 }}
-                      className="group flex items-center gap-4 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all duration-200 cursor-pointer"
-                    >
-                      <div className={cn(
-                        "p-2.5 rounded-lg",
-                        file.bgColor,
-                        "group-hover:scale-110 transition-transform duration-200"
-                      )}>
-                        <file.icon className={cn("h-5 w-5", file.color)} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-slate-900 dark:text-slate-100 truncate">
-                          {file.name}
-                        </p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          {file.size} • {file.modified}
-                        </p>
-                      </div>
-                      <Badge variant="secondary" className="text-xs">
-                        {file.type}
-                      </Badge>
-                    </motion.div>
-                  ))}
-                </div>
+                <RecentFiles page={1} limit={5} />
               </CardContent>
             </Card>
           </motion.div>
@@ -303,7 +319,15 @@ export function HomeDashboard() {
           </motion.div>
         </div>
 
-
+        {/* Create Folder Modal */}
+        {isCreateFolderModalOpen && <AddNewFolder
+          onAddFolder={handleCreateFolder}
+          variant="button"
+          buttonText="New Folder"
+          className="shrink-0"
+          isOpen={isCreateFolderModalOpen}
+          onClose={() => setIsCreateFolderModalOpen(false)}
+        />}
       </div>
     </div>
   )

@@ -3,7 +3,6 @@ import { Search, SortDesc, SortAsc, Grid3X3, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
 
 interface ToolbarProps {
   searchQuery: string;
@@ -11,10 +10,11 @@ interface ToolbarProps {
   selectedFilesCount: number;
   viewMode: "grid" | "list";
   onViewModeChange: (mode: "grid" | "list") => void;
+  sortDirection: "ASC" | "DESC";
+  onSortChange: (direction: "ASC" | "DESC") => void;
 }
 
-export function Toolbar({ searchQuery, onSearchChange, selectedFilesCount, viewMode, onViewModeChange }: ToolbarProps) {
-  const [sort, setSort] = useState<"ASC" | "DESC">("ASC")
+export function Toolbar({ searchQuery, onSearchChange, selectedFilesCount, viewMode, onViewModeChange, sortDirection, onSortChange }: ToolbarProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -32,17 +32,23 @@ export function Toolbar({ searchQuery, onSearchChange, selectedFilesCount, viewM
             className="pl-10"
           />
         </div>
-        <Button onClick={() => setSort(sort === "ASC" ? "DESC" : "ASC")} variant="outline" size="sm" className="shrink-0 bg-transparent">
+        <Button 
+          onClick={() => onSortChange(sortDirection === "ASC" ? "DESC" : "ASC")} 
+          variant="outline" 
+          size="sm" 
+          className="shrink-0 bg-transparent"
+          title={sortDirection === "ASC" ? "Sort by size (smallest first)" : "Sort by size (largest first)"}
+        >
           {
-            sort === "ASC" ?
+            sortDirection === "ASC" ?
               <>
                 <SortAsc className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Sort</span>
+                <span className="hidden sm:inline">Size ↑</span>
 
               </> :
               <>
                 <SortDesc className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Sort</span>
+                <span className="hidden sm:inline">Size ↓</span>
               </>
           }
         </Button>

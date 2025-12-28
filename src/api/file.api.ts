@@ -41,7 +41,13 @@ const getAllSharedFilesWithMe = async () => {
 };
 
 const getFileSystemTree = async () => {
-    const response = await apiClient.get("/file-flow/file/all");
+    const response = await apiClient.get("/file-flow/file/all?accessLevel=protected");
+    return response.data;
+};
+
+
+const getPrivateFiles = async () => {
+    const response = await apiClient.get("/file-flow/file/all?accessLevel=private");
     return response.data;
 };
 
@@ -65,11 +71,24 @@ const emptyTrash = async () => {
     return response.data;
 };
 
+const getRecents = async (page: number = 1, limit: number = 20) => {
+    const response = await apiClient.get(`/file-flow/file/recents`, {
+        params: { page, limit }, withCredentials: true
+    });
+    return response.data;
+};
+
+const updateFileAccessLevel = async (id: string, data: any) => {
+    const response = await apiClient.patch(`/file-flow/file/${id}/update-access-level`, data);
+    return response.data;
+};
+
 export default {
     createFolder,
     renameFolder,
     moveFileOrFolder,
     createFile,
+    getPrivateFiles,
     shareFileOrFolder,
     getAllSharedFiles,
     getAllSharedFilesByMe,
@@ -79,4 +98,6 @@ export default {
     deleteFileOrFolder,
     restoreFileOrFolder,
     emptyTrash,
+    getRecents,
+    updateFileAccessLevel,
 };

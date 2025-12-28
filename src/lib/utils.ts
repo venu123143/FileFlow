@@ -1,7 +1,7 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import type { FileSystemNode } from "@/types/file.types"
-import type { StandardFileItem, DeletedFileItem } from "@/types/file-manager"
+import type { FileSystemNode, SharedFileSystemNode } from "@/types/file.types"
+import type { StandardFileItem, DeletedFileItem, PrivateFileItem, SharedFileItem } from "@/types/file-manager"
 import {
   FileText,
   FolderIcon,
@@ -98,6 +98,7 @@ export function transformFileSystemNodeToFileItem(node: FileSystemNode, parentPa
     shared: node.access_level === "public", // Simplified assumption
     parentPath,
     variant: "standard",
+    access_level: node.access_level,
     children: node.children ? node.children.map(child => transformFileSystemNodeToFileItem(child, [...parentPath, node.name])) : undefined,
   }
 }
@@ -150,4 +151,94 @@ export function transformFileSystemNodeToDeletedFileItem(node: FileSystemNode, p
 // Transform FileSystemNode array to DeletedFileItem array
 export function transformFileSystemNodesToDeletedFileItems(nodes: FileSystemNode[]): DeletedFileItem[] {
   return nodes.map(node => transformFileSystemNodeToDeletedFileItem(node))
+}
+
+// Transform FileSystemNode to PrivateFileItem
+export function transformFileSystemNodeToPrivateFileItem(node: FileSystemNode, parentPath: string[] = []): PrivateFileItem {
+  const isFolder = node.is_folder
+  const fileType = node.file_info?.file_type || null
+  const size = node.file_info?.file_size || 0
+  const thumbnail = node.file_info?.thumbnail_path || null
+
+  // Handle potential null updated_at
+  const modifiedDate = node.updated_at || node.created_at
+
+  // Determine encrypted and sensitive from metadata or defaults
+  // For private files, we can check metadata or use defaults
+  const metadata = node.metadata || {}
+  const encrypted = metadata.encrypted !== undefined ? metadata.encrypted : (node.access_level === "private")
+  const sensitive = metadata.sensitive !== undefined ? metadata.sensitive : (node.tags?.includes("sensitive") || false)
+
+  return {
+    id: node.id,
+    name: node.name,
+    type: isFolder ? "folder" : "file",
+    fileType: isFolder ? "folder" : getFileTypeCategory(fileType),
+    size: formatFileSize(size),
+    modified: formatRelativeTime(modifiedDate),
+    icon: isFolder ? FolderIcon : getFileIcon(fileType),
+    thumbnail,
+    file_info: node.file_info || undefined,
+    starred: false, // This would need to be fetched from favorites API
+    shared: false, // Private files are not shared
+    parentPath,
+    variant: "private",
+    encrypted,
+    sensitive,
+    access_level: node.access_level,
+    children: node.children ? node.children.map(child => transformFileSystemNodeToPrivateFileItem(child, [...parentPath, node.name])) : undefined,
+  }
+}
+
+// Transform FileSystemNode array to PrivateFileItem array
+export function transformFileSystemNodesToPrivateFileItems(nodes: FileSystemNode[]): PrivateFileItem[] {
+  return nodes.map(node => transformFileSystemNodeToPrivateFileItem(node))
+}
+
+// Transform SharedFileSystemNode to SharedFileItem
+export function transformSharedFileSystemNodeToSharedFileItem(node: SharedFileSystemNode, parentPath: string[] = []): SharedFileItem {
+  const isFolder = node.is_folder
+  const fileType = node.file_info?.file_type || null
+  const size = node.file_info?.file_size || 0
+  const thumbnail = node.file_info?.thumbnail_path || null
+
+  // Handle potential null updated_at
+  const modifiedDate = node.updated_at || node.created_at
+
+  return {
+    id: node.id,
+    name: node.name,
+    type: isFolder ? "folder" : "file",
+    fileType: isFolder ? "folder" : getFileTypeCategory(fileType),
+    size: formatFileSize(size),
+    modified: formatRelativeTime(modifiedDate),
+    icon: isFolder ? FolderIcon : getFileIcon(fileType),
+    thumbnail,
+    file_info: node.file_info || undefined,
+    starred: false, // This would need to be fetched from favorites API
+    shared: true,
+    parentPath,
+    variant: "shared",
+    sharedBy: {
+      name: node.shared_by_user?.display_name || "Unknown",
+      avatar: node.shared_by_user?.avatar_url || null,
+      initials: (node.shared_by_user?.display_name || "U").charAt(0).toUpperCase(),
+    },
+    sharedWith: [
+      {
+        name: node.shared_with_user?.display_name || "Unknown",
+        avatar: node.shared_with_user?.avatar_url || null,
+        initials: (node.shared_with_user?.display_name || "U").charAt(0).toUpperCase(),
+      }
+    ],
+    permission: (node.permission_level as "view" | "edit" | "admin") || "view",
+    sharedDate: formatRelativeTime(node.share_created_at),
+    isOwner: false, // This will be overridden in the page component based on current user
+    children: node.children ? node.children.map((child: SharedFileSystemNode) => transformSharedFileSystemNodeToSharedFileItem(child, [...parentPath, node.name])) : undefined,
+  }
+}
+
+// Transform SharedFileSystemNode array to SharedFileItem array
+export function transformSharedFileSystemNodesToSharedFileItems(nodes: SharedFileSystemNode[]): SharedFileItem[] {
+  return nodes.map(node => transformSharedFileSystemNodeToSharedFileItem(node))
 }

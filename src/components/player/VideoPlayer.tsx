@@ -44,6 +44,51 @@ const customStyles = `
     background-color: #ef4444;
   }
   
+  /* Ensure timer is always visible */
+  .video-js .vjs-current-time,
+  .video-js .vjs-duration {
+    display: inline-block !important;
+    padding: 0 0.5em;
+  }
+  
+  .video-js .vjs-time-divider {
+    display: inline-block !important;
+    padding: 0 0.2em;
+  }
+  
+  /* Skip indicator styles */
+  .video-skip-indicator {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 2em;
+    font-weight: bold;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+    z-index: 1000;
+    animation: fadeOut 0.5s ease-out forwards;
+  }
+  
+  .video-skip-indicator.left {
+    left: 20%;
+  }
+  
+  .video-skip-indicator.right {
+    right: 20%;
+  }
+  
+  @keyframes fadeOut {
+    0% {
+      opacity: 1;
+      transform: translateY(-50%) scale(1.2);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-50%) scale(1);
+    }
+  }
+  
   /* Mobile optimizations */
   @media (max-width: 640px) {
     .video-js .vjs-control-bar {
@@ -130,6 +175,19 @@ export function VideoPlayer({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playerRef = useRef<any | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const doubleClickHandlerRef = useRef<((event: MouseEvent) => void) | null>(null);
+  const touchStartHandlerRef = useRef<((event: TouchEvent) => void) | null>(null);
+  const touchHandlerRef = useRef<{
+    lastTapTime: number;
+    lastTapX: number;
+    lastTapY: number;
+    tapTimeout: NodeJS.Timeout | null;
+  }>({
+    lastTapTime: 0,
+    lastTapX: 0,
+    lastTapY: 0,
+    tapTimeout: null
+  });
 
   useEffect(() => {
     // Add custom styles to document
@@ -204,9 +262,111 @@ export function VideoPlayer({
       });
 
       player.on('error', (error: any) => {
-        console.error('Video error:', error);
         if (onError) onError(error);
       });
+
+      // Skip handler function (shared for both mouse and touch)
+      const handleSkip = (x: number, playerEl: HTMLElement) => {
+        const rect = playerEl.getBoundingClientRect();
+        const clickX = x - rect.left;
+        const playerWidth = rect.width;
+        const isLeftSide = clickX < playerWidth / 2;
+
+        const currentTime = player.currentTime();
+        const duration = player.duration();
+
+        if (typeof currentTime === 'number' && typeof duration === 'number') {
+          let newTime: number;
+          let skipText: string;
+
+          if (isLeftSide) {
+            // Skip backward 10 seconds
+            newTime = Math.max(0, currentTime - 10);
+            skipText = '-10s';
+          } else {
+            // Skip forward 10 seconds
+            newTime = Math.min(duration, currentTime + 10);
+            skipText = '+10s';
+          }
+
+          player.currentTime(newTime);
+
+          // Show skip indicator
+          showSkipIndicator(playerEl, skipText, isLeftSide);
+        }
+      };
+
+      // Double-click handler for skip forward/backward (desktop)
+      const handleDoubleClick = (event: MouseEvent) => {
+        const playerEl = player.el() as HTMLElement | null;
+        if (!playerEl) return;
+        handleSkip(event.clientX, playerEl);
+      };
+
+      // Double-tap handler for skip forward/backward (mobile)
+      const handleTouchStart = (event: TouchEvent) => {
+        const playerEl = player.el() as HTMLElement | null;
+        if (!playerEl) return;
+
+        const touch = event.touches[0];
+        if (!touch) return;
+
+        const currentTime = Date.now();
+        const tapX = touch.clientX;
+        const tapY = touch.clientY;
+        const { lastTapTime, lastTapX, lastTapY, tapTimeout } = touchHandlerRef.current;
+
+        // Clear any existing timeout
+        if (tapTimeout) {
+          clearTimeout(tapTimeout);
+          touchHandlerRef.current.tapTimeout = null;
+        }
+
+        // Check if this is a double-tap (within 300ms and similar position)
+        const timeDiff = currentTime - lastTapTime;
+        const xDiff = Math.abs(tapX - lastTapX);
+        const yDiff = Math.abs(tapY - lastTapY);
+        const maxDistance = 50; // Maximum distance between taps to be considered a double-tap
+
+        if (
+          timeDiff < 300 &&
+          timeDiff > 0 &&
+          xDiff < maxDistance &&
+          yDiff < maxDistance
+        ) {
+          // Double-tap detected
+          event.preventDefault();
+          handleSkip(tapX, playerEl);
+          // Reset tap tracking
+          touchHandlerRef.current.lastTapTime = 0;
+          touchHandlerRef.current.lastTapX = 0;
+          touchHandlerRef.current.lastTapY = 0;
+        } else {
+          // Store this tap for potential double-tap
+          touchHandlerRef.current.lastTapTime = currentTime;
+          touchHandlerRef.current.lastTapX = tapX;
+          touchHandlerRef.current.lastTapY = tapY;
+
+          // Set timeout to reset if no second tap
+          touchHandlerRef.current.tapTimeout = setTimeout(() => {
+            touchHandlerRef.current.lastTapTime = 0;
+            touchHandlerRef.current.lastTapX = 0;
+            touchHandlerRef.current.lastTapY = 0;
+          }, 300);
+        }
+      };
+
+      // Store handler references for cleanup
+      doubleClickHandlerRef.current = handleDoubleClick;
+      touchStartHandlerRef.current = handleTouchStart;
+
+      // Listen for double-click events on the player element (desktop)
+      const playerEl = player.el() as HTMLElement | null;
+      if (playerEl) {
+        playerEl.addEventListener('dblclick', handleDoubleClick);
+        // Listen for touch events (mobile)
+        playerEl.addEventListener('touchstart', handleTouchStart, { passive: false });
+      }
 
       // Keyboard shortcuts
       player.on('keydown', (e: any) => {
@@ -268,12 +428,70 @@ export function VideoPlayer({
     }
 
     return () => {
+      // Clean up event listeners
       if (playerRef.current) {
+        const playerEl = playerRef.current.el() as HTMLElement | null;
+        if (playerEl) {
+          // Remove double-click listener (desktop)
+          if (doubleClickHandlerRef.current) {
+            playerEl.removeEventListener('dblclick', doubleClickHandlerRef.current);
+            doubleClickHandlerRef.current = null;
+          }
+          // Remove touch listener (mobile)
+          if (touchStartHandlerRef.current) {
+            playerEl.removeEventListener('touchstart', touchStartHandlerRef.current);
+            touchStartHandlerRef.current = null;
+          }
+        }
+        // Clear touch handler timeout
+        if (touchHandlerRef.current.tapTimeout) {
+          clearTimeout(touchHandlerRef.current.tapTimeout);
+          touchHandlerRef.current.tapTimeout = null;
+        }
         playerRef.current.dispose();
         playerRef.current = null;
       }
     };
   }, [url, autoplay, muted, controls, loop, preload, poster]);
+
+  // Helper function to show skip indicator
+  function showSkipIndicator(playerEl: HTMLElement, text: string, isLeft: boolean) {
+    // Remove existing indicator if any
+    const existingIndicator = playerEl.querySelector('.video-skip-indicator') as HTMLElement | null;
+    if (existingIndicator) {
+      existingIndicator.remove();
+    }
+
+    // Create new indicator
+    const indicator = document.createElement('div');
+    indicator.className = `video-skip-indicator ${isLeft ? 'left' : 'right'}`;
+    indicator.textContent = text;
+    indicator.style.position = 'absolute';
+    indicator.style.top = '50%';
+    indicator.style.transform = 'translateY(-50%)';
+    indicator.style.fontSize = '2em';
+    indicator.style.fontWeight = 'bold';
+    indicator.style.color = 'white';
+    indicator.style.textShadow = '2px 2px 4px rgba(0, 0, 0, 0.8)';
+    indicator.style.pointerEvents = 'none';
+    indicator.style.zIndex = '1000';
+    indicator.style.animation = 'fadeOut 0.5s ease-out forwards';
+
+    if (isLeft) {
+      indicator.style.left = '20%';
+    } else {
+      indicator.style.right = '20%';
+    }
+
+    playerEl.appendChild(indicator);
+
+    // Remove after animation
+    setTimeout(() => {
+      if (indicator.parentNode) {
+        indicator.remove();
+      }
+    }, 500);
+  }
 
   // Helper function to determine video type
   function getVideoType(url: string): string {
