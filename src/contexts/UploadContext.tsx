@@ -1,7 +1,8 @@
 // @/contexts/uploadContext.tsx
 import React, { createContext, useContext, useReducer, useCallback, type ReactNode } from 'react';
-import apiClient from '@/api/axios';
+import { useInitiateUpload, useUploadChunk, useCompleteUpload, useAbortUpload, useDirectUpload, useGetUploadedParts } from '@/hooks/useUploadMutations';
 import { getAuthState } from '@/store/auth.store';
+import apiClient from '@/api/axios';
 
 export const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
 
@@ -32,6 +33,10 @@ export interface FileUploadState {
     fileName: string;
     fileSize: number;
     fileType: string;
+    isUploading: boolean;
+    isRetrying: boolean;
+    isAborting: boolean;
+    isRemoving: boolean;
 }
 
 export interface FileObject {
@@ -51,6 +56,7 @@ type UploadAction =
     | { type: 'UPLOAD_SUCCESS'; payload: FileObject[] }
     | { type: 'DELETE_SUCCESS' }
     | { type: 'ERROR'; payload: string }
+    | { type: 'SET_BUTTON_LOADING'; payload: { fileName: string; button: 'upload' | 'retry' | 'abort' | 'remove'; loading: boolean } }
     | { type: 'RESET' };
 
 interface UploadState {
@@ -93,6 +99,10 @@ const uploadReducer = (state: UploadState, action: UploadAction): UploadState =>
                         fileName: action.payload.fileName,
                         fileSize: action.payload.fileSize,
                         fileType: action.payload.fileType,
+                        isUploading: false,
+                        isRetrying: false,
+                        isAborting: false,
+                        isRemoving: false,
                     }
                 },
                 // isPopupVisible: true,
@@ -153,6 +163,20 @@ const uploadReducer = (state: UploadState, action: UploadAction): UploadState =>
             return { ...state, loading: false, success: true, uploadedFiles: [] };
         case 'ERROR':
             return { ...state, loading: false, error: action.payload, success: false };
+        case 'SET_BUTTON_LOADING':
+            return {
+                ...state,
+                fileStates: {
+                    ...state.fileStates,
+                    [action.payload.fileName]: {
+                        ...state.fileStates[action.payload.fileName],
+                        isUploading: action.payload.button === 'upload' ? action.payload.loading : state.fileStates[action.payload.fileName]?.isUploading || false,
+                        isRetrying: action.payload.button === 'retry' ? action.payload.loading : state.fileStates[action.payload.fileName]?.isRetrying || false,
+                        isAborting: action.payload.button === 'abort' ? action.payload.loading : state.fileStates[action.payload.fileName]?.isAborting || false,
+                        isRemoving: action.payload.button === 'remove' ? action.payload.loading : state.fileStates[action.payload.fileName]?.isRemoving || false,
+                    }
+                }
+            };
         case 'RESET':
             return initialState;
 
@@ -175,6 +199,7 @@ interface UploadContextType {
     autoClearCompleted: () => void;
     uploadFiles: (files: File[]) => Promise<FileObject[]>;
     deleteFile: (fileName: string) => Promise<boolean>;
+    setButtonLoading: (fileName: string, button: 'upload' | 'retry' | 'abort' | 'remove', loading: boolean) => void;
     reset: () => void;
 }
 
@@ -184,6 +209,14 @@ const UploadContext = createContext<UploadContextType | undefined>(undefined);
 export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [state, dispatch] = useReducer(uploadReducer, initialState);
     const { token } = getAuthState();
+
+    // React Query mutations
+    const initiateUploadMutation = useInitiateUpload();
+    const uploadChunkMutation = useUploadChunk();
+    const completeUploadMutation = useCompleteUpload();
+    const abortUploadMutation = useAbortUpload();
+    const directUploadMutation = useDirectUpload();
+    const getUploadedPartsMutation = useGetUploadedParts();
 
     const updateFileState = useCallback((fileName: string, updates: Partial<FileUploadState>) => {
         dispatch({ type: 'UPDATE_FILE_STATE', payload: { fileName, updates } });
@@ -209,11 +242,13 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         dispatch({ type: 'CLEAR_ALL_COMPLETED' });
     }, []);
 
+    const setButtonLoading = useCallback((fileName: string, button: 'upload' | 'retry' | 'abort' | 'remove', loading: boolean) => {
+        dispatch({ type: 'SET_BUTTON_LOADING', payload: { fileName, button, loading } });
+    }, []);
+
     // Auto-clear completed uploads after 5 seconds
     const autoClearCompleted = useCallback(() => {
-        const completedFiles = Object.values(state.fileStates).filter(
-            file => file.status === 'completed'
-        );
+        const completedFiles = Object.values(state.fileStates).filter(file => file.status === 'completed');
 
         if (completedFiles.length > 0) {
             const timeoutId = setTimeout(() => {
@@ -234,17 +269,16 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             let uploadId = state.fileStates[file.name]?.uploadId;
             let key = state.fileStates[file.name]?.fileKey;
             let parts: { PartNumber: number; ETag: string }[] = [];
-            let startChunk = state.fileStates[file.name]?.lastUploadedChunk || 0;
+            let startChunk = 0;
             const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
             if (!uploadId) {
                 // Initiate upload (1st time)
-                const response = await apiClient.post('/upload/initiate', {
+                const initiateResponse = await initiateUploadMutation.mutateAsync({
                     fileName: file.name,
                     mimeType: file.type,
                     folderId
                 });
-                const initiateResponse = response.data.data as UploadResponse;
                 uploadId = initiateResponse.uploadId;
                 key = initiateResponse.key;
 
@@ -256,9 +290,14 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 });
             } else {
                 // Resume upload - get already uploaded parts
-                const { data: uploadedParts } = await apiClient.get(`/upload/parts/file/${uploadId}?key=${key}`);
-                parts = uploadedParts.parts || [];
-                startChunk = Math.max(...parts.map(part => part.PartNumber), 0);
+                const uploadedPartsResponse = await getUploadedPartsMutation.mutateAsync({
+                    uploadId,
+                    key: key!
+                });
+                parts = uploadedPartsResponse.parts || [];
+
+                // Fix: Calculate correct startChunk from already uploaded parts
+                startChunk = parts.length > 0 ? Math.max(...parts.map(part => part.PartNumber)) : 0;
 
                 // Calculate progress based on already uploaded chunks
                 const resumeProgress = Math.round((startChunk / totalChunks) * 100);
@@ -268,7 +307,12 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 });
             }
 
+            // Upload chunks
             for (let chunkNumber = startChunk; chunkNumber < totalChunks; chunkNumber++) {
+                // Skip already uploaded chunks
+                if (state.fileStates[file.name]?.isAborting) {
+                    throw new Error('Upload aborted');
+                }
                 if (parts.some(part => part.PartNumber === chunkNumber + 1)) {
                     continue;
                 }
@@ -277,115 +321,103 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 const end = Math.min(start + CHUNK_SIZE, file.size);
                 const chunk = file.slice(start, end);
 
-                const formData = new FormData();
-                formData.append('chunk', chunk);
-                if (key) {
-                    formData.append('key', key);
-                }
-                formData.append('metadata', JSON.stringify({
-                    chunkNumber: chunkNumber + 1,
-                    totalChunks,
-                    fileSize: file.size,
-                    originalFileName: file.name,
-                    mimeType: file.type,
-                }));
+                const chunkResponse = await uploadChunkMutation.mutateAsync({
+                    uploadId: uploadId!,
+                    key: key!,
+                    chunk,
+                    metadata: {
+                        chunkNumber: chunkNumber + 1,
+                        totalChunks,
+                        fileSize: file.size,
+                        originalFileName: file.name,
+                        mimeType: file.type,
+                    },
+                    onUploadProgress: (progressEvent) => {
+                        if (progressEvent.total) {
+                            const chunkProgress = progressEvent.loaded / progressEvent.total;
+                            const overallProgress = Math.round(((chunkNumber + chunkProgress) / totalChunks) * 100);
+                            updateFileState(file.name, { progress: overallProgress });
+                        }
+                    },
+                });
 
-                try {
-                    const response = await apiClient.post(`/upload/chunk/file/${uploadId}`, formData, {
-                        headers: { 'Content-Type': 'multipart/form-data' },
-                        onUploadProgress: (progressEvent: any) => {
-                            if (progressEvent.total) {
-                                const chunkProgress = progressEvent.loaded / progressEvent.total;
-                                const overallProgress = Math.round(((chunkNumber + chunkProgress) / totalChunks) * 100);
-                                updateFileState(file.name, { progress: overallProgress });
-                            }
-                        },
-                    });
-
-                    const chunkResponse = response.data.data as { PartNumber: number; ETag: string };
-                    parts.push({ PartNumber: chunkResponse.PartNumber, ETag: chunkResponse.ETag });
-                    updateFileState(file.name, { lastUploadedChunk: chunkNumber + 1 });
-                } catch (error: any) {
-                    console.error('Failed to upload chunk', error);
-                    updateFileState(file.name, {
-                        status: 'error',
-                        error: `Failed to upload chunk ${chunkNumber + 1}: ${error.message}`
-                    });
-                    throw error;
-                }
+                parts.push({ PartNumber: chunkResponse.PartNumber, ETag: chunkResponse.ETag });
+                updateFileState(file.name, { lastUploadedChunk: chunkNumber + 1 });
             }
-
             updateFileState(file.name, { status: 'processing', error: null });
 
             try {
-                const response = await apiClient.post(`/upload/complete/file/${uploadId}`, { key, parts });
-                const completeResponse = response.data.data as CompleteUploadResponse;
+                const completeResponse = await completeUploadMutation.mutateAsync({
+                    uploadId: uploadId!,
+                    key: key!,
+                    parts
+                });
 
                 updateFileState(file.name, {
                     status: 'completed',
                     progress: 100,
-                    url: completeResponse.storage_path
+                    url: completeResponse.storage_path,
+                    isUploading: false,
+                    isRetrying: false
                 });
 
                 return completeResponse;
             } catch (error: any) {
                 updateFileState(file.name, {
                     status: 'error',
-                    error: `Failed to complete upload: ${error.message}`
+                    error: error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to complete upload',
+                    isUploading: false,
+                    isRetrying: false
                 });
                 throw error;
             }
         } catch (error: any) {
             updateFileState(file.name, {
                 status: 'error',
-                error: `Upload failed: ${error.message}`
+                error: error.response?.data?.message || error.response?.data?.error || error.message || 'Upload failed',
+                isUploading: false,
+                isRetrying: false
             });
         }
-    }, [state.fileStates, updateFileState, initializeFile]);
+    }, [state.fileStates, updateFileState, initializeFile, initiateUploadMutation, uploadChunkMutation, completeUploadMutation, getUploadedPartsMutation]);
 
     const abortUpload = useCallback(async (fileName: string) => {
         try {
             const fileState = state.fileStates[fileName];
             if (fileState?.uploadId && fileState?.fileKey) {
-                await apiClient.post(`/upload/abort/file/${fileState.uploadId}`, {
+                updateFileState(fileName, { isAborting: true });
+                await abortUploadMutation.mutateAsync({
+                    uploadId: fileState.uploadId,
                     key: fileState.fileKey
                 });
+                updateFileState(fileName, { isAborting: false });
             }
             removeFile(fileName);
         } catch (error: any) {
             updateFileState(fileName, {
                 status: 'error',
-                error: `Failed to abort upload: ${error.message}`
+                error: error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to abort upload',
+                isAborting: false
             });
         }
-    }, [state.fileStates, updateFileState, removeFile]);
+    }, [state.fileStates, updateFileState, removeFile, abortUploadMutation]);
 
     const uploadFiles = async (files: File[]) => {
         dispatch({ type: 'UPLOAD_START' });
 
         try {
-            const formData = new FormData();
-            files.forEach((file) => formData.append('files', file));
+            const uploadedData = await directUploadMutation.mutateAsync(files);
 
-            const response = await apiClient.post('/upload/file', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
-            if (response.data?.success && response.data?.data) {
-                // The API returns an array of file objects with storage_path
-                const uploadedFiles = response.data.data.map((fileData: any, index: number) => ({
-                    fileName: files[index]?.name || 'unknown',
-                    url: fileData.storage_path
-                }));
+            const uploadedFiles = uploadedData.map((fileData, index) => ({
+                fileName: files[index]?.name || 'unknown',
+                url: fileData.storage_path
+            }));
 
-                dispatch({ type: 'UPLOAD_SUCCESS', payload: uploadedFiles });
-                return uploadedFiles;
-            } else {
-                throw new Error(response.data?.message || 'Upload failed - invalid response');
-            }
+            dispatch({ type: 'UPLOAD_SUCCESS', payload: uploadedFiles });
+            return uploadedFiles;
         } catch (error: any) {
-            dispatch({ type: 'ERROR', payload: error?.response?.data?.message || 'Network error' });
+            console.log('uploadFiles error', error);
+            dispatch({ type: 'ERROR', payload: error?.response?.data?.message || error?.message || 'Network error' });
             return [];
         }
     };
@@ -428,6 +460,7 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         autoClearCompleted,
         uploadFiles,
         deleteFile,
+        setButtonLoading,
         reset,
     };
 

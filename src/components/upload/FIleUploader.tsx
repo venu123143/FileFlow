@@ -14,7 +14,8 @@ import {
     Pause,
     RotateCcw,
     CheckCircle,
-    AlertTriangle
+    AlertTriangle,
+    Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUpload } from '@/contexts/UploadContext';
@@ -64,6 +65,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         abortUpload,
         removeFile,
         updateFileState,
+        setButtonLoading,
         autoClearCompleted
     } = useUpload();
 
@@ -175,10 +177,14 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     const handleFileUpload = async (file: File) => {
         const fileType = getFileType(file);
 
+        // Set button loading state
+        setButtonLoading(file.name, 'upload', true);
+
         try {
             switch (fileType) {
                 case 'video': {
                     // Use chunked upload for video files
+                    updateFileState(file.name, { isUploading: true });
                     const result = await handleUpload(file, folderId);
                     if (result) {
                         await createFile({
@@ -191,7 +197,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                             url: result.storage_path,
                             status: 'completed',
                             progress: 100,
-                            lastUploadedChunk: Math.ceil(file.size / (5 * 1024 * 1024))
+                            lastUploadedChunk: Math.ceil(file.size / (5 * 1024 * 1024)),
+                            isUploading: false
                         });
                         setCompletedFiles(prev => new Set([...prev, file.name]));
                     }
@@ -219,13 +226,18 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                             totalChunks: 1,
                             fileName: file.name,
                             fileSize: file.size,
-                            fileType: file.type
+                            fileType: file.type,
+                            isUploading: true,
+                            isRetrying: false,
+                            isAborting: false,
+                            isRemoving: false
                         });
                     } else {
                         updateFileState(file.name, {
                             status: 'uploading',
                             progress: 0,
-                            error: null
+                            error: null,
+                            isUploading: true
                         });
                     }
 
@@ -258,7 +270,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                             status: 'completed',
                             progress: 100,
                             lastUploadedChunk: 1,
-                            totalChunks: 1 // Set to 1 for direct uploads
+                            totalChunks: 1, // Set to 1 for direct uploads
+                            isUploading: false
                         });
                         setCompletedFiles(prev => new Set([...prev, file.name]));
                     } else {
@@ -270,25 +283,35 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         } catch (error: any) {
             updateFileState(file.name, {
                 status: 'error',
-                error: error.message || 'Upload failed'
+                error: error.response?.data?.message || error.response?.data?.error || error.message || 'Upload failed',
+                isUploading: false,
+                isRetrying: false
             });
+        } finally {
+            setButtonLoading(file.name, 'upload', false);
         }
     };
 
     const handleRemoveFile = async (file: File) => {
         const fileState = fileStates[file.name];
-        if (fileState?.status === 'uploading' && fileState.totalChunks > 1) {
-            // Only abort chunked uploads (video files)
-            await abortUpload(file.name);
-        } else {
-            removeFile(file.name);
+        setButtonLoading(file.name, 'remove', true);
+
+        try {
+            if (fileState?.status === 'uploading' && fileState.totalChunks > 1) {
+                // Only abort chunked uploads (video files)
+                await abortUpload(file.name);
+            } else {
+                removeFile(file.name);
+            }
+            setSelectedFiles(prev => prev.filter(f => f.name !== file.name));
+            setCompletedFiles(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(file.name);
+                return newSet;
+            });
+        } finally {
+            setButtonLoading(file.name, 'remove', false);
         }
-        setSelectedFiles(prev => prev.filter(f => f.name !== file.name));
-        setCompletedFiles(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(file.name);
-            return newSet;
-        });
     };
 
     const formatFileSize = (bytes: number): string => {
@@ -388,23 +411,23 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                 />
 
                 <div className="space-y-4">
-                    <div 
+                    <div
                         className="w-12 h-12 sm:w-16 sm:h-16 mx-auto rounded-full flex items-center justify-center"
                         style={{ backgroundColor: 'var(--color-upload-icon-bg)' }}
                     >
-                        <Upload 
+                        <Upload
                             className="w-6 h-6 sm:w-8 sm:h-8"
                             style={{ color: isDragOver ? 'var(--color-upload-icon-text)' : 'var(--color-upload-icon-text-muted)' }}
                         />
                     </div>
                     <div>
-                        <p 
+                        <p
                             className="text-base sm:text-lg font-medium"
                             style={{ color: 'var(--color-upload-text-primary)' }}
                         >
                             {isDragOver ? 'Release to upload' : 'Drop files here or click to browse'}
                         </p>
-                        <p 
+                        <p
                             className="text-sm mt-1"
                             style={{ color: 'var(--color-upload-text-secondary)' }}
                         >
@@ -430,7 +453,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
             </div>
             {/* Warning Message */}
             {showWarning && (
-                <div 
+                <div
                     className="m-4 sm:m-6 p-4 border rounded-lg"
                     style={{
                         backgroundColor: 'var(--color-upload-warning-bg)',
@@ -438,18 +461,18 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                     }}
                 >
                     <div className="flex items-start">
-                        <AlertTriangle 
+                        <AlertTriangle
                             className="w-5 h-5 mt-0.5 mr-3 flex-shrink-0"
                             style={{ color: 'var(--color-upload-warning-icon)' }}
                         />
                         <div>
-                            <h3 
+                            <h3
                                 className="text-sm font-medium"
                                 style={{ color: 'var(--color-upload-warning-heading)' }}
                             >
                                 Upload in Progress
                             </h3>
-                            <p 
+                            <p
                                 className="mt-1 text-sm"
                                 style={{ color: 'var(--color-upload-warning-text)' }}
                             >
@@ -462,7 +485,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
             )}
             {/* Close Button - Show when all files are completed */}
             {allFilesCompleted && (
-                <div 
+                <div
                     className="m-4 sm:m-6 p-4 sm:p-6 border rounded-lg"
                     style={{
                         backgroundColor: 'var(--color-upload-success-bg)',
@@ -470,11 +493,11 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                     }}
                 >
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                        <CheckCircle 
+                        <CheckCircle
                             className="w-5 h-5"
                             style={{ color: 'var(--color-upload-success-icon)' }}
                         />
-                        <span 
+                        <span
                             className="text-sm font-medium text-center"
                             style={{ color: 'var(--color-upload-success-heading)' }}
                         >
@@ -503,11 +526,11 @@ const FileUploader: React.FC<FileUploaderProps> = ({
 
             {/* File List */}
             {selectedFiles.length > 0 && (
-                <div 
+                <div
                     className="m-4 sm:m-6 p-4 sm:p-6 rounded-lg"
                     style={{ backgroundColor: 'var(--color-upload-filelist-bg)' }}
                 >
-                    <h3 
+                    <h3
                         className="text-sm font-medium mb-4"
                         style={{ color: 'var(--color-upload-text-heading)' }}
                     >
@@ -541,20 +564,20 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                                 >
                                     <div className="flex items-start justify-between mb-3">
                                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                                            <div 
+                                            <div
                                                 className="flex-shrink-0"
                                                 style={{ color: 'var(--color-upload-filelist-icon)' }}
                                             >
                                                 {getFileIcon(getFileType(file))}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p 
+                                                <p
                                                     className="text-sm font-medium truncate"
                                                     style={{ color: 'var(--color-upload-filelist-text)' }}
                                                 >
                                                     {file.name}
                                                 </p>
-                                                <p 
+                                                <p
                                                     className="text-xs"
                                                     style={{ color: 'var(--color-upload-filelist-text-muted)' }}
                                                 >
@@ -590,7 +613,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                                                                 : 'Ready to upload'}
                                             </span>
                                             {fileState.status === 'uploading' && fileState.totalChunks > 1 && (
-                                                <span 
+                                                <span
                                                     className="text-xs"
                                                     style={{ color: 'var(--color-upload-filelist-text-muted)' }}
                                                 >
@@ -598,13 +621,13 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                                                 </span>
                                             )}
                                         </div>
-                                        <div 
+                                        <div
                                             className="h-1.5 rounded-full overflow-hidden"
                                             style={{ backgroundColor: 'var(--color-upload-progress-bg)' }}
                                         >
                                             <div
                                                 className="h-full transition-all duration-300 rounded-full"
-                                                style={{ 
+                                                style={{
                                                     width: `${fileState.progress}%`,
                                                     ...getProgressBarColor(fileState.status)
                                                 }}
@@ -618,49 +641,85 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                                             {fileState.status === 'idle' && (
                                                 <button
                                                     onClick={() => handleFileUpload(file)}
-                                                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 dark:focus:ring-offset-background transition-colors duration-200"
+                                                    disabled={fileState.isUploading}
+                                                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 dark:focus:ring-offset-background transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                                     style={{ backgroundColor: 'var(--color-upload-button-blue)' }}
                                                     onMouseEnter={(e) => {
-                                                        e.currentTarget.style.backgroundColor = 'var(--color-upload-button-blue-hover)';
+                                                        if (!fileState.isUploading) {
+                                                            e.currentTarget.style.backgroundColor = 'var(--color-upload-button-blue-hover)';
+                                                        }
                                                     }}
                                                     onMouseLeave={(e) => {
                                                         e.currentTarget.style.backgroundColor = 'var(--color-upload-button-blue)';
                                                     }}
                                                 >
-                                                    <Upload className="w-3 h-3 mr-1" />
-                                                    Upload
+                                                    {fileState.isUploading ? (
+                                                        <>
+                                                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                                            Uploading...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Upload className="w-3 h-3 mr-1" />
+                                                            Upload
+                                                        </>
+                                                    )}
                                                 </button>
                                             )}
                                             {fileState.status === 'error' && (
                                                 <button
                                                     onClick={() => handleFileUpload(file)}
-                                                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 dark:focus:ring-offset-background transition-colors duration-200"
+                                                    disabled={fileState.isRetrying}
+                                                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 dark:focus:ring-offset-background transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                                     style={{ backgroundColor: 'var(--color-upload-button-red)' }}
                                                     onMouseEnter={(e) => {
-                                                        e.currentTarget.style.backgroundColor = 'var(--color-upload-button-red-hover)';
+                                                        if (!fileState.isRetrying) {
+                                                            e.currentTarget.style.backgroundColor = 'var(--color-upload-button-red-hover)';
+                                                        }
                                                     }}
                                                     onMouseLeave={(e) => {
                                                         e.currentTarget.style.backgroundColor = 'var(--color-upload-button-red)';
                                                     }}
                                                 >
-                                                    <RotateCcw className="w-3 h-3 mr-1" />
-                                                    Retry
+                                                    {fileState.isRetrying ? (
+                                                        <>
+                                                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                                            Retrying...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <RotateCcw className="w-3 h-3 mr-1" />
+                                                            Retry
+                                                        </>
+                                                    )}
                                                 </button>
                                             )}
                                             {fileState.status === 'uploading' && fileState.totalChunks > 1 && (
                                                 <button
                                                     onClick={() => abortUpload(file.name)}
-                                                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-1 dark:focus:ring-offset-background transition-colors duration-200"
+                                                    disabled={fileState.isAborting}
+                                                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-1 dark:focus:ring-offset-background transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                                     style={{ backgroundColor: 'var(--color-upload-button-gray)' }}
                                                     onMouseEnter={(e) => {
-                                                        e.currentTarget.style.backgroundColor = 'var(--color-upload-button-gray-hover)';
+                                                        if (!fileState.isAborting) {
+                                                            e.currentTarget.style.backgroundColor = 'var(--color-upload-button-gray-hover)';
+                                                        }
                                                     }}
                                                     onMouseLeave={(e) => {
                                                         e.currentTarget.style.backgroundColor = 'var(--color-upload-button-gray)';
                                                     }}
                                                 >
-                                                    <Pause className="w-3 h-3 mr-1" />
-                                                    Cancel
+                                                    {fileState.isAborting ? (
+                                                        <>
+                                                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                                            Canceling...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Pause className="w-3 h-3 mr-1" />
+                                                            Cancel
+                                                        </>
+                                                    )}
                                                 </button>
                                             )}
                                             {fileState.status === 'completed' && fileState.url && (
@@ -682,8 +741,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
                                         </div>
 
                                         {fileState.error && (
-                                            <p 
-                                                className="text-xs truncate max-w-xs" 
+                                            <p
+                                                className="text-xs truncate max-w-xs"
                                                 title={fileState.error}
                                                 style={{ color: 'var(--color-upload-button-red)' }}
                                             >
