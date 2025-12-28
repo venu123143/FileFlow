@@ -106,7 +106,6 @@ export function DeletedFilesPage() {
 
   const handleDeleteFile = async (file: FileItem) => {
     const result = await deleteFileOrFolder(file.id);
-    console.log(result, "delete...");
     if (result.success) {
       // Remove from selected files if it was selected
       setSelectedFiles(prev => prev.filter(id => id !== file.id));

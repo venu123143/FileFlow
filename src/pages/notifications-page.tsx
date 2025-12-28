@@ -303,7 +303,6 @@ export default function NotificationsPage() {
         return filtered;
     }, [notifications, activeFilter, searchQuery]);
 
-    console.log(loading, "loading")
     // Memoized notification categories with optimized counting
     const notificationCategories = useMemo(() => {
         const categoryCounts = notifications.reduce((acc, n) => {

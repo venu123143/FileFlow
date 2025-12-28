@@ -107,13 +107,39 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     setPosition({ x: 0, y: 0 });
   };
 
-  const handleDownload = () => {
-    const link = document.createElement('a');
-    link.href = imageUrl;
-    link.download = imageName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = async () => {
+    try {
+      const timestamp = Date.now().toString().slice(0, 5);
+      const lastDotIndex = imageName.lastIndexOf('.');
+      
+      let nameWithoutExt: string;
+      let extension: string;
+      
+      if (lastDotIndex !== -1) {
+        nameWithoutExt = imageName.substring(0, lastDotIndex);
+        extension = imageName.substring(lastDotIndex);
+      } else {
+        nameWithoutExt = imageName;
+        extension = '';
+      }
+
+      const downloadFileName = `${nameWithoutExt}_${timestamp}${extension}`;
+
+      // Fetch and download
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = downloadFileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Download failed:', error);
+    }
   };
 
   const toggleFullscreen = () => {

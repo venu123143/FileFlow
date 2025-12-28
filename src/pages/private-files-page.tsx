@@ -137,7 +137,7 @@ export function PrivateFilesPage() {
   // Helper function to convert size string to bytes for proper sorting
   const sizeToBytes = (sizeStr: string): number => {
     if (!sizeStr || sizeStr === '-') return 0;
-    
+
     const units: { [key: string]: number } = {
       'B': 1,
       'KB': 1024,
@@ -145,39 +145,39 @@ export function PrivateFilesPage() {
       'GB': 1024 * 1024 * 1024,
       'TB': 1024 * 1024 * 1024 * 1024,
     };
-    
+
     const match = sizeStr.trim().match(/^([\d.]+)\s*([A-Z]+)$/i);
     if (!match) return 0;
-    
+
     const value = parseFloat(match[1]);
     const unit = match[2].toUpperCase();
-    
+
     return value * (units[unit] || 0);
   };
 
   const filteredFiles = useMemo(() => {
     const matchesSearch = (file: PrivateFileItem) => file.name.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesSensitive = (file: PrivateFileItem) => !showSensitiveOnly || file.sensitive
-    
+
     let filtered = currentItems.filter((file) => matchesSearch(file) && matchesSensitive(file));
-    
+
     // Sort by size
     filtered.sort((a, b) => {
       // Folders always come first
       if (a.type === 'folder' && b.type !== 'folder') return -1;
       if (a.type !== 'folder' && b.type === 'folder') return 1;
-      
+
       // If both are folders or both are files, sort by size
       const sizeA = sizeToBytes(a.size);
       const sizeB = sizeToBytes(b.size);
-      
+
       if (sortDirection === "ASC") {
         return sizeA - sizeB;
       } else {
         return sizeB - sizeA;
       }
     });
-    
+
     return filtered;
   }, [currentItems, searchQuery, showSensitiveOnly, sortDirection])
 
@@ -261,7 +261,6 @@ export function PrivateFilesPage() {
         toast.error(result.error || 'Failed to delete item');
       }
     } catch (error) {
-      console.error('Delete error:', error);
       toast.error('An error occurred while deleting the item');
     }
   }
@@ -275,7 +274,6 @@ export function PrivateFilesPage() {
         toast.error(result.error || "Failed to update access level");
       }
     } catch (error: any) {
-      console.error("Failed to update access level:", error);
       toast.error("An error occurred while updating access level");
     }
   }
@@ -430,10 +428,10 @@ export function PrivateFilesPage() {
                 <Filter className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Filter</span>
               </Button>
-              <Button 
+              <Button
                 onClick={() => setSortDirection(sortDirection === "ASC" ? "DESC" : "ASC")}
-                variant="outline" 
-                size="sm" 
+                variant="outline"
+                size="sm"
                 className="flex-1 sm:flex-initial"
                 title={sortDirection === "ASC" ? "Sort by size (smallest first)" : "Sort by size (largest first)"}
               >

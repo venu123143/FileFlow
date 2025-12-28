@@ -28,7 +28,6 @@ export function VideoPlayerModal({
   const handleError = (err: any) => {
     setIsLoading(false);
     setError('Failed to load video. Please try again.');
-    console.error('Video error:', err);
   };
 
   if (!isOpen) return null;

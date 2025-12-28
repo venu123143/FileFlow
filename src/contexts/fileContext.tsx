@@ -2,15 +2,16 @@ import React, { useReducer, useContext, createContext, type ReactNode } from 're
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import fileApi from '@/api/file.api';
 import { useAuth } from './useAuth';
-import type {
-    CreateFolderInput,
-    RenameFolderInput,
-    MoveFileOrFolderInput,
-    CreateFileInput,
-    ShareFileOrFolderInput,
-    FileSystemNode,
-    SharedFileSystemNode,
-    AccessLevel,
+import {
+    type CreateFolderInput,
+    type RenameFolderInput,
+    type MoveFileOrFolderInput,
+    type CreateFileInput,
+    type ShareFileOrFolderInput,
+    type FileSystemNode,
+    type SharedFileSystemNode,
+    type AccessLevel,
+    ACCESS_LEVEL,
 } from '@/types/file.types';
 
 interface FileState {
@@ -159,10 +160,14 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return result.data;
         },
         retry: false,
-        onSuccess: () => {
+        onSuccess: (data: FileSystemNode) => {
             dispatch({ type: 'SET_LOADING', loading: false });
             // Invalidate and refetch file system tree
-            queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
+            if (data.access_level === ACCESS_LEVEL.PRIVATE) {
+                queryClient.invalidateQueries({ queryKey: ['privateFiles'] });
+            } else {
+                queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
+            }
         },
         onError: () => {
             dispatch({ type: 'SET_LOADING', loading: false });

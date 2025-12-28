@@ -18,9 +18,9 @@ const queryClient = new QueryClient({
     defaultOptions: {
         mutations: {
             retry: 0, // Don't auto-retry upload mutations
-            onError: (error) => {
-                console.error('Mutation error:', error);
-            }
+            // onError: (error) => {
+            //     console.error('Mutation error:', error);
+            // }
         },
         queries: {
             retry: 1,

@@ -56,7 +56,6 @@ export function ShareFileModal({
           setUsers(Array.isArray(result) ? result : [])
           setShowDropdown(true)
         } catch (error) {
-          console.error("Error searching users:", error)
           setUsers([])
         } finally {
           setIsSearching(false)

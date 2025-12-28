@@ -428,7 +428,6 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             dispatch({ type: 'UPLOAD_SUCCESS', payload: uploadedFiles });
             return uploadedFiles;
         } catch (error: any) {
-            console.log('uploadFiles error', error);
             dispatch({ type: 'ERROR', payload: error?.response?.data?.message || error?.message || 'Network error' });
             return [];
         }

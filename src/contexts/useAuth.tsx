@@ -345,21 +345,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
 
     const logoutAll = async () => {
-        try {
-            await logoutAllMutationFn();
-        } catch (error) {
-            console.error('Logout all error:', error);
-        }
+        await logoutAllMutationFn();
     };
 
     const getActiveSessions = async () => {
-        try {
-            const result = await authApi.getActiveSessions();
-            return result.data?.sessions || [];
-        } catch (error) {
-            console.error('Get active sessions error:', error);
-            return [];
-        }
+        const result = await authApi.getActiveSessions();
+        return result.data?.sessions || [];
     };
 
     const revokeToken = async (refreshToken: string) => {
