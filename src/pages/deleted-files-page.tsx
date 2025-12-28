@@ -8,6 +8,7 @@ import {
   Search,
   Filter,
   SortAsc,
+  SortDesc,
   RotateCcw,
   Trash2,
   AlertTriangle,
@@ -29,6 +30,7 @@ import type { FileActionHandlers, FileItem } from "@/types/file-manager"
 export function DeletedFilesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
+  const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("ASC")
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
   const { deleteFileOrFolder, trash, restoreFileOrFolder, emptyTrash } = useFile()
 
@@ -37,7 +39,52 @@ export function DeletedFilesPage() {
     return transformFileSystemNodesToDeletedFileItems(trash)
   }, [trash])
 
-  const filteredFiles = transformedTrash.filter((file) => file.name.toLowerCase().includes(searchQuery.toLowerCase()))
+  // Helper function to convert size string to bytes for proper sorting
+  const sizeToBytes = (sizeStr: string): number => {
+    if (!sizeStr || sizeStr === '-') return 0;
+
+    const units: { [key: string]: number } = {
+      'B': 1,
+      'KB': 1024,
+      'MB': 1024 * 1024,
+      'GB': 1024 * 1024 * 1024,
+      'TB': 1024 * 1024 * 1024 * 1024,
+    };
+
+    const match = sizeStr.trim().match(/^([\d.]+)\s*([A-Z]+)$/i);
+    if (!match) return 0;
+
+    const value = parseFloat(match[1]);
+    const unit = match[2].toUpperCase();
+
+    return value * (units[unit] || 0);
+  };
+
+  const filteredFiles = useMemo(() => {
+    // Search filter
+    let filtered = transformedTrash.filter((file) =>
+      file.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Sort by size
+    filtered.sort((a, b) => {
+      // Folders always come first
+      if (a.type === 'folder' && b.type !== 'folder') return -1;
+      if (a.type !== 'folder' && b.type === 'folder') return 1;
+
+      // If both are folders or both are files, sort by size
+      const sizeA = sizeToBytes(a.size);
+      const sizeB = sizeToBytes(b.size);
+
+      if (sortDirection === "ASC") {
+        return sizeA - sizeB;
+      } else {
+        return sizeB - sizeA;
+      }
+    });
+
+    return filtered;
+  }, [transformedTrash, searchQuery, sortDirection])
 
   const toggleFileSelection = (fileId: string) => {
     setSelectedFiles((prev) => (prev.includes(fileId) ? prev.filter((id) => id !== fileId) : [...prev, fileId]))
@@ -138,15 +185,35 @@ export function DeletedFilesPage() {
             <Filter className="h-4 w-4 mr-2" />
             Filter
           </Button>
-          <Button variant="outline" size="sm" className="hidden sm:flex">
-            <SortAsc className="h-4 w-4 mr-2" />
-            Sort
+          <Button
+            onClick={() => setSortDirection(sortDirection === "ASC" ? "DESC" : "ASC")}
+            variant="outline"
+            size="sm"
+            className="hidden sm:flex"
+            title={sortDirection === "ASC" ? "Sort by size (smallest first)" : "Sort by size (largest first)"}
+          >
+            {sortDirection === "ASC" ? (
+              <>
+                <SortAsc className="h-4 w-4 mr-2" />
+                Size ↑
+              </>
+            ) : (
+              <>
+                <SortDesc className="h-4 w-4 mr-2" />
+                Size ↓
+              </>
+            )}
           </Button>
           <Button variant="outline" size="sm" className="sm:hidden">
             <Filter className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="sm" className="sm:hidden">
-            <SortAsc className="h-4 w-4" />
+          <Button
+            onClick={() => setSortDirection(sortDirection === "ASC" ? "DESC" : "ASC")}
+            variant="outline"
+            size="sm"
+            className="sm:hidden"
+          >
+            {sortDirection === "ASC" ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
           </Button>
         </div>
 

@@ -8,6 +8,7 @@ import {
   Search,
   Filter,
   SortAsc,
+  SortDesc,
   Download,
   Trash2,
   Upload,
@@ -38,6 +39,7 @@ export function PrivateFilesPage() {
   const { socket } = useSocket()
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
+  const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("ASC")
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
   const [currentPath, setCurrentPath] = useState<Array<{ id: string, name: string }>>([])
   const [showSensitiveOnly, setShowSensitiveOnly] = useState(false)
@@ -132,11 +134,52 @@ export function PrivateFilesPage() {
     return items
   }, [currentPath, transformedPrivateFiles])
 
+  // Helper function to convert size string to bytes for proper sorting
+  const sizeToBytes = (sizeStr: string): number => {
+    if (!sizeStr || sizeStr === '-') return 0;
+    
+    const units: { [key: string]: number } = {
+      'B': 1,
+      'KB': 1024,
+      'MB': 1024 * 1024,
+      'GB': 1024 * 1024 * 1024,
+      'TB': 1024 * 1024 * 1024 * 1024,
+    };
+    
+    const match = sizeStr.trim().match(/^([\d.]+)\s*([A-Z]+)$/i);
+    if (!match) return 0;
+    
+    const value = parseFloat(match[1]);
+    const unit = match[2].toUpperCase();
+    
+    return value * (units[unit] || 0);
+  };
+
   const filteredFiles = useMemo(() => {
     const matchesSearch = (file: PrivateFileItem) => file.name.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesSensitive = (file: PrivateFileItem) => !showSensitiveOnly || file.sensitive
-    return currentItems.filter((file) => matchesSearch(file) && matchesSensitive(file))
-  }, [currentItems, searchQuery, showSensitiveOnly])
+    
+    let filtered = currentItems.filter((file) => matchesSearch(file) && matchesSensitive(file));
+    
+    // Sort by size
+    filtered.sort((a, b) => {
+      // Folders always come first
+      if (a.type === 'folder' && b.type !== 'folder') return -1;
+      if (a.type !== 'folder' && b.type === 'folder') return 1;
+      
+      // If both are folders or both are files, sort by size
+      const sizeA = sizeToBytes(a.size);
+      const sizeB = sizeToBytes(b.size);
+      
+      if (sortDirection === "ASC") {
+        return sizeA - sizeB;
+      } else {
+        return sizeB - sizeA;
+      }
+    });
+    
+    return filtered;
+  }, [currentItems, searchQuery, showSensitiveOnly, sortDirection])
 
   const toggleFileSelection = (fileId: string) => {
     setSelectedFiles((prev) => (prev.includes(fileId) ? prev.filter((id) => id !== fileId) : [...prev, fileId]))
@@ -387,9 +430,24 @@ export function PrivateFilesPage() {
                 <Filter className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Filter</span>
               </Button>
-              <Button variant="outline" size="sm" className="flex-1 sm:flex-initial">
-                <SortAsc className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Sort</span>
+              <Button 
+                onClick={() => setSortDirection(sortDirection === "ASC" ? "DESC" : "ASC")}
+                variant="outline" 
+                size="sm" 
+                className="flex-1 sm:flex-initial"
+                title={sortDirection === "ASC" ? "Sort by size (smallest first)" : "Sort by size (largest first)"}
+              >
+                {sortDirection === "ASC" ? (
+                  <>
+                    <SortAsc className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Size ↑</span>
+                  </>
+                ) : (
+                  <>
+                    <SortDesc className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Size ↓</span>
+                  </>
+                )}
               </Button>
             </div>
           </div>

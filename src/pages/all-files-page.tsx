@@ -21,6 +21,7 @@ export default function AllFilesPage() {
   const { socket } = useSocket();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
+  const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("ASC")
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
   const [currentPath, setCurrentPath] = useState<Array<{ id: string, name: string }>>([])
   // Rename popup state
@@ -51,10 +52,52 @@ export default function AllFilesPage() {
     return items
   }, [currentPath, transformedFileSystem])
 
+  // Helper function to convert size string to bytes for proper sorting
+  const sizeToBytes = (sizeStr: string): number => {
+    if (!sizeStr || sizeStr === '-') return 0;
+    
+    const units: { [key: string]: number } = {
+      'B': 1,
+      'KB': 1024,
+      'MB': 1024 * 1024,
+      'GB': 1024 * 1024 * 1024,
+      'TB': 1024 * 1024 * 1024 * 1024,
+    };
+    
+    const match = sizeStr.trim().match(/^([\d.]+)\s*([A-Z]+)$/i);
+    if (!match) return 0;
+    
+    const value = parseFloat(match[1]);
+    const unit = match[2].toUpperCase();
+    
+    return value * (units[unit] || 0);
+  };
+
   const filteredFiles = useMemo(() => {
     // search filter 
-    return currentItems.filter((file) => file.name.toLowerCase().includes(searchQuery.toLowerCase()))
-  }, [currentItems, searchQuery])
+    let filtered = currentItems.filter((file) => 
+      file.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    
+    // Sort by size
+    filtered.sort((a, b) => {
+      // Folders always come first
+      if (a.type === 'folder' && b.type !== 'folder') return -1;
+      if (a.type !== 'folder' && b.type === 'folder') return 1;
+      
+      // If both are folders or both are files, sort by size
+      const sizeA = sizeToBytes(a.size);
+      const sizeB = sizeToBytes(b.size);
+      
+      if (sortDirection === "ASC") {
+        return sizeA - sizeB;
+      } else {
+        return sizeB - sizeA;
+      }
+    });
+    
+    return filtered;
+  }, [currentItems, searchQuery, sortDirection])
 
   const toggleFileSelection = (fileId: string) => {
     setSelectedFiles((prev) => (prev.includes(fileId) ? prev.filter((id) => id !== fileId) : [...prev, fileId]))
@@ -270,6 +313,8 @@ export default function AllFilesPage() {
           selectedFilesCount={selectedFiles.length}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
+          sortDirection={sortDirection}
+          onSortChange={setSortDirection}
         />
 
         <BulkActionsBar
