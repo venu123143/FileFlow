@@ -10,6 +10,7 @@ import { getAuthState } from '@/store/auth.store';
 // 🔹 Notification Types
 export const NotificationType = {
     FILE_SHARED: "file_shared",
+    FILE_SHARE_REVOKED: "file_share_revoked",
     FILE_UPDATED: "file_updated",
     FILE_UPLOAD_COMPLETED: "file_upload_completed",
     FILE_UPLOAD_FAILED: "file_upload_failed",
@@ -362,9 +363,9 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         try {
             dispatch({ type: 'SET_LOADING_MORE', loadingMore: true });
 
-            const result = await notificationApi.getUserNotifications({ 
-                limit: 20, 
-                cursor: state.nextCursor 
+            const result = await notificationApi.getUserNotifications({
+                limit: 20,
+                cursor: state.nextCursor
             });
             const newNotifications = result.data?.notifications || result.notifications || [];
             const hasMore = result.data?.hasMore || false;
