@@ -96,10 +96,6 @@ export function FileListItem({
               <span>Deleted {file.deletedDate}</span>
               <span>•</span>
               <span>by {file.deletedBy}</span>
-              <span>•</span>
-              <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700">
-                {file.daysLeft} days left
-              </Badge>
             </div>
           );
         }
@@ -126,10 +122,6 @@ export function FileListItem({
               <span>Shared by {file.sharedBy.name}</span>
               <span>•</span>
               <span>{file.sharedDate}</span>
-              <span>•</span>
-              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
-                {file.permission}
-              </Badge>
             </div>
           );
         }
