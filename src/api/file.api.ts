@@ -25,6 +25,11 @@ const shareFileOrFolder = async (file_id: string, data: any) => {
     return response.data;
 };
 
+const revokeShare = async (shareId: string) => {
+    const response = await apiClient.delete(`/file-flow/share/${shareId}`);
+    return response.data;
+};
+
 const getAllSharedFiles = async () => {
     const response = await apiClient.get("/file-flow/share/file/all-shared-files");
     return response.data;
@@ -90,6 +95,7 @@ export default {
     createFile,
     getPrivateFiles,
     shareFileOrFolder,
+    revokeShare,
     getAllSharedFiles,
     getAllSharedFilesByMe,
     getAllSharedFilesWithMe,

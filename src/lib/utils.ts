@@ -234,6 +234,7 @@ export function transformSharedFileSystemNodeToSharedFileItem(node: SharedFileSy
     permission: (node.permission_level as "view" | "edit" | "admin") || "view",
     sharedDate: formatRelativeTime(node.share_created_at),
     isOwner: false, // This will be overridden in the page component based on current user
+    share_id: node.share_id, // Add share_id for revoke action
     children: node.children ? node.children.map((child: SharedFileSystemNode) => transformSharedFileSystemNodeToSharedFileItem(child, [...parentPath, node.name])) : undefined,
   }
 }

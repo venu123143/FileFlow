@@ -42,7 +42,8 @@ export function FileGridItem({
     onRestore,
     onCustomAction,
     onMove,
-    onChangeAccessLevel
+    onChangeAccessLevel,
+    onRevokeShare
   } = actionHandlers;
 
   const isVideo = isVideoFile(file);
@@ -160,10 +161,16 @@ export function FileGridItem({
                       Download
                     </DropdownMenuItem>
                   )}
-                  {onShare && (
+                  {onShare && !isSharedFile(file) && (
                     <DropdownMenuItem onClick={() => onShare(file)}>
                       <Share2 className="h-4 w-4 mr-2" />
                       Share
+                    </DropdownMenuItem>
+                  )}
+                  {onRevokeShare && isSharedFile(file) && file.isOwner && file.share_id && (
+                    <DropdownMenuItem onClick={() => onRevokeShare(file)} className="text-orange-600">
+                      <Share2 className="h-4 w-4 mr-2" />
+                      Revoke Share
                     </DropdownMenuItem>
                   )}
                   {onMove && (
@@ -178,7 +185,7 @@ export function FileGridItem({
                       Rename
                     </DropdownMenuItem>
                   )}
-                  {onChangeAccessLevel && (
+                  {onChangeAccessLevel && !isSharedFile(file) && (
                     <DropdownMenuSub>
                       <DropdownMenuSubTrigger>
                         <ShieldCheck className="h-4 w-4 mr-2" />

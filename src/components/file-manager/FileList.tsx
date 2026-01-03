@@ -15,18 +15,21 @@ export function FileList({ files, selectedFiles, pageConfig, viewConfig, actionH
     <Card>
       <CardContent className="p-0">
         <div className="divide-y">
-          {files.map((file, index) => (
-            <FileListItem
-              key={file.id}
-              file={file}
-              index={index}
-              isSelected={selectedFiles.includes(file.id)}
-              pageConfig={pageConfig}
-              viewConfig={viewConfig}
-              actionHandlers={actionHandlers}
-            />
-          ))}
-
+          {files.map((file, index) => {
+            // Use share_id if available (for shared files) to ensure unique keys
+            const uniqueKey = 'share_id' in file && file.share_id ? `${file.id}-${file.share_id}` : file.id;
+            return (
+              <FileListItem
+                key={uniqueKey}
+                file={file}
+                index={index}
+                isSelected={selectedFiles.includes(file.id)}
+                pageConfig={pageConfig}
+                viewConfig={viewConfig}
+                actionHandlers={actionHandlers}
+              />
+            );
+          })}
         </div>
       </CardContent>
     </Card>

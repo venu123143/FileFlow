@@ -77,6 +77,7 @@ interface FileContextType extends FileState {
     moveFileOrFolder: (id: string, data: MoveFileOrFolderInput) => MutationResult;
     createFile: (data: CreateFileInput) => MutationResult;
     shareFileOrFolder: (file_id: string, data: ShareFileOrFolderInput) => MutationResult;
+    revokeShare: (shareId: string) => MutationResult;
     getAllSharedFiles: () => Promise<SharedFileSystemNode[]>;
     getAllSharedFilesByMe: () => Promise<SharedFileSystemNode[]>;
     getAllSharedFilesWithMe: () => Promise<SharedFileSystemNode[]>;
@@ -236,6 +237,24 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         },
     });
 
+    const { mutateAsync: revokeShareMutationFn } = useMutation({
+        mutationFn: async (shareId: string) => {
+            const result = await fileApi.revokeShare(shareId);
+            return result.data;
+        },
+        retry: false,
+        onSuccess: () => {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            // Invalidate all shared files queries to refresh the data
+            queryClient.invalidateQueries({ queryKey: ['sharedFiles'] });
+            queryClient.invalidateQueries({ queryKey: ['sharedFilesByMe'] });
+            queryClient.invalidateQueries({ queryKey: ['sharedFilesWithMe'] });
+        },
+        onError: () => {
+            dispatch({ type: 'SET_LOADING', loading: false });
+        },
+    });
+
     const { mutateAsync: deleteFileOrFolderMutationFn } = useMutation({
         mutationFn: async (id: string) => {
             const result = await fileApi.deleteFileOrFolder(id);
@@ -366,6 +385,18 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } catch (error: any) {
             dispatch({ type: 'SET_LOADING', loading: false });
             const errorMessage = error?.response?.data?.message || error?.message || 'Failed to share file or folder.';
+            return { success: false, error: errorMessage };
+        }
+    };
+
+    const revokeShare = async (shareId: string) => {
+        try {
+            dispatch({ type: 'SET_LOADING', loading: true });
+            await revokeShareMutationFn(shareId);
+            return { success: true };
+        } catch (error: any) {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to revoke share.';
             return { success: false, error: errorMessage };
         }
     };
@@ -574,6 +605,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         moveFileOrFolder,
         createFile,
         shareFileOrFolder,
+        revokeShare,
         getAllSharedFiles,
         getAllSharedFilesByMe,
         getAllSharedFilesWithMe,

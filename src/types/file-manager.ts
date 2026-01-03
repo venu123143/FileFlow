@@ -53,6 +53,7 @@ export interface SharedFileItem extends BaseFileItem {
   permission: "view" | "edit" | "admin";
   sharedDate: string;
   isOwner: boolean;
+  share_id?: string; // Add share_id for revoke action
 }
 
 // Union type for all file item variants
@@ -114,6 +115,7 @@ export interface FileActionHandlers {
   onMove?: (file: FileItem) => void;
   onChangeAccessLevel?: (file: FileItem, accessLevel: string) => void;
   onPermissionChange?: (file: FileItem, permission: string) => void;
+  onRevokeShare?: (file: FileItem) => void;
   onCustomAction?: (action: string, file: FileItem) => void;
 }
 

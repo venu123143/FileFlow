@@ -43,7 +43,8 @@ export function FileListItem({
     onRestore,
     onCustomAction,
     onMove,
-    onChangeAccessLevel
+    onChangeAccessLevel,
+    onRevokeShare
   } = actionHandlers;
 
   const isVideo = isVideoFile(file);
@@ -95,10 +96,6 @@ export function FileListItem({
               <span>Deleted {file.deletedDate}</span>
               <span>•</span>
               <span>by {file.deletedBy}</span>
-              <span>•</span>
-              <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700">
-                {file.daysLeft} days left
-              </Badge>
             </div>
           );
         }
@@ -125,10 +122,6 @@ export function FileListItem({
               <span>Shared by {file.sharedBy.name}</span>
               <span>•</span>
               <span>{file.sharedDate}</span>
-              <span>•</span>
-              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
-                {file.permission}
-              </Badge>
             </div>
           );
         }
@@ -269,10 +262,16 @@ export function FileListItem({
               Download
             </DropdownMenuItem>
           )}
-          {onShare && (
+          {onShare && !isSharedFile(file) && (
             <DropdownMenuItem onClick={() => onShare(file)}>
               <Share2 className="h-4 w-4 mr-2" />
               Share
+            </DropdownMenuItem>
+          )}
+          {onRevokeShare && isSharedFile(file) && file.isOwner && file.share_id && (
+            <DropdownMenuItem onClick={() => onRevokeShare(file)} className="text-orange-600">
+              <Share2 className="h-4 w-4 mr-2" />
+              Revoke Share
             </DropdownMenuItem>
           )}
           {onMove && ( // Add move option for standard variant
@@ -287,7 +286,7 @@ export function FileListItem({
               Rename
             </DropdownMenuItem>
           )}
-          {onChangeAccessLevel && (
+          {onChangeAccessLevel && !isSharedFile(file) && (
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <ShieldCheck className="h-4 w-4 mr-2" />

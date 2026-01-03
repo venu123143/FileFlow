@@ -25,6 +25,7 @@ import { useNotifications, NotificationType, type NotificationAttributes } from 
 
 type FileNotificationType =
     | typeof NotificationType.FILE_SHARED
+    | typeof NotificationType.FILE_SHARE_REVOKED
     | typeof NotificationType.FILE_UPDATED
     | typeof NotificationType.FILE_UPLOAD_COMPLETED
     | typeof NotificationType.FILE_UPLOAD_FAILED
@@ -39,6 +40,7 @@ type StorageNotificationType =
 
 type SharingNotificationType =
     | typeof NotificationType.FILE_SHARED
+    | typeof NotificationType.FILE_SHARE_REVOKED
     | typeof NotificationType.SHARE_EXPIRED
     | typeof NotificationType.PUBLIC_LINK_ACCESSED
 
@@ -47,6 +49,8 @@ const getNotificationIcon = (type: string) => {
     switch (type) {
         case NotificationType.FILE_SHARED:
             return <Share2 className="h-4 w-4" />
+        case NotificationType.FILE_SHARE_REVOKED:
+            return <Trash2 className="h-4 w-4" />
         case NotificationType.FILE_UPLOAD_COMPLETED:
         case NotificationType.MULTIPART_UPLOAD_COMPLETED:
             return <Upload className="h-4 w-4" />
@@ -82,6 +86,7 @@ const getNotificationTypeColor = (type: string) => {
         case NotificationType.STORAGE_QUOTA_EXCEEDED:
             return "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-950/30"
         case NotificationType.FILE_SHARED:
+        case NotificationType.FILE_SHARE_REVOKED:
         case NotificationType.FILE_COMMENTED:
             return "text-primary bg-primary/10 dark:bg-primary/20"
         case NotificationType.FILE_DELETED:
@@ -268,6 +273,7 @@ export default function NotificationsPage() {
             const filterMap = {
                 file: [
                     NotificationType.FILE_SHARED,
+                    NotificationType.FILE_SHARE_REVOKED,
                     NotificationType.FILE_UPDATED,
                     NotificationType.FILE_UPLOAD_COMPLETED,
                     NotificationType.FILE_UPLOAD_FAILED,
@@ -283,7 +289,8 @@ export default function NotificationsPage() {
                 sharing: [
                     NotificationType.FILE_SHARED,
                     NotificationType.SHARE_EXPIRED,
-                    NotificationType.PUBLIC_LINK_ACCESSED
+                    NotificationType.PUBLIC_LINK_ACCESSED,
+                    NotificationType.FILE_SHARE_REVOKED
                 ]
             };
 
@@ -310,6 +317,7 @@ export default function NotificationsPage() {
 
             if ([
                 NotificationType.FILE_SHARED,
+                NotificationType.FILE_SHARE_REVOKED,
                 NotificationType.FILE_UPDATED,
                 NotificationType.FILE_UPLOAD_COMPLETED,
                 NotificationType.FILE_UPLOAD_FAILED,
@@ -330,6 +338,7 @@ export default function NotificationsPage() {
 
             if ([
                 NotificationType.FILE_SHARED,
+                NotificationType.FILE_SHARE_REVOKED,
                 NotificationType.SHARE_EXPIRED,
                 NotificationType.PUBLIC_LINK_ACCESSED
             ].includes(n.type as SharingNotificationType)) {

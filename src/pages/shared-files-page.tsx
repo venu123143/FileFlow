@@ -22,6 +22,7 @@ import { FileManager } from "@/components/file-manager/FileManager"
 import { sharedPageConfig, defaultViewConfig } from "@/config/page-configs"
 import { useFile } from "@/contexts/fileContext"
 import type { FileActionHandlers, FileItem } from "@/types/file-manager"
+import { isSharedFile } from "@/types/file-manager"
 import { transformSharedFileSystemNodesToSharedFileItems } from "@/lib/utils"
 import { useAuth } from "@/contexts/useAuth"
 import { BreadcrumbNavigation } from "@/components/file-manager/BreadcrumbNavigation"
@@ -41,6 +42,7 @@ export function SharedFilesPage() {
     sharedFiles,
     sharedFilesByMe,
     sharedFilesWithMe,
+    revokeShare,
   } = useFile()
   const { user } = useAuth()
 
@@ -68,7 +70,7 @@ export function SharedFilesPage() {
 
     return transformSharedFileSystemNodesToSharedFileItems(filesToTransform).map(file => ({
       ...file,
-      isOwner: file.sharedBy.name === user?.display_name // Simple check, ideally check ID
+      isOwner: file.sharedBy.name === user?.display_name // Check if current user is the owner who shared the file
     }));
   }, [sharedFiles, sharedFilesByMe, sharedFilesWithMe, activeTab, user]);
 
@@ -119,11 +121,28 @@ export function SharedFilesPage() {
     setSearchQuery("")
   }
 
+  const handleRevokeShare = async (file: FileItem) => {
+    if (!isSharedFile(file) || !file.share_id) return;
+    
+    const result = await revokeShare(file.share_id);
+    if (result.success) {
+      // Refresh the shared files list
+      await Promise.all([
+        getAllSharedFiles(),
+        getAllSharedFilesByMe(),
+        getAllSharedFilesWithMe(),
+      ]);
+    } else {
+      console.error("Failed to revoke share:", result.error);
+    }
+  }
+
   const actionHandlers: FileActionHandlers = {
     onFileSelect: toggleFileSelection,
     onItemClick: handleItemClick,
     onDownload: (file) => console.log("Download file:", file.name),
     onShare: (file) => console.log("Share file:", file.name),
+    onRevokeShare: handleRevokeShare,
   }
 
   return (

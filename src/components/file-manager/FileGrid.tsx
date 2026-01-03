@@ -66,16 +66,20 @@ export function FileGrid({ files, selectedFiles, pageConfig, viewConfig, actionH
   
   return (
     <div className={`grid ${getGridColsClass()} ${getGapClass()} ${itemHeight ? itemHeight : ''}`}>
-      {files.map((file, index) => (
-        <FileGridItem
-          key={file.id}
-          file={file}
-          index={index}
-          isSelected={selectedFiles.includes(file.id)}
-          pageConfig={pageConfig}
-          actionHandlers={actionHandlers}
-        />
-      ))}
+      {files.map((file, index) => {
+        // Use share_id if available (for shared files) to ensure unique keys
+        const uniqueKey = 'share_id' in file && file.share_id ? `${file.id}-${file.share_id}` : file.id;
+        return (
+          <FileGridItem
+            key={uniqueKey}
+            file={file}
+            index={index}
+            isSelected={selectedFiles.includes(file.id)}
+            pageConfig={pageConfig}
+            actionHandlers={actionHandlers}
+          />
+        );
+      })}
       {onCreateFolder && <AddNewFolder onAddFolder={onCreateFolder} variant="card" />}
     </div>
   );
