@@ -37,14 +37,13 @@ export function Toolbar({ searchQuery, onSearchChange, selectedFilesCount, viewM
           variant="outline" 
           size="sm" 
           className="shrink-0 bg-transparent"
-          title={sortDirection === "ASC" ? "Sort by size (smallest first)" : "Sort by size (largest first)"}
+          title={`QuickSort by size (${sortDirection === "ASC" ? "smallest first" : "largest first"})`}
         >
           {
             sortDirection === "ASC" ?
               <>
                 <SortAsc className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Size ↑</span>
-
               </> :
               <>
                 <SortDesc className="h-4 w-4 sm:mr-2" />

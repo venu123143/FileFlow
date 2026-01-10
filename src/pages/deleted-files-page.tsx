@@ -23,7 +23,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { FileManager } from "@/components/file-manager/FileManager"
 import { deletedPageConfig, defaultViewConfig } from "@/config/page-configs"
 import { useFile } from "@/contexts/fileContext"
-import { transformFileSystemNodesToDeletedFileItems } from "@/lib/utils"
+import { transformFileSystemNodesToDeletedFileItems, quickSort, sizeToBytes } from "@/lib/utils"
 import type { FileActionHandlers, FileItem } from "@/types/file-manager"
 
 
@@ -39,35 +39,14 @@ export function DeletedFilesPage() {
     return transformFileSystemNodesToDeletedFileItems(trash)
   }, [trash])
 
-  // Helper function to convert size string to bytes for proper sorting
-  const sizeToBytes = (sizeStr: string): number => {
-    if (!sizeStr || sizeStr === '-') return 0;
-
-    const units: { [key: string]: number } = {
-      'B': 1,
-      'KB': 1024,
-      'MB': 1024 * 1024,
-      'GB': 1024 * 1024 * 1024,
-      'TB': 1024 * 1024 * 1024 * 1024,
-    };
-
-    const match = sizeStr.trim().match(/^([\d.]+)\s*([A-Z]+)$/i);
-    if (!match) return 0;
-
-    const value = parseFloat(match[1]);
-    const unit = match[2].toUpperCase();
-
-    return value * (units[unit] || 0);
-  };
-
   const filteredFiles = useMemo(() => {
     // Search filter
     let filtered = transformedTrash.filter((file) =>
       file.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    // Sort by size
-    filtered.sort((a, b) => {
+    // Sort using QuickSort algorithm
+    filtered = quickSort(filtered, (a, b) => {
       // Folders always come first
       if (a.type === 'folder' && b.type !== 'folder') return -1;
       if (a.type !== 'folder' && b.type === 'folder') return 1;
@@ -189,7 +168,7 @@ export function DeletedFilesPage() {
             variant="outline"
             size="sm"
             className="hidden sm:flex"
-            title={sortDirection === "ASC" ? "Sort by size (smallest first)" : "Sort by size (largest first)"}
+            title={`QuickSort by size (${sortDirection === "ASC" ? "smallest first" : "largest first"})`}
           >
             {sortDirection === "ASC" ? (
               <>

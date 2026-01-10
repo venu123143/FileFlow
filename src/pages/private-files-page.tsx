@@ -24,7 +24,7 @@ import { FileManager } from "@/components/file-manager/FileManager"
 import { BreadcrumbNavigation } from "@/components/file-manager/BreadcrumbNavigation"
 import { privatePageConfig, defaultViewConfig } from "@/config/page-configs"
 import { useFile } from "@/contexts/fileContext"
-import { transformFileSystemNodesToPrivateFileItems } from "@/lib/utils"
+import { transformFileSystemNodesToPrivateFileItems, quickSort, sizeToBytes } from "@/lib/utils"
 import { toast } from "sonner"
 import type { PrivateFileItem, FileActionHandlers, FileItem } from "@/types/file-manager"
 import { VerifyPinModal } from "@/components/session/VerifyPin"
@@ -134,35 +134,14 @@ export function PrivateFilesPage() {
     return items
   }, [currentPath, transformedPrivateFiles])
 
-  // Helper function to convert size string to bytes for proper sorting
-  const sizeToBytes = (sizeStr: string): number => {
-    if (!sizeStr || sizeStr === '-') return 0;
-
-    const units: { [key: string]: number } = {
-      'B': 1,
-      'KB': 1024,
-      'MB': 1024 * 1024,
-      'GB': 1024 * 1024 * 1024,
-      'TB': 1024 * 1024 * 1024 * 1024,
-    };
-
-    const match = sizeStr.trim().match(/^([\d.]+)\s*([A-Z]+)$/i);
-    if (!match) return 0;
-
-    const value = parseFloat(match[1]);
-    const unit = match[2].toUpperCase();
-
-    return value * (units[unit] || 0);
-  };
-
   const filteredFiles = useMemo(() => {
     const matchesSearch = (file: PrivateFileItem) => file.name.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesSensitive = (file: PrivateFileItem) => !showSensitiveOnly || file.sensitive
 
     let filtered = currentItems.filter((file) => matchesSearch(file) && matchesSensitive(file));
 
-    // Sort by size
-    filtered.sort((a, b) => {
+    // Sort using QuickSort algorithm
+    filtered = quickSort(filtered, (a, b) => {
       // Folders always come first
       if (a.type === 'folder' && b.type !== 'folder') return -1;
       if (a.type !== 'folder' && b.type === 'folder') return 1;
@@ -433,7 +412,7 @@ export function PrivateFilesPage() {
                 variant="outline"
                 size="sm"
                 className="flex-1 sm:flex-initial"
-                title={sortDirection === "ASC" ? "Sort by size (smallest first)" : "Sort by size (largest first)"}
+                title={`QuickSort by size (${sortDirection === "ASC" ? "smallest first" : "largest first"})`}
               >
                 {sortDirection === "ASC" ? (
                   <>

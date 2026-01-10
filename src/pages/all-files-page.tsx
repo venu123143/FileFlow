@@ -13,7 +13,7 @@ import { ShareFileModal } from "@/components/file-manager/ShareFileModal"
 import { standardPageConfig, defaultViewConfig } from "@/config/page-configs"
 
 import { useFile } from "@/contexts/fileContext"
-import { transformFileSystemNodesToFileItems } from "@/lib/utils"
+import { transformFileSystemNodesToFileItems, quickSort, sizeToBytes } from "@/lib/utils"
 import { useNavigate } from "react-router-dom"
 import { useSocket } from "@/contexts/SocketContext";
 import { useFileDownload } from "@/hooks/useFileDownload";
@@ -54,35 +54,14 @@ export default function AllFilesPage() {
     return items
   }, [currentPath, transformedFileSystem])
 
-  // Helper function to convert size string to bytes for proper sorting
-  const sizeToBytes = (sizeStr: string): number => {
-    if (!sizeStr || sizeStr === '-') return 0;
-
-    const units: { [key: string]: number } = {
-      'B': 1,
-      'KB': 1024,
-      'MB': 1024 * 1024,
-      'GB': 1024 * 1024 * 1024,
-      'TB': 1024 * 1024 * 1024 * 1024,
-    };
-
-    const match = sizeStr.trim().match(/^([\d.]+)\s*([A-Z]+)$/i);
-    if (!match) return 0;
-
-    const value = parseFloat(match[1]);
-    const unit = match[2].toUpperCase();
-
-    return value * (units[unit] || 0);
-  };
-
   const filteredFiles = useMemo(() => {
-    // search filter 
+    // Search filter 
     let filtered = currentItems.filter((file) =>
       file.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    // Sort by size
-    filtered.sort((a, b) => {
+    // Sort using QuickSort algorithm
+    filtered = quickSort(filtered, (a, b) => {
       // Folders always come first
       if (a.type === 'folder' && b.type !== 'folder') return -1;
       if (a.type !== 'folder' && b.type === 'folder') return 1;
