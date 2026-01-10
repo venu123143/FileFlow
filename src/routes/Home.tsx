@@ -1,5 +1,12 @@
-import { HomeDashboard } from "@/pages/home-dashboard"
+import { DashboardProvider } from "@/contexts/DashboardContext";
+import { HomeDashboard } from "@/pages/home-dashboard";
 
-export default function HomePage() {
-  return <HomeDashboard />
+export function Home() {
+  return (
+    <DashboardProvider>
+      <HomeDashboard />
+    </DashboardProvider>
+  );
 }
+
+export default Home;

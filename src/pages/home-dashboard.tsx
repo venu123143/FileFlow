@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { motion } from "framer-motion"
 import {
   Clock,
@@ -15,6 +15,7 @@ import {
   FolderPlus,
   Activity,
   Lock,
+  RefreshCw,
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
@@ -28,21 +29,7 @@ import { ACCESS_LEVEL } from "@/types/file.types"
 import { AddNewFolder } from "@/components/file-manager/AddNewFolder"
 import { useFile } from "@/contexts/fileContext"
 import { toast } from "sonner"
-
-const quickStats = [
-  { label: "Total Files", value: "1,247", icon: FileText, change: "+12%", color: "from-blue-500 to-blue-600" },
-  { label: "Storage Used", value: "45.2 GB", icon: Archive, change: "+2.1 GB", color: "from-purple-500 to-purple-600" },
-  { label: "Shared Files", value: "89", icon: Users, change: "+5", color: "from-green-500 to-green-600" },
-  { label: "Starred Items", value: "23", icon: Star, change: "+3", color: "from-yellow-500 to-yellow-600" },
-]
-
-const fileTypeBreakdown = [
-  { type: "Documents", count: 456, size: "12.4 GB", color: "from-blue-500 to-blue-600", icon: FileText, percentage: 35 },
-  { type: "Images", count: 234, size: "18.7 GB", color: "from-green-500 to-green-600", icon: ImageIcon, percentage: 28 },
-  { type: "Videos", count: 67, size: "8.9 GB", color: "from-purple-500 to-purple-600", icon: Video, percentage: 20 },
-  { type: "Audio", count: 123, size: "3.2 GB", color: "from-orange-500 to-orange-600", icon: Music, percentage: 12 },
-  { type: "Other", count: 367, size: "2.0 GB", color: "from-gray-500 to-gray-600", icon: Archive, percentage: 5 },
-]
+import { useDashboard } from "@/contexts/DashboardContext"
 
 const quickActions = [
   { label: "Upload Files", icon: Upload, color: "from-blue-500 to-blue-600", description: "Add new files" },
@@ -51,10 +38,20 @@ const quickActions = [
   { label: "Private Files", icon: Lock, color: "from-orange-500 to-orange-600", description: "Secure your files" },
 ]
 
+// Helper function to format bytes
+const formatBytes = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+}
+
 export function HomeDashboard() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { createFolder } = useFile()
+  const { storageOverview, isLoading, error, refreshStorageOverview } = useDashboard()
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false)
 
   const navigateToUploadFile = ({ folderId, folderName }: { folderId: string, folderName: string }) => {
@@ -102,6 +99,115 @@ export function HomeDashboard() {
     }
   };
 
+  // Calculate quick stats from real data
+  const quickStats = useMemo(() => {
+    if (!storageOverview) {
+      return [
+        { label: "Total Files", value: "0", icon: FileText, change: "", color: "from-blue-500 to-blue-600" },
+        { label: "Storage Used", value: "0 GB", icon: Archive, change: "", color: "from-purple-500 to-purple-600" },
+        { label: "Shared Today", value: "0", icon: Users, change: "", color: "from-green-500 to-green-600" },
+        { label: "Uploads Today", value: "0", icon: Star, change: "", color: "from-yellow-500 to-yellow-600" },
+      ];
+    }
+
+    return [
+      { 
+        label: "Total Files", 
+        value: storageOverview.storage.totalFiles.toLocaleString(), 
+        icon: FileText, 
+        change: `${storageOverview.todayActivity.uploads} today`, 
+        color: "from-blue-500 to-blue-600" 
+      },
+      { 
+        label: "Storage Used", 
+        value: formatBytes(storageOverview.storage.totalSize), 
+        icon: Archive, 
+        change: `${storageOverview.storageUsedPercentage}% used`, 
+        color: "from-purple-500 to-purple-600" 
+      },
+      { 
+        label: "Shared Today", 
+        value: storageOverview.todayActivity.shares.toString(), 
+        icon: Users, 
+        change: `${storageOverview.todayActivity.downloads} downloads`, 
+        color: "from-green-500 to-green-600" 
+      },
+      { 
+        label: "Uploads Today", 
+        value: storageOverview.todayActivity.uploads.toString(), 
+        icon: Upload, 
+        change: "This session", 
+        color: "from-yellow-500 to-yellow-600" 
+      },
+    ];
+  }, [storageOverview]);
+
+  // Calculate file type breakdown from real data
+  const fileTypeBreakdown = useMemo(() => {
+    if (!storageOverview) {
+      return [
+        { type: "Documents", count: 0, size: "0 GB", color: "from-blue-500 to-blue-600", icon: FileText, percentage: 0 },
+        { type: "Images", count: 0, size: "0 GB", color: "from-green-500 to-green-600", icon: ImageIcon, percentage: 0 },
+        { type: "Videos", count: 0, size: "0 GB", color: "from-purple-500 to-purple-600", icon: Video, percentage: 0 },
+        { type: "Audio", count: 0, size: "0 GB", color: "from-orange-500 to-orange-600", icon: Music, percentage: 0 },
+        { type: "Other", count: 0, size: "0 GB", color: "from-gray-500 to-gray-600", icon: Archive, percentage: 0 },
+      ];
+    }
+
+    const totalSize = storageOverview.storage.totalSize || 1; // Avoid division by zero
+
+    return [
+      { 
+        type: "Documents", 
+        count: storageOverview.storage.documentCount, 
+        size: formatBytes(storageOverview.storage.documentSize), 
+        color: "from-blue-500 to-blue-600", 
+        icon: FileText, 
+        percentage: Math.round((storageOverview.storage.documentSize / totalSize) * 100) 
+      },
+      { 
+        type: "Images", 
+        count: storageOverview.storage.imageCount, 
+        size: formatBytes(storageOverview.storage.imageSize), 
+        color: "from-green-500 to-green-600", 
+        icon: ImageIcon, 
+        percentage: Math.round((storageOverview.storage.imageSize / totalSize) * 100) 
+      },
+      { 
+        type: "Videos", 
+        count: storageOverview.storage.videoCount, 
+        size: formatBytes(storageOverview.storage.videoSize), 
+        color: "from-purple-500 to-purple-600", 
+        icon: Video, 
+        percentage: Math.round((storageOverview.storage.videoSize / totalSize) * 100) 
+      },
+      { 
+        type: "Audio", 
+        count: storageOverview.storage.audioCount, 
+        size: formatBytes(storageOverview.storage.audioSize), 
+        color: "from-orange-500 to-orange-600", 
+        icon: Music, 
+        percentage: Math.round((storageOverview.storage.audioSize / totalSize) * 100) 
+      },
+      { 
+        type: "Other", 
+        count: storageOverview.storage.otherCount || 0, 
+        size: formatBytes(storageOverview.storage.otherSize || 0), 
+        color: "from-gray-500 to-gray-600", 
+        icon: Archive, 
+        percentage: Math.round(((storageOverview.storage.otherSize || 0) / totalSize) * 100) 
+      },
+    ];
+  }, [storageOverview]);
+
+  const handleRefresh = async () => {
+    toast.promise(refreshStorageOverview(), {
+      loading: 'Refreshing data...',
+      success: 'Data refreshed!',
+      error: 'Failed to refresh data'
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
       <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8">
@@ -120,7 +226,28 @@ export function HomeDashboard() {
               Here's what's happening with your files today.
             </p>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isLoading}
+            className="shrink-0"
+          >
+            <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
+            Refresh
+          </Button>
         </motion.div>
+
+        {/* Error Display */}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4"
+          >
+            <p className="text-red-800 dark:text-red-200 text-sm">{error}</p>
+          </motion.div>
+        )}
 
         {/* Quick Actions Grid */}
         <motion.div
@@ -136,7 +263,7 @@ export function HomeDashboard() {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3, delay: 0.1 + index * 0.05 }}
                 whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileTap={{ scale: 0.98 }} 
                 onClick={() => handleQuickActionClick(action.label)}
               >
                 <Card
@@ -265,12 +392,19 @@ export function HomeDashboard() {
                 <div>
                   <div className="flex justify-between text-sm mb-2">
                     <span className="text-slate-600 dark:text-slate-400">Storage Used</span>
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">45.2 GB / 100 GB</span>
+                    <span className="font-semibold text-slate-900 dark:text-slate-100">
+                      {storageOverview ? `${formatBytes(storageOverview.storageUsed)} / ${formatBytes(storageOverview.storageQuota)}` : '0 GB / 0 GB'}
+                    </span>
                   </div>
-                  <Progress value={45} className="h-2 bg-slate-200 dark:bg-slate-700">
+                  <Progress 
+                    value={storageOverview ? parseFloat(storageOverview.storageUsedPercentage) : 0} 
+                    className="h-2 bg-slate-200 dark:bg-slate-700"
+                  >
                     <div className="h-full bg-gradient-to-r from-purple-500 to-purple-600 rounded-full" />
                   </Progress>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">54.8 GB remaining</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                    {storageOverview ? formatBytes(storageOverview.storageRemaining) : '0 GB'} remaining
+                  </p>
                 </div>
 
                 <div className="space-y-4">
