@@ -1,5 +1,9 @@
-import { HomeDashboard } from "@/pages/home-dashboard"
+import { HomeDashboard } from "@/pages/home-dashboard";
 
-export default function HomePage() {
-  return <HomeDashboard />
+export function Home() {
+  return (
+    <HomeDashboard />
+  );
 }
+
+export default Home;

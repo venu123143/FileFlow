@@ -13,6 +13,7 @@ import { NotificationUIProvider } from "@/contexts/NotificationUIContext";
 import { SocketProvider } from "@/contexts/SocketContext";
 
 import { ApiTokenProvider } from "@/contexts/ApiTokenContext";
+import { DashboardProvider } from "@/contexts/DashboardContext";
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -49,6 +50,7 @@ const AppProviders = ({ children }: { children: ReactNode }) => {
         (children: ReactNode) => <FileProvider>{children}</FileProvider>,
         (children: ReactNode) => <NotificationUIProvider>{children}</NotificationUIProvider>,
         (children: ReactNode) => <NotificationProvider>{children}</NotificationProvider>,
+        (children: ReactNode) => <DashboardProvider>{children}</DashboardProvider>,
 
     ];
 

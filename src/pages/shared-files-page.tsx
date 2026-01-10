@@ -8,6 +8,7 @@ import {
   Search,
   Filter,
   SortAsc,
+  SortDesc,
   Download,
   Users,
   Settings,
@@ -23,7 +24,7 @@ import { sharedPageConfig, defaultViewConfig } from "@/config/page-configs"
 import { useFile } from "@/contexts/fileContext"
 import type { FileActionHandlers, FileItem } from "@/types/file-manager"
 import { isSharedFile } from "@/types/file-manager"
-import { transformSharedFileSystemNodesToSharedFileItems } from "@/lib/utils"
+import { transformSharedFileSystemNodesToSharedFileItems, quickSort, sizeToBytes } from "@/lib/utils"
 import { useAuth } from "@/contexts/useAuth"
 import { BreadcrumbNavigation } from "@/components/file-manager/BreadcrumbNavigation"
 
@@ -32,6 +33,7 @@ import { BreadcrumbNavigation } from "@/components/file-manager/BreadcrumbNaviga
 export function SharedFilesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
+  const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("ASC")
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState("all")
   const [currentPath, setCurrentPath] = useState<Array<{ id: string, name: string }>>([])
@@ -86,11 +88,30 @@ export function SharedFilesPage() {
   }, [currentPath, transformedFiles])
 
   const filteredFiles = useMemo(() => {
-    return currentItems.filter((file) => {
+    let filtered = currentItems.filter((file) => {
       const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase())
       return matchesSearch
-    })
-  }, [currentItems, searchQuery])
+    });
+
+    // Sort using QuickSort algorithm
+    filtered = quickSort(filtered, (a, b) => {
+      // Folders always come first
+      if (a.type === 'folder' && b.type !== 'folder') return -1;
+      if (a.type !== 'folder' && b.type === 'folder') return 1;
+
+      // If both are folders or both are files, sort by size
+      const sizeA = sizeToBytes(a.size);
+      const sizeB = sizeToBytes(b.size);
+
+      if (sortDirection === "ASC") {
+        return sizeA - sizeB;
+      } else {
+        return sizeB - sizeA;
+      }
+    });
+
+    return filtered;
+  }, [currentItems, searchQuery, sortDirection])
 
   const toggleFileSelection = (fileId: string) => {
     setSelectedFiles((prev) => (prev.includes(fileId) ? prev.filter((id) => id !== fileId) : [...prev, fileId]))
@@ -205,9 +226,24 @@ export function SharedFilesPage() {
                 <Filter className="h-4 w-4 mr-2" />
                 Filter
               </Button>
-              <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
-                <SortAsc className="h-4 w-4 mr-2" />
-                Sort
+              <Button 
+                onClick={() => setSortDirection(sortDirection === "ASC" ? "DESC" : "ASC")}
+                variant="outline" 
+                size="sm" 
+                className="flex-1 sm:flex-none"
+                title={`QuickSort by size (${sortDirection === "ASC" ? "smallest first" : "largest first"})`}
+              >
+                {sortDirection === "ASC" ? (
+                  <>
+                    <SortAsc className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">Size ↑</span>
+                  </>
+                ) : (
+                  <>
+                    <SortDesc className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">Size ↓</span>
+                  </>
+                )}
               </Button>
             </div>
           </div>

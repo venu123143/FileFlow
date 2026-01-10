@@ -243,3 +243,64 @@ export function transformSharedFileSystemNodeToSharedFileItem(node: SharedFileSy
 export function transformSharedFileSystemNodesToSharedFileItems(nodes: SharedFileSystemNode[]): SharedFileItem[] {
   return nodes.map(node => transformSharedFileSystemNodeToSharedFileItem(node))
 }
+
+/**
+ * QuickSort implementation for file sorting
+ * @param arr - Array to sort
+ * @param compareFn - Comparison function (returns negative if a < b, positive if a > b, 0 if equal)
+ * @returns Sorted array
+ */
+export function quickSort<T>(arr: T[], compareFn: (a: T, b: T) => number): T[] {
+  if (arr.length <= 1) {
+    return arr;
+  }
+
+  // Choose middle element as pivot for better performance on partially sorted arrays
+  const pivotIndex = Math.floor(arr.length / 2);
+  const pivot = arr[pivotIndex];
+  
+  const left: T[] = [];
+  const right: T[] = [];
+  const equal: T[] = [pivot];
+
+  for (let i = 0; i < arr.length; i++) {
+    if (i === pivotIndex) continue;
+    
+    const comparison = compareFn(arr[i], pivot);
+    
+    if (comparison < 0) {
+      left.push(arr[i]);
+    } else if (comparison > 0) {
+      right.push(arr[i]);
+    } else {
+      equal.push(arr[i]);
+    }
+  }
+
+  return [...quickSort(left, compareFn), ...equal, ...quickSort(right, compareFn)];
+}
+
+/**
+ * Helper function to convert size string to bytes for sorting
+ * @param sizeStr - Size string (e.g., "1.5 MB", "500 KB")
+ * @returns Size in bytes
+ */
+export function sizeToBytes(sizeStr: string): number {
+  if (!sizeStr || sizeStr === '-') return 0;
+
+  const units: { [key: string]: number } = {
+    'B': 1,
+    'KB': 1024,
+    'MB': 1024 * 1024,
+    'GB': 1024 * 1024 * 1024,
+    'TB': 1024 * 1024 * 1024 * 1024,
+  };
+
+  const match = sizeStr.trim().match(/^([\d.]+)\s*([A-Z]+)$/i);
+  if (!match) return 0;
+
+  const value = parseFloat(match[1]);
+  const unit = match[2].toUpperCase();
+
+  return value * (units[unit] || 0);
+}
