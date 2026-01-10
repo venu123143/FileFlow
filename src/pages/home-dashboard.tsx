@@ -8,14 +8,14 @@ import {
   Video,
   Music,
   Archive,
-  TrendingUp,
   Users,
-  Star,
   Upload,
   FolderPlus,
   Activity,
   Lock,
   RefreshCw,
+  HardDrive,
+  FolderOpen,
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
@@ -62,7 +62,6 @@ export function HomeDashboard() {
 
   const handleCreateFolder = async (folderName: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      // Create folder at root level (no parent_id)
       const result = await createFolder({
         name: folderName.trim(),
         parent_id: undefined
@@ -106,7 +105,7 @@ export function HomeDashboard() {
         { label: "Total Files", value: "0", icon: FileText, change: "", color: "from-blue-500 to-blue-600" },
         { label: "Storage Used", value: "0 GB", icon: Archive, change: "", color: "from-purple-500 to-purple-600" },
         { label: "Shared Today", value: "0", icon: Users, change: "", color: "from-green-500 to-green-600" },
-        { label: "Uploads Today", value: "0", icon: Star, change: "", color: "from-yellow-500 to-yellow-600" },
+        { label: "Uploads Today", value: "0", icon: Upload, change: "", color: "from-yellow-500 to-yellow-600" },
       ];
     }
 
@@ -121,7 +120,7 @@ export function HomeDashboard() {
       { 
         label: "Storage Used", 
         value: formatBytes(storageOverview.storage.totalSize), 
-        icon: Archive, 
+        icon: HardDrive, 
         change: `${storageOverview.storageUsedPercentage}% used`, 
         color: "from-purple-500 to-purple-600" 
       },
@@ -133,10 +132,10 @@ export function HomeDashboard() {
         color: "from-green-500 to-green-600" 
       },
       { 
-        label: "Uploads Today", 
-        value: storageOverview.todayActivity.uploads.toString(), 
-        icon: Upload, 
-        change: "This session", 
+        label: "Total Folders", 
+        value: storageOverview.storage.totalFolders.toString(), 
+        icon: FolderOpen, 
+        change: "Organized", 
         color: "from-yellow-500 to-yellow-600" 
       },
     ];
@@ -146,38 +145,38 @@ export function HomeDashboard() {
   const fileTypeBreakdown = useMemo(() => {
     if (!storageOverview) {
       return [
-        { type: "Documents", count: 0, size: "0 GB", color: "from-blue-500 to-blue-600", icon: FileText, percentage: 0 },
-        { type: "Images", count: 0, size: "0 GB", color: "from-green-500 to-green-600", icon: ImageIcon, percentage: 0 },
-        { type: "Videos", count: 0, size: "0 GB", color: "from-purple-500 to-purple-600", icon: Video, percentage: 0 },
-        { type: "Audio", count: 0, size: "0 GB", color: "from-orange-500 to-orange-600", icon: Music, percentage: 0 },
-        { type: "Other", count: 0, size: "0 GB", color: "from-gray-500 to-gray-600", icon: Archive, percentage: 0 },
+        { type: "Documents", count: 0, size: "0 Bytes", color: "bg-blue-500", icon: FileText, percentage: 0 },
+        { type: "Images", count: 0, size: "0 Bytes", color: "bg-green-500", icon: ImageIcon, percentage: 0 },
+        { type: "Videos", count: 0, size: "0 Bytes", color: "bg-purple-500", icon: Video, percentage: 0 },
+        { type: "Audio", count: 0, size: "0 Bytes", color: "bg-orange-500", icon: Music, percentage: 0 },
+        { type: "Other", count: 0, size: "0 Bytes", color: "bg-gray-500", icon: Archive, percentage: 0 },
       ];
     }
 
-    const totalSize = storageOverview.storage.totalSize || 1; // Avoid division by zero
+    const totalSize = storageOverview.storage.totalSize || 1;
 
     return [
-      { 
-        type: "Documents", 
-        count: storageOverview.storage.documentCount, 
-        size: formatBytes(storageOverview.storage.documentSize), 
-        color: "from-blue-500 to-blue-600", 
-        icon: FileText, 
-        percentage: Math.round((storageOverview.storage.documentSize / totalSize) * 100) 
-      },
       { 
         type: "Images", 
         count: storageOverview.storage.imageCount, 
         size: formatBytes(storageOverview.storage.imageSize), 
-        color: "from-green-500 to-green-600", 
+        color: "bg-green-500", 
         icon: ImageIcon, 
         percentage: Math.round((storageOverview.storage.imageSize / totalSize) * 100) 
+      },
+      { 
+        type: "Documents", 
+        count: storageOverview.storage.documentCount, 
+        size: formatBytes(storageOverview.storage.documentSize), 
+        color: "bg-blue-500", 
+        icon: FileText, 
+        percentage: Math.round((storageOverview.storage.documentSize / totalSize) * 100) 
       },
       { 
         type: "Videos", 
         count: storageOverview.storage.videoCount, 
         size: formatBytes(storageOverview.storage.videoSize), 
-        color: "from-purple-500 to-purple-600", 
+        color: "bg-purple-500", 
         icon: Video, 
         percentage: Math.round((storageOverview.storage.videoSize / totalSize) * 100) 
       },
@@ -185,7 +184,7 @@ export function HomeDashboard() {
         type: "Audio", 
         count: storageOverview.storage.audioCount, 
         size: formatBytes(storageOverview.storage.audioSize), 
-        color: "from-orange-500 to-orange-600", 
+        color: "bg-orange-500", 
         icon: Music, 
         percentage: Math.round((storageOverview.storage.audioSize / totalSize) * 100) 
       },
@@ -193,7 +192,7 @@ export function HomeDashboard() {
         type: "Other", 
         count: storageOverview.storage.otherCount || 0, 
         size: formatBytes(storageOverview.storage.otherSize || 0), 
-        color: "from-gray-500 to-gray-600", 
+        color: "bg-gray-500", 
         icon: Archive, 
         percentage: Math.round(((storageOverview.storage.otherSize || 0) / totalSize) * 100) 
       },
@@ -209,8 +208,8 @@ export function HomeDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
-      <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Header Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -219,11 +218,11 @@ export function HomeDashboard() {
           className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
         >
           <div>
-            <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-              Good morning, {user?.display_name} ✨
+            <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-400 bg-clip-text text-transparent">
+              Welcome back, {user?.display_name}! 👋
             </h1>
             <p className="text-slate-600 dark:text-slate-400 mt-2 text-sm sm:text-base">
-              Here's what's happening with your files today.
+              Here's your file overview
             </p>
           </div>
           <Button
@@ -231,7 +230,7 @@ export function HomeDashboard() {
             size="sm"
             onClick={handleRefresh}
             disabled={isLoading}
-            className="shrink-0"
+            className="shrink-0 border-slate-200 dark:border-slate-700"
           >
             <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
             Refresh
@@ -243,50 +242,43 @@ export function HomeDashboard() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4"
+            className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg p-4"
           >
-            <p className="text-red-800 dark:text-red-200 text-sm">{error}</p>
+            <p className="text-red-800 dark:text-red-300 text-sm">{error}</p>
           </motion.div>
         )}
 
-        {/* Quick Actions Grid */}
+        {/* Quick Actions */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {quickActions.map((action, index) => (
               <motion.div
                 key={action.label}
-                initial={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3, delay: 0.1 + index * 0.05 }}
-                whileHover={{ scale: 1.02 }}
+                whileHover={{ scale: 1.02, y: -2 }}
                 whileTap={{ scale: 0.98 }} 
                 onClick={() => handleQuickActionClick(action.label)}
               >
-                <Card
-                  className={cn(
-                    "group cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300",
-                    "bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm",
-                    "hover:bg-white/90 dark:hover:bg-slate-800/90"
-                  )}
-                >
-                  <CardContent className="p-4 sm:p-6">
-                    <div className="flex flex-col items-center text-center space-y-3">
+                <Card className="group cursor-pointer border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-300 bg-white dark:bg-slate-900 hover:shadow-lg">
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-4">
                       <div className={cn(
-                        "p-3 rounded-xl bg-gradient-to-br",
-                        action.color,
-                        "group-hover:scale-110 transition-transform duration-300"
+                        "p-3 rounded-lg bg-gradient-to-br shrink-0",
+                        action.color
                       )}>
-                        <action.icon className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
+                        <action.icon className="h-5 w-5 text-white" />
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-sm sm:text-base text-slate-800 dark:text-slate-200">
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100 truncate">
                           {action.label}
                         </h3>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                           {action.description}
                         </p>
                       </div>
@@ -311,31 +303,28 @@ export function HomeDashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.2 + index * 0.05 }}
-              whileHover={{ y: -2 }}
             >
-              <Card className="group border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                <CardContent className="p-4 sm:p-6">
+              <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:shadow-md transition-shadow">
+                <CardContent className="p-5">
                   <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                    <div className="space-y-1 flex-1">
+                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                         {stat.label}
                       </p>
-                      <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">
+                      <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
                         {stat.value}
                       </p>
                       <div className="flex items-center gap-1">
-                        <TrendingUp className="h-3 w-3 text-green-500" />
-                        <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                        <span className="text-xs text-slate-600 dark:text-slate-400">
                           {stat.change}
                         </span>
                       </div>
                     </div>
                     <div className={cn(
-                      "p-3 rounded-xl bg-gradient-to-br",
-                      stat.color,
-                      "group-hover:scale-110 transition-transform duration-300"
+                      "p-2.5 rounded-lg bg-gradient-to-br shrink-0",
+                      stat.color
                     )}>
-                      <stat.icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                      <stat.icon className="h-5 w-5 text-white" />
                     </div>
                   </div>
                 </CardContent>
@@ -345,7 +334,7 @@ export function HomeDashboard() {
         </motion.div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent Files */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -353,16 +342,16 @@ export function HomeDashboard() {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="lg:col-span-2"
           >
-            <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-lg sm:text-xl font-semibold flex items-center gap-2">
+            <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <CardHeader className="flex flex-row items-center justify-between pb-3">
+                <CardTitle className="text-lg font-semibold flex items-center gap-2 text-slate-900 dark:text-slate-100">
                   <Clock className="h-5 w-5 text-blue-500" />
                   Recent Files
                 </CardTitle>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-blue-600 hover:text-blue-700"
+                  className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/30"
                   onClick={() => navigate('/all-files')}
                 >
                   View all
@@ -381,48 +370,45 @@ export function HomeDashboard() {
             transition={{ duration: 0.5, delay: 0.4 }}
             className="lg:col-span-1"
           >
-            <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="text-lg sm:text-xl font-semibold flex items-center gap-2">
+            <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-semibold flex items-center gap-2 text-slate-900 dark:text-slate-100">
                   <Activity className="h-5 w-5 text-purple-500" />
                   Storage Overview
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-slate-600 dark:text-slate-400">Storage Used</span>
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">
-                      {storageOverview ? `${formatBytes(storageOverview.storageUsed)} / ${formatBytes(storageOverview.storageQuota)}` : '0 GB / 0 GB'}
+                {/* Total Storage Bar */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-sm text-slate-600 dark:text-slate-400">Storage Used</span>
+                    <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {storageOverview ? `${formatBytes(storageOverview.storageUsed)} / ${formatBytes(storageOverview.storageQuota)}` : '0 / 0'}
                     </span>
                   </div>
                   <Progress 
                     value={storageOverview ? parseFloat(storageOverview.storageUsedPercentage) : 0} 
-                    className="h-2 bg-slate-200 dark:bg-slate-700"
-                  >
-                    <div className="h-full bg-gradient-to-r from-purple-500 to-purple-600 rounded-full" />
-                  </Progress>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                    className="h-2.5"
+                  />
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     {storageOverview ? formatBytes(storageOverview.storageRemaining) : '0 GB'} remaining
                   </p>
                 </div>
 
-                <div className="space-y-4">
+                {/* File Type Breakdown */}
+                <div className="space-y-4 pt-2">
                   {fileTypeBreakdown.map((item, index) => (
                     <motion.div
                       key={item.type}
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.3, delay: 0.5 + index * 0.05 }}
-                      className="group"
+                      className="space-y-2"
                     >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-3">
-                          <div className={cn(
-                            "h-3 w-3 rounded-full bg-gradient-to-r",
-                            item.color
-                          )} />
-                          <item.icon className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className={cn("w-2 h-2 rounded-full", item.color)} />
+                          <item.icon className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                             {item.type}
                           </span>
@@ -435,15 +421,6 @@ export function HomeDashboard() {
                             {item.count} files
                           </p>
                         </div>
-                      </div>
-                      <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5">
-                        <div
-                          className={cn(
-                            "h-1.5 rounded-full bg-gradient-to-r",
-                            item.color
-                          )}
-                          style={{ width: `${item.percentage}%` }}
-                        />
                       </div>
                     </motion.div>
                   ))}
