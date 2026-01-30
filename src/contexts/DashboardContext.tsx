@@ -1,6 +1,8 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import analyticsApi from '@/api/analytics.api';
 import { toast } from 'sonner';
+import { useAuth } from './useAuth';
 
 interface StorageData {
     totalFiles: number;
@@ -55,52 +57,67 @@ interface DashboardContextType {
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
 
 export function DashboardProvider({ children }: { children: React.ReactNode }) {
-    const [storageOverview, setStorageOverview] = useState<StorageOverview | null>(null);
-    const [analyticsSummary, setAnalyticsSummary] = useState<AnalyticsSummary | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const queryClient = useQueryClient();
+    const { user } = useAuth();
 
-    const refreshStorageOverview = useCallback(async () => {
-        try {
-            setIsLoading(true);
-            setError(null);
+    // 🔹 Queries
+    const { data: storageOverview, isLoading: storageOverviewLoading, error: storageOverviewError } = useQuery<StorageOverview>({
+        queryKey: ['storageOverview'],
+        queryFn: async () => {
             const response = await analyticsApi.getStorageOverview();
-            
             if (response.success) {
-                setStorageOverview(response.data);
+                return response.data;
             } else {
                 throw new Error(response.message || 'Failed to fetch storage overview');
             }
-        } catch (err: any) {
-            const errorMsg = err?.response?.data?.message || err?.message || 'Failed to load storage overview';
-            setError(errorMsg);
-            console.error('Error fetching storage overview:', err);
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
+        },
+        retry: 2,
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        gcTime: 10 * 60 * 1000, // 10 minutes
+        enabled: !!user, // Only enable the query when user is authenticated
+    });
 
-    const refreshAnalyticsSummary = useCallback(async () => {
-        try {
-            setError(null);
+    const { data: analyticsSummary, isLoading: analyticsSummaryLoading, error: analyticsSummaryError } = useQuery<AnalyticsSummary>({
+        queryKey: ['analyticsSummary'],
+        queryFn: async () => {
             const response = await analyticsApi.getAnalyticsSummary();
-            
             if (response.success) {
-                setAnalyticsSummary(response.data);
+                return response.data;
             } else {
                 throw new Error(response.message || 'Failed to fetch analytics summary');
             }
+        },
+        retry: 2,
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        gcTime: 10 * 60 * 1000, // 10 minutes
+        enabled: !!user, // Only enable the query when user is authenticated
+    });
+
+    // 🔹 Refresh functions
+    const refreshStorageOverview = useCallback(async () => {
+        try {
+            await queryClient.refetchQueries({ queryKey: ['storageOverview'] });
+        } catch (err: any) {
+            const errorMsg = err?.response?.data?.message || err?.message || 'Failed to load storage overview';
+            console.error('Error fetching storage overview:', err);
+            toast.error(errorMsg);
+        }
+    }, [queryClient]);
+
+    const refreshAnalyticsSummary = useCallback(async () => {
+        try {
+            await queryClient.refetchQueries({ queryKey: ['analyticsSummary'] });
         } catch (err: any) {
             const errorMsg = err?.response?.data?.message || err?.message || 'Failed to load analytics summary';
-            setError(errorMsg);
             console.error('Error fetching analytics summary:', err);
+            toast.error(errorMsg);
         }
-    }, []);
+    }, [queryClient]);
 
     const getAnalyticsByDateRange = useCallback(async (startDate: string, endDate: string) => {
         try {
             const response = await analyticsApi.getAnalyticsByDateRange(startDate, endDate);
-            
+
             if (response.success) {
                 return response.data;
             } else {
@@ -113,21 +130,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         }
     }, []);
 
-    // Initial data load
-    useEffect(() => {
-        const loadInitialData = async () => {
-            await Promise.all([
-                refreshStorageOverview(),
-                refreshAnalyticsSummary()
-            ]);
-        };
-
-        loadInitialData();
-    }, [refreshStorageOverview, refreshAnalyticsSummary]);
+    // Compute combined loading and error states
+    const isLoading = storageOverviewLoading || analyticsSummaryLoading;
+    const error = storageOverviewError?.message || analyticsSummaryError?.message || null;
 
     const value: DashboardContextType = {
-        storageOverview,
-        analyticsSummary,
+        storageOverview: storageOverview || null,
+        analyticsSummary: analyticsSummary || null,
         isLoading,
         error,
         refreshStorageOverview,
