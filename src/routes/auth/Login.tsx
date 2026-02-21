@@ -32,17 +32,13 @@ const Login = () => {
 
   useEffect(() => {
     if (user?.id) {
-      navigate('/')
+      navigate(user.role === 'ADMIN' ? '/videos' : '/')
     }
-  }, [])
+  }, [user?.id, user?.role, navigate])
 
   const onSubmit = async (data: LoginFormData) => {
     const result = await login(data.email, data.password)
-
-    if (result.success) {
-      // Navigate to home page after successful login
-      navigate('/')
-    } else if (result.error) {
+    if (result.error) {
       // Set form error for the appropriate field
       if (result.error.toLowerCase().includes('email')) {
         form.setError('email', {

@@ -3,6 +3,7 @@ import React, { createContext, useContext, useReducer, useCallback, type ReactNo
 import { useInitiateUpload, useUploadChunk, useCompleteUpload, useAbortUpload, useDirectUpload, useGetUploadedParts } from '@/hooks/useUploadMutations';
 import { getAuthState } from '@/store/auth.store';
 import apiClient from '@/api/axios';
+import * as uploadApi from '@/api/upload.api';
 
 export const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
 
@@ -207,6 +208,7 @@ interface UploadContextType {
     autoClearCompleted: () => void;
     uploadFiles: (files: File[]) => Promise<FileObject[]>;
     deleteFile: (fileName: string) => Promise<boolean>;
+    getAllFiles: (payload?: uploadApi.GetAllFilesPayload) => Promise<uploadApi.GetAllFilesResponse>;
     setButtonLoading: (fileName: string, button: 'upload' | 'retry' | 'abort' | 'remove', loading: boolean) => void;
     reset: () => void;
 }
@@ -456,6 +458,15 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }
     };
 
+    const getAllFiles = async (payload?: uploadApi.GetAllFilesPayload): Promise<uploadApi.GetAllFilesResponse> => {
+        try {
+            const result = await uploadApi.getAllFiles(payload);
+            return result;
+        } catch (error: any) {
+            throw new Error(error?.response?.data?.message || error?.message || 'Failed to get files');
+        }
+    };
+
     const reset = () => dispatch({ type: 'RESET' });
 
     const value: UploadContextType = {
@@ -471,6 +482,7 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         autoClearCompleted,
         uploadFiles,
         deleteFile,
+        getAllFiles,
         setButtonLoading,
         reset,
     };
