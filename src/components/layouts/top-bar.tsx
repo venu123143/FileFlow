@@ -34,7 +34,9 @@ export function TopBar({ onSidebarToggle }: TopBarProps) {
       'deleted-files': 'Deleted Files',
       'private-files': 'Private Files',
       'shared-files': 'Shared Files',
-      'settings': 'Settings'
+      'settings': 'Settings',
+      'videos': 'Videos',
+      'admin': 'Admin Panel'
     }
 
     const breadcrumbs = [

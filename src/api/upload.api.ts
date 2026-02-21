@@ -69,6 +69,37 @@ export interface DirectUploadResponse {
     storage_path: string;
 }
 
+export interface GetAllFilesPayload {
+    folder?: 'files' | 'videos' | 'images' | 'documents';
+    maxKeys?: number;
+    continuationToken?: string;
+}
+
+export interface S3File {
+    key: string;
+    size: number;
+    lastModified: Date;
+    etag: string;
+    cdnUrl: string;
+    storageClass?: string;
+    owner?: {
+        displayName?: string;
+        id?: string;
+    };
+    // Include all other S3 properties that might be returned
+    [key: string]: any;
+}
+
+export interface GetAllFilesResponse {
+    files: S3File[];
+    pagination: {
+        hasMore: boolean;
+        nextContinuationToken: string | null;
+        maxKeys: number;
+        currentCount: number;
+    };
+}
+
 // API Functions
 
 /**
@@ -164,6 +195,44 @@ export const directUpload = async (
     throw new Error(response.data?.message || 'Upload failed - invalid response');
 };
 
+/**
+ * Get all files from S3 storage with pagination
+ */
+export const getAllFiles = async (
+    payload?: GetAllFilesPayload
+): Promise<GetAllFilesResponse> => {
+    const params = new URLSearchParams();
+
+    if (payload?.folder) {
+        params.append('folder', payload.folder);
+    }
+    if (payload?.maxKeys) {
+        params.append('maxKeys', payload.maxKeys.toString());
+    }
+    if (payload?.continuationToken) {
+        params.append('continuationToken', payload.continuationToken);
+    }
+
+    const queryString = params.toString();
+    const url = `/upload/file/get-all-files${queryString ? `?${queryString}` : ''}`;
+
+    const response = await apiClient.get(url);
+    
+    if (response.data?.success && response.data?.data) {
+        // Convert lastModified strings to Date objects
+        const data = response.data.data;
+        if (data.files && Array.isArray(data.files)) {
+            data.files = data.files.map((file: any) => ({
+                ...file,
+                lastModified: file.lastModified ? new Date(file.lastModified) : new Date(),
+            }));
+        }
+        return data;
+    }
+
+    throw new Error(response.data?.message || 'Failed to get files');
+};
+
 export default {
     initiateMultipartUpload,
     uploadChunk,
@@ -171,5 +240,6 @@ export default {
     abortMultipartUpload,
     getUploadedParts,
     directUpload,
+    getAllFiles,
 };
 

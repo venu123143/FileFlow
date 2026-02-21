@@ -4,6 +4,7 @@ import type { ReactNode, FC } from "react"
 import { Navigate, Outlet } from "react-router-dom"
 import { type UserRole } from "@/types/user.types"
 import { DashboardLayout } from "./dashboard-layout"
+import { AdminLayout } from "./admin-layout"
 import { useAuth } from "@/contexts/useAuth"
 
 
@@ -22,14 +23,6 @@ const DefaultLayout: FC<{ children: ReactNode }> = ({ children }) => (
     </div>
 )
 
-// User Layout
-const UserLayout: FC<{ children: ReactNode }> = ({ children }) => (
-    <div className="user-layout">
-        <nav className="user-nav">User Navigation</nav>
-        <main className="user-main">{children}</main>
-    </div>
-);
-
 // Role-based layout wrapper using switch-case
 const RoleBasedLayout: FC = () => {
     const { user } = useAuth();
@@ -44,9 +37,9 @@ const RoleBasedLayout: FC = () => {
             )
         case "ADMIN":
             return (
-                <UserLayout>
+                <AdminLayout>
                     <Outlet context={{ role }} />
-                </UserLayout>
+                </AdminLayout>
             )
         default:
             return (
@@ -73,7 +66,6 @@ const ProtectedRoute: FC<ProtectedRouteProps> = ({ roles }) => {
 
 export {
     DefaultLayout,
-    UserLayout,
     ProtectedRoute,
     RoleBasedLayout,
 };

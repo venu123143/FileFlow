@@ -3,14 +3,14 @@
 import type React from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useState, useEffect } from "react"
-import { Sidebar } from "@/components/sidebar/sidebar"
+import { AdminSidebar } from "@/components/sidebar/admin-sidebar"
 import { TopBar } from "@/components/layouts/top-bar"
 
-interface DashboardLayoutProps {
+interface AdminLayoutProps {
   children: React.ReactNode
 }
 
-export function DashboardLayout({ children }: DashboardLayoutProps) {
+export function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [isMobile, setIsMobile] = useState(false)
 
@@ -52,7 +52,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="dashboard-layout flex h-screen bg-background overflow-hidden relative">
+    <div className="admin-layout flex h-screen bg-background overflow-hidden relative">
       {/* Mobile backdrop */}
       {isMobile && sidebarOpen && (
         <motion.div
@@ -78,7 +78,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               ease: [0.4, 0.0, 0.2, 1]
             }}
           >
-            <Sidebar isOpen={sidebarOpen} isMobile={isMobile} onClose={() => setSidebarOpen(false)} />
+            <AdminSidebar isOpen={sidebarOpen} isMobile={isMobile} onClose={() => setSidebarOpen(false)} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -104,3 +104,4 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     </div>
   )
 }
+
