@@ -16,21 +16,23 @@ export function VideoListItem({ video, index }: VideoListItemProps) {
   const [isHovered, setIsHovered] = useState(false)
   const [isPlayerOpen, setIsPlayerOpen] = useState(false)
   const [loaded, setLoaded] = useState(false)
-  const imgRef = useRef<HTMLImageElement>(null)
-
+  const videoRef = useRef<HTMLVideoElement>(null)
   const videoName = video.fileName
-
-  // Check if image has already loaded when component mounts
+  const [duration, setDuration] = useState<number | null>(
+    video.duration ?? null
+  )
+  // Check if video has already loaded metadata when component mounts
   useEffect(() => {
-    if (imgRef.current) {
-      // If image is already loaded (cached by browser), set loaded to true
-      if (imgRef.current.complete && imgRef.current.naturalHeight !== 0) {
+    if (videoRef.current) {
+      // readyState >= 2 means HAVE_CURRENT_DATA (metadata is loaded)
+      if (videoRef.current.readyState >= 2) {
         setLoaded(true)
       }
     }
   }, [])
 
-  const formatDuration = (seconds?: number): string => {
+  const formatDuration = (): string => {
+    const seconds = duration;
     if (!seconds) return ""
     const hours = Math.floor(seconds / 3600)
     const minutes = Math.floor((seconds % 3600) / 60)
@@ -59,24 +61,21 @@ export function VideoListItem({ video, index }: VideoListItemProps) {
           {!loaded && (
             <Skeleton className="absolute inset-0 w-full h-full z-10" />
           )}
-
-          <img
-            ref={imgRef}
-            src={video.cdnUrl}
-            alt={videoName}
-            className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
-            onLoad={() => setLoaded(true)}
-            onError={(e) => {
+          <video
+            ref={videoRef}
+            width="300"
+            muted
+            preload="metadata"
+            onLoadedData={() => setLoaded(true)}
+            onLoadedMetadata={(e) => {
+              const duration = e.currentTarget.duration;
+              setDuration(duration);
               setLoaded(true)
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-              const placeholder = target.nextElementSibling as HTMLElement;
-              if (placeholder) {
-                placeholder.classList.remove('hidden');
-                placeholder.classList.add('flex');
-              }
             }}
-          />
+            className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+          >
+            <source src={video.cdnUrl} type="video/mp4" />
+          </video>
           <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-700 items-center justify-center hidden">
             <Play className="h-8 w-8 text-slate-400 dark:text-slate-500" />
           </div>

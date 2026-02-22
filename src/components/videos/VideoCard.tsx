@@ -18,7 +18,9 @@ export function VideoCard({ video, index }: VideoCardProps) {
   const [loaded, setLoaded] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const videoName = video.fileName
-
+  const [duration, setDuration] = useState<number | null>(
+    video.duration ?? null
+  )
   // Check if video has already loaded metadata when component mounts
   useEffect(() => {
     if (videoRef.current) {
@@ -29,7 +31,8 @@ export function VideoCard({ video, index }: VideoCardProps) {
     }
   }, [])
 
-  const formatDuration = (seconds?: number): string => {
+  const formatDuration = (): string => {
+    const seconds = duration;
     if (!seconds) return ""
     const hours = Math.floor(seconds / 3600)
     const minutes = Math.floor((seconds % 3600) / 60)
@@ -65,7 +68,11 @@ export function VideoCard({ video, index }: VideoCardProps) {
               muted
               preload="metadata"
               onLoadedData={() => setLoaded(true)}
-              onLoadedMetadata={() => setLoaded(true)}
+              onLoadedMetadata={(e) => {
+                const duration = e.currentTarget.duration;
+                setDuration(duration);
+                setLoaded(true)
+              }}
               className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
             >
               <source src={video.cdnUrl} type="video/mp4" />
