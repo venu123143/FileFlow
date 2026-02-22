@@ -1,11 +1,13 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, lazy, Suspense } from "react"
 import { motion } from "framer-motion"
 import { Play, Clock } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { VideoPlayerModal } from "@/components/player/VideoPlayerModal"
 import type { VideoData } from "@/pages/videos-page"
+
+// Lazy load VideoPlayerModal to avoid bundling video.js until needed
+const VideoPlayerModal = lazy(() => import("@/components/player/VideoPlayerModal").then(module => ({ default: module.VideoPlayerModal })))
 
 interface VideoListItemProps {
   video: VideoData
@@ -128,13 +130,21 @@ export function VideoListItem({ video, index }: VideoListItemProps) {
         </div>
       </motion.div>
 
-      {/* Video Player Modal */}
-      <VideoPlayerModal
-        isOpen={isPlayerOpen}
-        onClose={() => setIsPlayerOpen(false)}
-        videoUrl={video.cdnUrl}
-        videoName={videoName}
-      />
+      {/* Video Player Modal - Lazy loaded */}
+      {isPlayerOpen && (
+        <Suspense fallback={
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-600 border-t-white" />
+          </div>
+        }>
+          <VideoPlayerModal
+            isOpen={isPlayerOpen}
+            onClose={() => setIsPlayerOpen(false)}
+            videoUrl={video.cdnUrl}
+            videoName={videoName}
+          />
+        </Suspense>
+      )}
     </>
   )
 }

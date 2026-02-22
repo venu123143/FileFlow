@@ -1,6 +1,4 @@
 import { useEffect, useRef } from 'react';
-import videojs from 'video.js';
-import 'video.js/dist/video-js.css';
 
 // Custom Video.js theme styles
 const customStyles = `
@@ -190,244 +188,265 @@ export function VideoPlayer({
   });
 
   useEffect(() => {
-    // Add custom styles to document
-    if (!document.getElementById('video-js-custom-styles')) {
-      const styleElement = document.createElement('style');
-      styleElement.id = 'video-js-custom-styles';
-      styleElement.textContent = customStyles;
-      document.head.appendChild(styleElement);
-    }
+    let isMounted = true;
 
-    if (!playerRef.current && videoRef.current) {
-      // Initialize Video.js
-      const player = videojs(videoRef.current, {
-        autoplay,
-        muted,
-        controls,
-        loop,
-        preload,
-        fluid: true,
-        responsive: true,
-        playbackRates: [0.5, 0.75, 1, 1.25, 1.5, 2],
-        controlBar: {
-          playToggle: { order: 0 },
-          currentTimeDisplay: { order: 1 },
-          timeDivider: { order: 2 },
-          durationDisplay: { order: 3 },
-          progressControl: { order: 4 },
-          remainingTimeDisplay: false,
-          playbackRateMenuButton: {
-            order: 5,
-            playbackRates: [0.5, 0.75, 1, 1.25, 1.5, 2]
-          },
-          volumePanel: {
-            order: 6,
-            inline: false
-          },
-          pictureInPictureToggle: { order: 7 },
-          fullscreenToggle: { order: 8 }
-        },
-        userActions: {
-          hotkeys: true,
-          click: true,
-          doubleClick: true
+    // Dynamically import video.js and CSS
+    const loadVideoJS = async () => {
+      try {
+        // Import video.js and CSS dynamically
+        const [videojs] = await Promise.all([
+          import('video.js'),
+          import('video.js/dist/video-js.css')
+        ]);
+
+        if (!isMounted) return;
+
+        // Add custom styles to document
+        if (!document.getElementById('video-js-custom-styles')) {
+          const styleElement = document.createElement('style');
+          styleElement.id = 'video-js-custom-styles';
+          styleElement.textContent = customStyles;
+          document.head.appendChild(styleElement);
         }
-      }, () => {
-        if (onReady) onReady();
-      });
 
-      player.addClass('vjs-theme-custom');
+        if (!playerRef.current && videoRef.current) {
+          // Initialize Video.js
+          const player = videojs.default(videoRef.current, {
+            autoplay,
+            muted,
+            controls,
+            loop,
+            preload,
+            fluid: true,
+            responsive: true,
+            playbackRates: [0.5, 0.75, 1, 1.25, 1.5, 2],
+            controlBar: {
+              playToggle: { order: 0 },
+              currentTimeDisplay: { order: 1 },
+              timeDivider: { order: 2 },
+              durationDisplay: { order: 3 },
+              progressControl: { order: 4 },
+              remainingTimeDisplay: false,
+              playbackRateMenuButton: {
+                order: 5,
+                playbackRates: [0.5, 0.75, 1, 1.25, 1.5, 2]
+              },
+              volumePanel: {
+                order: 6,
+                inline: false
+              },
+              pictureInPictureToggle: { order: 7 },
+              fullscreenToggle: { order: 8 }
+            },
+            userActions: {
+              hotkeys: true,
+              click: true,
+              doubleClick: true
+            }
+          }, () => {
+            if (onReady) onReady();
+          });
 
-      // Set video source
-      player.src({
-        src: url,
-        type: getVideoType(url)
-      });
+          player.addClass('vjs-theme-custom');
 
-      if (poster) {
-        player.poster(poster);
-      }
+          // Set video source
+          player.src({
+            src: url,
+            type: getVideoType(url)
+          });
 
-      // Event listeners
-      player.on('play', () => {
-        if (onPlay) onPlay();
-      });
-
-      player.on('pause', () => {
-        if (onPause) onPause();
-      });
-
-      player.on('ended', () => {
-        if (onEnded) onEnded();
-      });
-
-      player.on('error', (error: any) => {
-        if (onError) onError(error);
-      });
-
-      // Skip handler function (shared for both mouse and touch)
-      const handleSkip = (x: number, playerEl: HTMLElement) => {
-        const rect = playerEl.getBoundingClientRect();
-        const clickX = x - rect.left;
-        const playerWidth = rect.width;
-        const isLeftSide = clickX < playerWidth / 2;
-
-        const currentTime = player.currentTime();
-        const duration = player.duration();
-
-        if (typeof currentTime === 'number' && typeof duration === 'number') {
-          let newTime: number;
-          let skipText: string;
-
-          if (isLeftSide) {
-            // Skip backward 10 seconds
-            newTime = Math.max(0, currentTime - 10);
-            skipText = '-10s';
-          } else {
-            // Skip forward 10 seconds
-            newTime = Math.min(duration, currentTime + 10);
-            skipText = '+10s';
+          if (poster) {
+            player.poster(poster);
           }
 
-          player.currentTime(newTime);
+          // Event listeners
+          player.on('play', () => {
+            if (onPlay) onPlay();
+          });
 
-          // Show skip indicator
-          showSkipIndicator(playerEl, skipText, isLeftSide);
+          player.on('pause', () => {
+            if (onPause) onPause();
+          });
+
+          player.on('ended', () => {
+            if (onEnded) onEnded();
+          });
+
+          player.on('error', (error: any) => {
+            if (onError) onError(error);
+          });
+
+          // Skip handler function (shared for both mouse and touch)
+          const handleSkip = (x: number, playerEl: HTMLElement) => {
+            const rect = playerEl.getBoundingClientRect();
+            const clickX = x - rect.left;
+            const playerWidth = rect.width;
+            const isLeftSide = clickX < playerWidth / 2;
+
+            const currentTime = player.currentTime();
+            const duration = player.duration();
+
+            if (typeof currentTime === 'number' && typeof duration === 'number') {
+              let newTime: number;
+              let skipText: string;
+
+              if (isLeftSide) {
+                // Skip backward 10 seconds
+                newTime = Math.max(0, currentTime - 10);
+                skipText = '-10s';
+              } else {
+                // Skip forward 10 seconds
+                newTime = Math.min(duration, currentTime + 10);
+                skipText = '+10s';
+              }
+
+              player.currentTime(newTime);
+
+              // Show skip indicator
+              showSkipIndicator(playerEl, skipText, isLeftSide);
+            }
+          };
+
+          // Double-click handler for skip forward/backward (desktop)
+          const handleDoubleClick = (event: MouseEvent) => {
+            const playerEl = player.el() as HTMLElement | null;
+            if (!playerEl) return;
+            handleSkip(event.clientX, playerEl);
+          };
+
+          // Double-tap handler for skip forward/backward (mobile)
+          const handleTouchStart = (event: TouchEvent) => {
+            const playerEl = player.el() as HTMLElement | null;
+            if (!playerEl) return;
+
+            const touch = event.touches[0];
+            if (!touch) return;
+
+            const currentTime = Date.now();
+            const tapX = touch.clientX;
+            const tapY = touch.clientY;
+            const { lastTapTime, lastTapX, lastTapY, tapTimeout } = touchHandlerRef.current;
+
+            // Clear any existing timeout
+            if (tapTimeout) {
+              clearTimeout(tapTimeout);
+              touchHandlerRef.current.tapTimeout = null;
+            }
+
+            // Check if this is a double-tap (within 300ms and similar position)
+            const timeDiff = currentTime - lastTapTime;
+            const xDiff = Math.abs(tapX - lastTapX);
+            const yDiff = Math.abs(tapY - lastTapY);
+            const maxDistance = 50; // Maximum distance between taps to be considered a double-tap
+
+            if (
+              timeDiff < 300 &&
+              timeDiff > 0 &&
+              xDiff < maxDistance &&
+              yDiff < maxDistance
+            ) {
+              // Double-tap detected
+              event.preventDefault();
+              handleSkip(tapX, playerEl);
+              // Reset tap tracking
+              touchHandlerRef.current.lastTapTime = 0;
+              touchHandlerRef.current.lastTapX = 0;
+              touchHandlerRef.current.lastTapY = 0;
+            } else {
+              // Store this tap for potential double-tap
+              touchHandlerRef.current.lastTapTime = currentTime;
+              touchHandlerRef.current.lastTapX = tapX;
+              touchHandlerRef.current.lastTapY = tapY;
+
+              // Set timeout to reset if no second tap
+              touchHandlerRef.current.tapTimeout = setTimeout(() => {
+                touchHandlerRef.current.lastTapTime = 0;
+                touchHandlerRef.current.lastTapX = 0;
+                touchHandlerRef.current.lastTapY = 0;
+              }, 300);
+            }
+          };
+
+          // Store handler references for cleanup
+          doubleClickHandlerRef.current = handleDoubleClick;
+          touchStartHandlerRef.current = handleTouchStart;
+
+          // Listen for double-click events on the player element (desktop)
+          const playerEl = player.el() as HTMLElement | null;
+          if (playerEl) {
+            playerEl.addEventListener('dblclick', handleDoubleClick);
+            // Listen for touch events (mobile)
+            playerEl.addEventListener('touchstart', handleTouchStart, { passive: false });
+          }
+
+          // Keyboard shortcuts
+          player.on('keydown', (e: any) => {
+            const event = e as KeyboardEvent;
+            const currentTime = player.currentTime();
+            const duration = player.duration();
+
+            switch (event.key) {
+              case 'ArrowLeft':
+                if (typeof currentTime === 'number') {
+                  player.currentTime(Math.max(0, currentTime - 10));
+                }
+                break;
+              case 'ArrowRight':
+                if (typeof currentTime === 'number') {
+                  player.currentTime(Math.min(typeof duration === 'number' ? duration : 0, currentTime + 10));
+                }
+                break;
+              case 'ArrowUp':
+                event.preventDefault();
+                break;
+              case 'ArrowDown':
+                event.preventDefault();
+                break;
+              case ' ':
+                event.preventDefault();
+                if (player.paused()) {
+                  player.play();
+                } else {
+                  player.pause();
+                }
+                break;
+              case 'f':
+              case 'F':
+                event.preventDefault();
+                if (!player.isFullscreen()) {
+                  player.requestFullscreen();
+                } else {
+                  player.exitFullscreen();
+                }
+                break;
+              case 'm':
+              case 'M':
+                event.preventDefault();
+                player.muted(!player.muted());
+                break;
+            }
+          });
+
+          playerRef.current = player;
         }
-      };
 
-      // Double-click handler for skip forward/backward (desktop)
-      const handleDoubleClick = (event: MouseEvent) => {
-        const playerEl = player.el() as HTMLElement | null;
-        if (!playerEl) return;
-        handleSkip(event.clientX, playerEl);
-      };
-
-      // Double-tap handler for skip forward/backward (mobile)
-      const handleTouchStart = (event: TouchEvent) => {
-        const playerEl = player.el() as HTMLElement | null;
-        if (!playerEl) return;
-
-        const touch = event.touches[0];
-        if (!touch) return;
-
-        const currentTime = Date.now();
-        const tapX = touch.clientX;
-        const tapY = touch.clientY;
-        const { lastTapTime, lastTapX, lastTapY, tapTimeout } = touchHandlerRef.current;
-
-        // Clear any existing timeout
-        if (tapTimeout) {
-          clearTimeout(tapTimeout);
-          touchHandlerRef.current.tapTimeout = null;
+        // Update source if URL changes
+        if (playerRef.current && url) {
+          playerRef.current.src({
+            src: url,
+            type: getVideoType(url)
+          });
         }
-
-        // Check if this is a double-tap (within 300ms and similar position)
-        const timeDiff = currentTime - lastTapTime;
-        const xDiff = Math.abs(tapX - lastTapX);
-        const yDiff = Math.abs(tapY - lastTapY);
-        const maxDistance = 50; // Maximum distance between taps to be considered a double-tap
-
-        if (
-          timeDiff < 300 &&
-          timeDiff > 0 &&
-          xDiff < maxDistance &&
-          yDiff < maxDistance
-        ) {
-          // Double-tap detected
-          event.preventDefault();
-          handleSkip(tapX, playerEl);
-          // Reset tap tracking
-          touchHandlerRef.current.lastTapTime = 0;
-          touchHandlerRef.current.lastTapX = 0;
-          touchHandlerRef.current.lastTapY = 0;
-        } else {
-          // Store this tap for potential double-tap
-          touchHandlerRef.current.lastTapTime = currentTime;
-          touchHandlerRef.current.lastTapX = tapX;
-          touchHandlerRef.current.lastTapY = tapY;
-
-          // Set timeout to reset if no second tap
-          touchHandlerRef.current.tapTimeout = setTimeout(() => {
-            touchHandlerRef.current.lastTapTime = 0;
-            touchHandlerRef.current.lastTapX = 0;
-            touchHandlerRef.current.lastTapY = 0;
-          }, 300);
-        }
-      };
-
-      // Store handler references for cleanup
-      doubleClickHandlerRef.current = handleDoubleClick;
-      touchStartHandlerRef.current = handleTouchStart;
-
-      // Listen for double-click events on the player element (desktop)
-      const playerEl = player.el() as HTMLElement | null;
-      if (playerEl) {
-        playerEl.addEventListener('dblclick', handleDoubleClick);
-        // Listen for touch events (mobile)
-        playerEl.addEventListener('touchstart', handleTouchStart, { passive: false });
+      } catch (error) {
+        console.error('Failed to load video.js:', error);
+        if (onError) onError(error);
       }
+    };
 
-      // Keyboard shortcuts
-      player.on('keydown', (e: any) => {
-        const event = e as KeyboardEvent;
-        const currentTime = player.currentTime();
-        const duration = player.duration();
-
-        switch (event.key) {
-          case 'ArrowLeft':
-            if (typeof currentTime === 'number') {
-              player.currentTime(Math.max(0, currentTime - 10));
-            }
-            break;
-          case 'ArrowRight':
-            if (typeof currentTime === 'number') {
-              player.currentTime(Math.min(typeof duration === 'number' ? duration : 0, currentTime + 10));
-            }
-            break;
-          case 'ArrowUp':
-            event.preventDefault();
-            break;
-          case 'ArrowDown':
-            event.preventDefault();
-            break;
-          case ' ':
-            event.preventDefault();
-            if (player.paused()) {
-              player.play();
-            } else {
-              player.pause();
-            }
-            break;
-          case 'f':
-          case 'F':
-            event.preventDefault();
-            if (!player.isFullscreen()) {
-              player.requestFullscreen();
-            } else {
-              player.exitFullscreen();
-            }
-            break;
-          case 'm':
-          case 'M':
-            event.preventDefault();
-            player.muted(!player.muted());
-            break;
-        }
-      });
-
-      playerRef.current = player;
-    }
-
-    // Update source if URL changes
-    if (playerRef.current && url) {
-      playerRef.current.src({
-        src: url,
-        type: getVideoType(url)
-      });
-    }
+    loadVideoJS();
 
     return () => {
+      isMounted = false;
       // Clean up event listeners
       if (playerRef.current) {
         const playerEl = playerRef.current.el() as HTMLElement | null;
