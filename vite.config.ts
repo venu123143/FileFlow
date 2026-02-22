@@ -11,6 +11,14 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // server: {
+  //   host: process.env.IP || "0.0.0.0", // Use IP from env or default to 0.0.0.0 (all interfaces)
+  //   port: parseInt(process.env.PORT || "5173", 10), // Use PORT from env or default to 5173
+  // },
+  // preview: {
+  //   host: process.env.IP || "0.0.0.0", // Use IP from env for preview as well
+  //   port: parseInt(process.env.PORT || "4173", 10), // Use PORT from env or default to 4173
+  // },
   build: {
     rollupOptions: {
       output: {
