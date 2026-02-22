@@ -4,8 +4,12 @@ import { motion } from "framer-motion"
 import { ArrowLeft, Home, Lock, Mail, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { useAuth } from "@/contexts/useAuth"
+import { useNavigate } from "react-router-dom"
 
 export default function Unauthorized() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -36,6 +40,11 @@ export default function Unauthorized() {
         ease: "easeInOut" as const,
       },
     },
+  }
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
   }
 
   return (
@@ -144,10 +153,10 @@ export default function Unauthorized() {
               variant="submit"
               size="lg"
               // className="border-2 border-cineflex-red/20 hover:border-cineflex-red/40 hover:bg-cineflex-red/5 px-6 py-2 rounded-xl font-semibold transition-all duration-300 bg-transparent"
-              onClick={() => (window.location.href = "/")}
+              onClick={handleLogout}
             >
               <Home className="w-4 h-4 mr-2" />
-              Home Page
+              Logout
             </Button>
           </motion.div>
 
