@@ -2,34 +2,22 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { Play, Clock } from "lucide-react"
+import { ZoomIn } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { VideoPlayerModal } from "@/components/player/VideoPlayerModal"
-import type { VideoData } from "@/pages/videos-page"
+import { ImageViewer } from "@/components/custom/ImageViewer"
+import type { ImageData } from "@/pages/images-page"
 
-interface VideoCardProps {
-  video: VideoData
+interface ImageCardProps {
+  image: ImageData
   index: number
 }
 
-export function VideoCard({ video, index }: VideoCardProps) {
+export function ImageCard({ image, index }: ImageCardProps) {
   const [isHovered, setIsHovered] = useState(false)
-  const [isPlayerOpen, setIsPlayerOpen] = useState(false)
+  const [isViewerOpen, setIsViewerOpen] = useState(false)
   const [loaded, setLoaded] = useState(false)
 
-  const videoName = video.fileName
-
-  const formatDuration = (seconds?: number): string => {
-    if (!seconds) return ""
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    const secs = Math.floor(seconds % 60)
-
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-    }
-    return `${minutes}:${secs.toString().padStart(2, '0')}`
-  }
+  const imageName = image.fileName
 
   return (
     <>
@@ -41,31 +29,25 @@ export function VideoCard({ video, index }: VideoCardProps) {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className="group cursor-pointer"
-        onClick={() => setIsPlayerOpen(true)}
+        onClick={() => setIsViewerOpen(true)}
       >
         <div className="bg-card rounded-lg overflow-hidden border shadow-sm hover:shadow-md transition-all duration-200">
           {/* Thumbnail Container */}
-          <div className="relative aspect-video bg-muted overflow-hidden">
-            {/* Skeleton shimmer until video loads */}
+          <div className="relative aspect-square bg-muted overflow-hidden">
+            {/* Skeleton shimmer until image loads */}
             {!loaded && (
               <Skeleton className="absolute inset-0 w-full h-full z-10" />
             )}
 
-            {/* Video Thumbnail - Using CDN URL as poster/thumbnail */}
-            <video
-              width="300"
-              muted
-              preload="metadata"
-              onLoadedData={() => setLoaded(true)}
+            <img
+              src={image.cdnUrl}
+              alt={imageName}
               className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
-            >
-              <source src={video.cdnUrl} type="video/mp4" />
-            </video>
-            <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-700 items-center justify-center hidden">
-              <Play className="h-12 w-12 text-slate-400 dark:text-slate-500" />
-            </div>
+              onLoad={() => setLoaded(true)}
+              onError={() => setLoaded(true)}
+            />
 
-            {/* Play Button Overlay - only show after loaded */}
+            {/* Zoom Overlay - only show after loaded */}
             {loaded && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
@@ -77,21 +59,13 @@ export function VideoCard({ video, index }: VideoCardProps) {
                 className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm"
               >
                 <div className="bg-white/90 dark:bg-white rounded-full p-4 shadow-lg">
-                  <Play className="h-8 w-8 text-slate-900 fill-slate-900" />
+                  <ZoomIn className="h-8 w-8 text-slate-900" />
                 </div>
               </motion.div>
             )}
-
-            {/* Duration Badge */}
-            {loaded && (
-              <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                <span>{formatDuration() || '--:--'}</span>
-              </div>
-            )}
           </div>
 
-          {/* Video Info */}
+          {/* Image Info */}
           <div className="p-3">
             {!loaded ? (
               <div className="space-y-2">
@@ -104,12 +78,12 @@ export function VideoCard({ video, index }: VideoCardProps) {
             ) : (
               <>
                 <h3 className="font-semibold text-sm line-clamp-2 mb-1 group-hover:text-primary transition-colors">
-                  {videoName}
+                  {imageName}
                 </h3>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span>{video.formattedSize}</span>
+                  <span>{image.formattedSize}</span>
                   <span>•</span>
-                  <span>{video.formattedDate}</span>
+                  <span>{image.formattedDate}</span>
                 </div>
               </>
             )}
@@ -117,13 +91,14 @@ export function VideoCard({ video, index }: VideoCardProps) {
         </div>
       </motion.div>
 
-      {/* Video Player Modal */}
-      <VideoPlayerModal
-        isOpen={isPlayerOpen}
-        onClose={() => setIsPlayerOpen(false)}
-        videoUrl={video.cdnUrl}
-        videoName={videoName}
+      {/* Image Viewer Modal */}
+      <ImageViewer
+        isOpen={isViewerOpen}
+        onClose={() => setIsViewerOpen(false)}
+        imageUrl={image.cdnUrl}
+        imageName={imageName}
       />
     </>
   )
 }
+
