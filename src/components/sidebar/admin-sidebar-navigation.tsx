@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Video, Shield } from "lucide-react"
+import { Video, Image, FileText, Shield } from "lucide-react"
 import { SidebarNavItem } from "./sidebar-nav-item"
 import { useNavigate, useLocation } from "react-router-dom"
 
@@ -18,6 +18,8 @@ interface AdminSidebarNavigationProps {
 
 const ADMIN_NAV_ITEMS: NavItem[] = [
   { icon: Video, label: "Videos", href: "/videos" },
+  { icon: Image, label: "Images", href: "/images" },
+  { icon: FileText, label: "Documents", href: "/documents" },
 ]
 
 export function AdminSidebarNavigation({ onNavigate }: AdminSidebarNavigationProps) {

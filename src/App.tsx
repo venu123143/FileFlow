@@ -19,6 +19,8 @@ const Notifications = lazy(() => import("@/routes/Notifications"));
 const Unauthorized = lazy(() => import("@/routes/Unauthorized"));
 const Upload = lazy(() => import("@/routes/Upload"));
 const Videos = lazy(() => import("@/routes/Videos"));
+const Images = lazy(() => import("@/routes/Images"));
+const Documents = lazy(() => import("@/routes/Documents"));
 
 // Loading component for Suspense fallback
 const Loading = () => (
@@ -47,6 +49,8 @@ function App() {
           </Route>
           <Route element={<ProtectedRoute roles={[USER_ROLES.ADMIN]} />}>
             <Route path='/videos' element={<Videos />} />
+            <Route path='/images' element={<Images />} />
+            <Route path='/documents' element={<Documents />} />
           </Route>
           <Route path="/unauthorized" element={<Unauthorized />} />
         </Routes>
