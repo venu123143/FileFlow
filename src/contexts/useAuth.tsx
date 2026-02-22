@@ -159,6 +159,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         onSuccess: () => {
             // Clear all local data and state
             localStorage.removeItem(CONSTANTS.STORAGE_KEYS.USER_DATA);
+            localStorage.clear();
             disconnectSocket();
             removeToken();
             dispatch({ type: 'LOGOUT' });
