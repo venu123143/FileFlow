@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Play, Clock } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -16,8 +16,18 @@ export function VideoCard({ video, index }: VideoCardProps) {
   const [isHovered, setIsHovered] = useState(false)
   const [isPlayerOpen, setIsPlayerOpen] = useState(false)
   const [loaded, setLoaded] = useState(false)
-
+  const videoRef = useRef<HTMLVideoElement>(null)
   const videoName = video.fileName
+
+  // Check if video has already loaded metadata when component mounts
+  useEffect(() => {
+    if (videoRef.current) {
+      // readyState >= 2 means HAVE_CURRENT_DATA (metadata is loaded)
+      if (videoRef.current.readyState >= 2) {
+        setLoaded(true)
+      }
+    }
+  }, [])
 
   const formatDuration = (seconds?: number): string => {
     if (!seconds) return ""
@@ -47,16 +57,15 @@ export function VideoCard({ video, index }: VideoCardProps) {
           {/* Thumbnail Container */}
           <div className="relative aspect-video bg-muted overflow-hidden">
             {/* Skeleton shimmer until video loads */}
-            {!loaded && (
-              <Skeleton className="absolute inset-0 w-full h-full z-10" />
-            )}
 
             {/* Video Thumbnail - Using CDN URL as poster/thumbnail */}
             <video
+              ref={videoRef}
               width="300"
               muted
               preload="metadata"
               onLoadedData={() => setLoaded(true)}
+              onLoadedMetadata={() => setLoaded(true)}
               className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
             >
               <source src={video.cdnUrl} type="video/mp4" />
@@ -64,7 +73,9 @@ export function VideoCard({ video, index }: VideoCardProps) {
             <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-700 items-center justify-center hidden">
               <Play className="h-12 w-12 text-slate-400 dark:text-slate-500" />
             </div>
-
+            {!loaded && (
+              <Skeleton className="absolute inset-0 w-full h-full z-10" />
+            )}
             {/* Play Button Overlay - only show after loaded */}
             {loaded && (
               <motion.div

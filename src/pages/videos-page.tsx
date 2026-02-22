@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useUpload } from "@/contexts/UploadContext"
 import type { S3File } from "@/api/upload.api"
@@ -21,31 +21,13 @@ export interface VideoData extends S3File {
   formattedDate: string
 }
 
-interface VideosState {
-  videos: VideoData[]
-  loading: boolean
-  loadingMore: boolean
-  hasMore: boolean
-  nextContinuationToken: string | null
-  viewMode: ViewMode
-  error: string | null
-}
-
-const initialState: VideosState = {
-  videos: [],
-  loading: true,
-  loadingMore: false,
-  hasMore: false,
-  nextContinuationToken: null,
-  viewMode: 'grid',
-  error: null,
-}
-
 export function VideosPage() {
-  const { getAllFiles } = useUpload()
-
-  const [state, setState] = useState<VideosState>(initialState)
-  const { videos, loading, loadingMore, hasMore, nextContinuationToken, viewMode, error } = state
+  const { videos, getVideos, loadMoreVideos } = useUpload()
+  const [viewMode, setViewMode] = useState<ViewMode>('grid')
+  const [error, setError] = useState<string | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [isInitialLoading, setIsInitialLoading] = useState(false)
+  const hasInitialized = useRef(false)
 
   // Transform S3File to VideoData
   const transformVideo = useCallback((file: S3File): VideoData => {
@@ -62,61 +44,58 @@ export function VideosPage() {
     }
   }, [])
 
-  // Load videos
-  const loadVideos = useCallback(async (isInitial = false) => {
-    try {
-      setState(prev => ({
-        ...prev,
-        ...(isInitial
-          ? { loading: true, error: null }
-          : { loadingMore: true }),
-      }))
+  // Transform videos from context
+  const transformedVideos = videos?.videos.map(transformVideo) || []
+  const hasMore = videos?.pagination.hasMore || false
+  const nextContinuationToken = videos?.pagination.nextContinuationToken || null
 
-      const result = await getAllFiles({
-        folder: 'videos',
-        maxKeys: 24,
-        continuationToken: isInitial ? undefined : nextContinuationToken || undefined,
-      })
-
-      const transformedVideos = result.files.map(transformVideo)
-
-      setState(prev => ({
-        ...prev,
-        videos: isInitial ? transformedVideos : [...prev.videos, ...transformedVideos],
-        hasMore: result.pagination.hasMore,
-        nextContinuationToken: result.pagination.nextContinuationToken,
-        loading: false,
-        loadingMore: false,
-      }))
-    } catch (err: any) {
-      const errorMessage = err?.message || 'Failed to load videos'
-      setState(prev => ({
-        ...prev,
-        error: errorMessage,
-        loading: false,
-        loadingMore: false,
-      }))
-      toast.error(errorMessage)
-    }
-  }, [getAllFiles, nextContinuationToken, transformVideo])
-
-  // Load more videos
-  const loadMoreVideos = useCallback(async () => {
+  // Load more videos handler
+  const handleLoadMore = useCallback(async () => {
     if (!hasMore || loadingMore || !nextContinuationToken) return
-    await loadVideos(false)
-  }, [hasMore, loadingMore, nextContinuationToken, loadVideos])
+    try {
+      setLoadingMore(true)
+      await loadMoreVideos()
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Failed to load more videos'
+      setError(errorMessage)
+      toast.error(errorMessage)
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [hasMore, loadingMore, nextContinuationToken, loadMoreVideos])
 
   // Infinite scroll
   const { ref: observerRef } = useInfiniteScroll({
-    loadMore: loadMoreVideos,
+    loadMore: handleLoadMore,
     hasMore,
     loading: loadingMore,
   })
 
-  // Initial load
+  // Initial load - only fetch if no data exists
   useEffect(() => {
-    loadVideos(true)
-  }, [])
+    // Only run once on mount
+    if (hasInitialized.current) return
+    hasInitialized.current = true
+
+    const loadInitialVideos = async () => {
+      try {
+        setError(null)
+        setIsInitialLoading(true)
+        await getVideos(true) // Pass true to indicate initial load
+      } catch (err: any) {
+        const errorMessage = err?.message || 'Failed to load videos'
+        setError(errorMessage)
+        toast.error(errorMessage)
+      } finally {
+        setIsInitialLoading(false)
+      }
+    }
+
+    // Only fetch if we don't have videos data
+    if (!videos || videos.videos.length === 0) {
+      loadInitialVideos()
+    }
+  }, [videos, getVideos])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -141,7 +120,7 @@ export function VideosPage() {
               <Button
                 variant={viewMode === 'grid' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setState(prev => ({ ...prev, viewMode: 'grid' }))}
+                onClick={() => setViewMode('grid')}
                 className="shrink-0"
               >
                 <Grid3x3 className="h-4 w-4 mr-2" />
@@ -150,7 +129,7 @@ export function VideosPage() {
               <Button
                 variant={viewMode === 'list' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setState(prev => ({ ...prev, viewMode: 'list' }))}
+                onClick={() => setViewMode('list')}
                 className="shrink-0"
               >
                 <List className="h-4 w-4 mr-2" />
@@ -171,7 +150,16 @@ export function VideosPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => loadVideos(true)}
+              onClick={async () => {
+                try {
+                  setError(null)
+                  await getVideos(true)
+                } catch (err: any) {
+                  const errorMessage = err?.message || 'Failed to load videos'
+                  setError(errorMessage)
+                  toast.error(errorMessage)
+                }
+              }}
               className="mt-2"
             >
               Retry
@@ -181,7 +169,7 @@ export function VideosPage() {
 
         {/* Main Content */}
         <div className="w-full">
-          {loading && videos.length === 0 ? (
+          {isInitialLoading && transformedVideos.length === 0 ? (
             <>
               {/* Loading Skeletons */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -196,7 +184,7 @@ export function VideosPage() {
                 ))}
               </div>
             </>
-          ) : videos.length === 0 ? (
+          ) : transformedVideos.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -217,7 +205,7 @@ export function VideosPage() {
                   className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
                 >
                   <AnimatePresence mode="popLayout">
-                    {videos.map((video, index) => (
+                    {transformedVideos.map((video, index) => (
                       <VideoCard
                         key={video.key}
                         video={video}
@@ -233,7 +221,7 @@ export function VideosPage() {
                   className="space-y-2"
                 >
                   <AnimatePresence mode="popLayout">
-                    {videos.map((video, index) => (
+                    {transformedVideos.map((video, index) => (
                       <VideoListItem
                         key={video.key}
                         video={video}
@@ -245,7 +233,7 @@ export function VideosPage() {
               )}
 
               {/* Skeleton placeholders while loading more */}
-              {(loadingMore || loading) && (
+              {loadingMore && (
                 viewMode === 'grid' ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
                     {Array.from({ length: 8 }).map((_, i) => (

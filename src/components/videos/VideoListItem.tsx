@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Play, Clock } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -16,15 +16,26 @@ export function VideoListItem({ video, index }: VideoListItemProps) {
   const [isHovered, setIsHovered] = useState(false)
   const [isPlayerOpen, setIsPlayerOpen] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const imgRef = useRef<HTMLImageElement>(null)
 
   const videoName = video.fileName
+
+  // Check if image has already loaded when component mounts
+  useEffect(() => {
+    if (imgRef.current) {
+      // If image is already loaded (cached by browser), set loaded to true
+      if (imgRef.current.complete && imgRef.current.naturalHeight !== 0) {
+        setLoaded(true)
+      }
+    }
+  }, [])
 
   const formatDuration = (seconds?: number): string => {
     if (!seconds) return ""
     const hours = Math.floor(seconds / 3600)
     const minutes = Math.floor((seconds % 3600) / 60)
     const secs = Math.floor(seconds % 60)
-    
+
     if (hours > 0) {
       return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
     }
@@ -41,8 +52,7 @@ export function VideoListItem({ video, index }: VideoListItemProps) {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={() => setIsPlayerOpen(true)}
-        className="group flex items-center gap-4 p-3 rounded-lg bg-card border hover:bg-muted/50 cursor-pointer transition-colors"
-      >
+        className="group flex items-center gap-4 p-3 rounded-lg bg-card border hover:bg-muted/50 cursor-pointer transition-colors">
         {/* Thumbnail */}
         <div className="relative w-40 h-24 sm:w-48 sm:h-28 flex-shrink-0 rounded overflow-hidden bg-muted">
           {/* Skeleton shimmer until image loads */}
@@ -51,6 +61,7 @@ export function VideoListItem({ video, index }: VideoListItemProps) {
           )}
 
           <img
+            ref={imgRef}
             src={video.cdnUrl}
             alt={videoName}
             className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
