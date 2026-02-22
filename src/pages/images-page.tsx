@@ -73,7 +73,7 @@ export function ImagesPage() {
       }))
 
       const result = await getAllFiles({
-        folder: 'images',
+        folder: 'files',
         maxKeys: 24,
         continuationToken: isInitial ? undefined : nextContinuationToken || undefined,
       })
