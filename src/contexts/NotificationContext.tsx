@@ -6,6 +6,7 @@ import { useAuth } from './useAuth';
 import { useSocket } from "@/contexts/SocketContext";
 import { useNotificationUI } from "./NotificationUIContext";
 import { getAuthState } from '@/store/auth.store';
+import { USER_ROLES } from '@/types/user.types';
 
 // 🔹 Notification Types
 export const NotificationType = {
@@ -230,7 +231,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
         staleTime: 30 * 1000, // 30 seconds
         gcTime: 5 * 60 * 1000, // 5 minutes
-        enabled: !!user,
+        enabled: !!user && user.role === USER_ROLES.USER,
         refetchOnWindowFocus: true,
         refetchOnReconnect: true,
     });

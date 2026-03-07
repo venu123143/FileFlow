@@ -11,7 +11,7 @@ interface AdminLayoutProps {
 }
 
 export function AdminLayout({ children }: AdminLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
   // Handle responsive behavior
@@ -21,8 +21,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       // Auto-close sidebar on mobile by default
       if (window.innerWidth < 768) {
         setSidebarOpen(false)
-      } else {
-        setSidebarOpen(true)
       }
     }
 

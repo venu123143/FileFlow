@@ -69,6 +69,7 @@ export function VideoCard({ video, index }: VideoCardProps) {
               width="300"
               muted
               preload="metadata"
+              playsInline
               onLoadedData={() => setLoaded(true)}
               onLoadedMetadata={(e) => {
                 const duration = e.currentTarget.duration;

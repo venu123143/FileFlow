@@ -218,7 +218,7 @@ export function VideosPage() {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="space-y-2"
+                  className="space-y-2 contain-layout"
                 >
                   <AnimatePresence mode="popLayout">
                     {transformedVideos.map((video, index) => (

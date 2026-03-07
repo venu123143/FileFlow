@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import analyticsApi from '@/api/analytics.api';
 import { toast } from 'sonner';
 import { useAuth } from './useAuth';
+import { USER_ROLES } from '@/types/user.types';
 
 interface StorageData {
     totalFiles: number;
@@ -74,7 +75,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         retry: 2,
         staleTime: 5 * 60 * 1000, // 5 minutes
         gcTime: 10 * 60 * 1000, // 10 minutes
-        enabled: !!user, // Only enable the query when user is authenticated
+        enabled: !!user && user.role === USER_ROLES.USER, // Only enable the query when user is authenticated
     });
 
     const { data: analyticsSummary, isLoading: analyticsSummaryLoading, error: analyticsSummaryError } = useQuery<AnalyticsSummary>({
@@ -90,7 +91,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         retry: 2,
         staleTime: 5 * 60 * 1000, // 5 minutes
         gcTime: 10 * 60 * 1000, // 10 minutes
-        enabled: !!user, // Only enable the query when user is authenticated
+        enabled: !!user && user.role === USER_ROLES.USER, // Only enable the query when user is authenticated
     });
 
     // 🔹 Refresh functions
