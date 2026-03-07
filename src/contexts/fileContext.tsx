@@ -13,6 +13,7 @@ import {
     type AccessLevel,
     ACCESS_LEVEL,
 } from '@/types/file.types';
+import { USER_ROLES } from '@/types/user.types';
 
 interface FileState {
     fileSystemTree: FileSystemNode[];
@@ -108,7 +109,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         retry: 2,
         staleTime: 5 * 60 * 1000, // 5 minutes
         gcTime: 10 * 60 * 1000, // 10 minutes
-        enabled: !!user, // Only enable the query when user is authenticated
+        enabled: !!user && user.role === USER_ROLES.USER, // Only enable the query when user is authenticated
     });
 
     const { data: privateFilesData, isLoading: privateFilesLoading } = useQuery<FileSystemNode[]>({
@@ -120,7 +121,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         retry: 2,
         staleTime: 5 * 60 * 1000, // 5 minutes
         gcTime: 10 * 60 * 1000, // 10 minutes
-        enabled: !!user, // Only enable the query when user is authenticated
+        enabled: !!user && user.role === USER_ROLES.USER, // Only enable the query when user is authenticated
     });
     React.useEffect(() => {
         if (privateFilesData) {
@@ -137,7 +138,7 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         retry: 2,
         staleTime: 5 * 60 * 1000, // 5 minutes
         gcTime: 10 * 60 * 1000, // 10 minutes
-        enabled: !!user, // Only enable the query when user is authenticated
+        enabled: !!user && user.role === USER_ROLES.USER, // Only enable the query when user is authenticated
     });
 
     // Update fileSystemTree in state when query data changes
@@ -474,6 +475,8 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     const result = await fileApi.getTrash();
                     return result.data;
                 },
+                staleTime: 5 * 60 * 1000,
+                gcTime: 10 * 60 * 1000
             });
             dispatch({ type: 'SET_TRASH', trash: data });
             dispatch({ type: 'SET_LOADING', loading: false });

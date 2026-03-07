@@ -47,7 +47,7 @@ const DEFAULT_FILE_CONFIGS: FileConfig[] = [
 
 const FileUploader: React.FC<FileUploaderProps> = ({
     allowedTypes = DEFAULT_FILE_CONFIGS,
-    maxFiles = 10,
+    maxFiles = 50,
     folderId,
     accessLevel,
 }) => {

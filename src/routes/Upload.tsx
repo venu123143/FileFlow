@@ -54,7 +54,7 @@ const Upload = () => {
                 {/* File Uploader */}
                 <FileUploader
                     allowedTypes={allowedTypes}
-                    maxFiles={10}
+                    maxFiles={50}
                     folderId={folder_id}
                     accessLevel={access_level}
                 />
