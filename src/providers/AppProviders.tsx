@@ -18,7 +18,7 @@ import { DashboardProvider } from "@/contexts/DashboardContext";
 const queryClient = new QueryClient({
     defaultOptions: {
         mutations: {
-            retry: 0, // Don't auto-retry upload mutations
+            retry: 1, // Don't auto-retry upload mutations
             // onError: (error) => {
             //     console.error('Mutation error:', error);
             // }
