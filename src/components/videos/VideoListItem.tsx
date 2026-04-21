@@ -2,9 +2,11 @@
 
 import { useState, useRef, useEffect, lazy, Suspense } from "react"
 import { motion } from "framer-motion"
-import { Play, Clock } from "lucide-react"
+import { Play, Clock, Heart } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
 import type { VideoData } from "@/pages/videos-page"
+import { useLikedVideos } from "@/hooks/useLikedVideos"
 
 // Lazy load VideoPlayerModal to avoid bundling video.js until needed
 const VideoPlayerModal = lazy(() => import("@/components/player/VideoPlayerModal").then(module => ({ default: module.VideoPlayerModal })))
@@ -23,6 +25,8 @@ export function VideoListItem({ video, index }: VideoListItemProps) {
   const [duration, setDuration] = useState<number | null>(
     video.duration ?? null
   )
+  const { isVideoLiked, toggleLike } = useLikedVideos()
+  const isLiked = isVideoLiked(video.key)
   // Check if video has already loaded metadata when component mounts
   useEffect(() => {
     if (videoRef.current) {
@@ -44,6 +48,11 @@ export function VideoListItem({ video, index }: VideoListItemProps) {
       return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
     }
     return `${minutes}:${secs.toString().padStart(2, '0')}`
+  }
+
+  const handleLikeClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    toggleLike(video)
   }
 
   return (
@@ -128,6 +137,20 @@ export function VideoListItem({ video, index }: VideoListItemProps) {
               </div>
             </>
           )}
+        </div>
+
+        {/* Like Button */}
+        <div className="flex items-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLikeClick}
+            className={`h-8 w-8 p-0 rounded-full transition-colors ${
+              isLiked ? 'text-red-500 hover:text-red-600' : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+            }`}
+          >
+            <Heart className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`} />
+          </Button>
         </div>
       </motion.div>
 

@@ -17,6 +17,7 @@ interface AdminSidebarNavigationProps {
 }
 
 const ADMIN_NAV_ITEMS: NavItem[] = [
+  { icon: Video, label: "Liked", href: "/liked-videos" },
   { icon: Video, label: "Videos", href: "/videos" },
   { icon: Image, label: "Images", href: "/images" },
   { icon: FileText, label: "Documents", href: "/documents" },

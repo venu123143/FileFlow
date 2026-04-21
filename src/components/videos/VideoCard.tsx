@@ -2,9 +2,11 @@
 
 import { useState, useRef, useEffect, lazy, Suspense } from "react"
 import { motion } from "framer-motion"
-import { Play, Clock } from "lucide-react"
+import { Play, Clock, Heart } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
 import type { VideoData } from "@/pages/videos-page"
+import { useLikedVideos } from "@/hooks/useLikedVideos"
 
 // Lazy load VideoPlayerModal to avoid bundling video.js until needed
 const VideoPlayerModal = lazy(() => import("@/components/player/VideoPlayerModal").then(module => ({ default: module.VideoPlayerModal })))
@@ -23,6 +25,8 @@ export function VideoCard({ video, index }: VideoCardProps) {
   const [duration, setDuration] = useState<number | null>(
     video.duration ?? null
   )
+  const { isVideoLiked, toggleLike } = useLikedVideos()
+  const isLiked = isVideoLiked(video.key)
   // Check if video has already loaded metadata when component mounts
   useEffect(() => {
     if (videoRef.current) {
@@ -44,6 +48,11 @@ export function VideoCard({ video, index }: VideoCardProps) {
       return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
     }
     return `${minutes}:${secs.toString().padStart(2, '0')}`
+  }
+
+  const handleLikeClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    toggleLike(video)
   }
 
   return (
@@ -110,6 +119,28 @@ export function VideoCard({ video, index }: VideoCardProps) {
                 <span>{formatDuration() || '--:--'}</span>
               </div>
             )}
+
+            {/* Like Button */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{
+                opacity: isHovered ? 1 : 0,
+                scale: isHovered ? 1 : 0.8
+              }}
+              transition={{ duration: 0.2 }}
+              className="absolute top-2 right-2"
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLikeClick}
+                className={`h-8 w-8 p-0 rounded-full bg-white/90 dark:bg-black/80 backdrop-blur-sm hover:bg-white dark:hover:bg-black/90 transition-colors ${
+                  isLiked ? 'text-red-500 hover:text-red-600' : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+                }`}
+              >
+                <Heart className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`} />
+              </Button>
+            </motion.div>
           </div>
 
           {/* Video Info */}
