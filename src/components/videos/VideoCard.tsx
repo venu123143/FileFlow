@@ -121,14 +121,8 @@ export function VideoCard({ video, index }: VideoCardProps) {
             )}
 
             {/* Like Button */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{
-                opacity: isHovered ? 1 : 0,
-                scale: isHovered ? 1 : 0.8
-              }}
-              transition={{ duration: 0.2 }}
-              className="absolute top-2 right-2"
+            <div
+              className="absolute top-2 right-2 opacity-100 scale-100 transition-all duration-200 lg:opacity-0 lg:scale-90 lg:group-hover:opacity-100 lg:group-hover:scale-100"
             >
               <Button
                 variant="ghost"
@@ -140,7 +134,7 @@ export function VideoCard({ video, index }: VideoCardProps) {
               >
                 <Heart className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`} />
               </Button>
-            </motion.div>
+            </div>
           </div>
 
           {/* Video Info */}
