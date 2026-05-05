@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import apiClient from '@/api/axios';
-export const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+export const CHUNK_SIZE = 8 * 1024 * 1024; // 5MB chunks
+export const UPLOAD_CONCURRENCY = 4; // parallel chunk uploads
 
 export type UploadStatus = 'idle' | 'uploading' | 'completed' | 'error' | 'processing';
 
@@ -87,18 +88,43 @@ const useFileUpload = (): UseFileUploadReturn => {
                     status: 'uploading'
                 });
             } else {
-                const { data: uploadedParts } = await apiClient.get(`/upload/parts/file/${uploadId}?key=${key}`);
-                parts = uploadedParts.parts || [];
+                // Fetch already uploaded parts so retry resumes from where it left off.
+                // Backend wraps responses as { success, data: { parts } }, so unwrap .data.data.
+                const resp = await apiClient.get(`/upload/parts/file/${uploadId}?key=${key}`);
+                const partsPayload = resp.data?.data ?? resp.data ?? {};
+                parts = partsPayload.parts || [];
                 startChunk = Math.max(...parts.map(part => part.PartNumber), 0);
-                updateFileState(file.name, { status: 'uploading' });
+                updateFileState(file.name, {
+                    status: 'uploading',
+                    lastUploadedChunk: startChunk,
+                });
             }
             const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-            for (let chunkNumber = startChunk; chunkNumber < totalChunks; chunkNumber++) {
-                if (parts.some(part => part.PartNumber === chunkNumber + 1)) {
-                    // if chunk already uploaded, skip
-                    // updateFileState(file.name, { lastUploadedChunk: chunkNumber + 1 });
-                    continue;
+
+            // Build list of chunk indices that still need uploading.
+            const pendingChunks: number[] = [];
+            for (let i = 0; i < totalChunks; i++) {
+                if (!parts.some(part => part.PartNumber === i + 1)) {
+                    pendingChunks.push(i);
                 }
+            }
+
+            // Per-chunk byte progress for aggregated overall progress (parallel-safe).
+            const chunkLoaded: Record<number, number> = {};
+            parts.forEach(p => {
+                const s = (p.PartNumber - 1) * CHUNK_SIZE;
+                const e = Math.min(s + CHUNK_SIZE, file.size);
+                chunkLoaded[p.PartNumber] = e - s;
+            });
+            const reportProgress = () => {
+                const loaded = Object.values(chunkLoaded).reduce((a, b) => a + b, 0);
+                const overall = file.size > 0 ? Math.min(99, Math.round((loaded / file.size) * 100)) : 0;
+                updateFileState(file.name, { progress: overall });
+            };
+            reportProgress();
+
+            const uploadOneChunk = async (chunkNumber: number) => {
+                const partNumber = chunkNumber + 1;
                 const start = chunkNumber * CHUNK_SIZE;
                 const end = Math.min(start + CHUNK_SIZE, file.size);
                 const chunk = file.slice(start, end);
@@ -109,36 +135,61 @@ const useFileUpload = (): UseFileUploadReturn => {
                     formData.append('key', key);
                 }
                 formData.append('metadata', JSON.stringify({
-                    chunkNumber: chunkNumber + 1,
+                    chunkNumber: partNumber,
                     totalChunks,
                     fileSize: file.size,
                     originalFileName: file.name,
                     mimeType: file.type,
                 }));
 
-                try {
-                    const response = await apiClient.post(`/upload/chunk/file/${uploadId}`, formData, {
-                        headers: { 'Content-Type': 'multipart/form-data' },
-                        onUploadProgress: (progressEvent: any) => {
-                            if (progressEvent.total) {
-                                const chunkProgress = Math.round((progressEvent.loaded / progressEvent.total) * 100);
-                                const overallProgress = Math.round(((chunkNumber + chunkProgress / 100) / totalChunks) * 100);
-                                updateFileState(file.name, { progress: overallProgress });
-                            }
-                        },
-                    });
-                    const chunkResponse = response.data.data as { PartNumber: number; ETag: string };
-                    parts.push({ PartNumber: chunkResponse.PartNumber, ETag: chunkResponse.ETag });
-                    updateFileState(file.name, { lastUploadedChunk: chunkNumber + 1 });
-                } catch (error: any) {
-                    updateFileState(file.name, {
-                        status: 'error',
-                        error: `Failed to upload chunk ${chunkNumber + 1}: ${error.message}`
-                    });
-                    return;
+                const response = await apiClient.post(`/upload/chunk/file/${uploadId}`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                    onUploadProgress: (progressEvent: any) => {
+                        if (progressEvent.loaded != null) {
+                            chunkLoaded[partNumber] = Math.min(progressEvent.loaded, end - start);
+                            reportProgress();
+                        }
+                    },
+                });
+                const chunkResponse = response.data.data as { PartNumber: number; ETag: string };
+                parts.push({ PartNumber: chunkResponse.PartNumber, ETag: chunkResponse.ETag });
+                chunkLoaded[partNumber] = end - start;
+                updateFileState(file.name, {
+                    lastUploadedChunk: Math.max(...parts.map(p => p.PartNumber)),
+                });
+                reportProgress();
+            };
+
+            // Bounded-concurrency worker pool — uploads chunks in parallel without
+            // spawning hundreds of simultaneous requests for large files.
+            let cursor = 0;
+            type Failure = { chunkNumber: number; error: any };
+            const failureRef: { current: Failure | null } = { current: null };
+            const worker = async () => {
+                while (failureRef.current === null) {
+                    const idx = cursor++;
+                    if (idx >= pendingChunks.length) return;
+                    const chunkNumber = pendingChunks[idx];
+                    try {
+                        await uploadOneChunk(chunkNumber);
+                    } catch (error: any) {
+                        failureRef.current = { chunkNumber, error };
+                        return;
+                    }
                 }
+            };
+            const workerCount = Math.max(1, Math.min(UPLOAD_CONCURRENCY, pendingChunks.length));
+            await Promise.all(Array.from({ length: workerCount }, worker));
+
+            if (failureRef.current) {
+                const f = failureRef.current;
+                updateFileState(file.name, {
+                    status: 'error',
+                    error: `Failed to upload chunk ${f.chunkNumber + 1}: ${f.error.message}`,
+                });
+                return;
             }
-            updateFileState(file.name, { status: 'processing', error: null });
+            updateFileState(file.name, { status: 'processing', error: null, progress: 100 });
 
             try {
                 const response = await apiClient.post(`/upload/complete/file/${uploadId}`, { key, parts });

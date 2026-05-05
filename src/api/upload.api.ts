@@ -168,7 +168,9 @@ export const getUploadedParts = async (
     const response = await apiClient.get(
         `/upload/parts/file/${payload.uploadId}?key=${payload.key}`
     );
-    return response.data;
+    // Backend wraps as { success, message, data: { parts } }. Unwrap .data.data
+    // to match other endpoints in this file and what callers expect.
+    return response.data?.data ?? response.data;
 };
 
 /**

@@ -7,6 +7,7 @@ import apiClient from '@/api/axios';
 import * as uploadApi from '@/api/upload.api';
 
 export const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+export const UPLOAD_CONCURRENCY = 4; // parallel chunk uploads per file
 
 export type UploadStatus = 'idle' | 'uploading' | 'completed' | 'error' | 'processing';
 
@@ -327,7 +328,6 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             let uploadId = stateRef.current.fileStates[file.name]?.uploadId;
             let key = stateRef.current.fileStates[file.name]?.fileKey;
             let parts: { PartNumber: number; ETag: string }[] = [];
-            let startChunk = 0;
             const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
             if (!uploadId) {
@@ -351,19 +351,37 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     key: key!
                 });
                 parts = uploadedPartsResponse.parts || [];
-                startChunk = parts.length > 0 ? Math.max(...parts.map(part => part.PartNumber)) : 0;
-                const resumeProgress = Math.round((startChunk / totalChunks) * 100);
-                updateFileState(file.name, { status: 'uploading', progress: resumeProgress });
+                const lastPart = parts.length > 0 ? Math.max(...parts.map(part => part.PartNumber)) : 0;
+                updateFileState(file.name, { status: 'uploading', lastUploadedChunk: lastPart });
             }
 
-            for (let chunkNumber = startChunk; chunkNumber < totalChunks; chunkNumber++) {
-                if (stateRef.current.fileStates[file.name]?.isAborting) {
+            // Build the list of chunk indices that still need uploading.
+            const pendingChunks: number[] = [];
+            for (let i = 0; i < totalChunks; i++) {
+                if (!parts.some(part => part.PartNumber === i + 1)) {
+                    pendingChunks.push(i);
+                }
+            }
+
+            // Per-chunk byte progress for parallel-safe aggregated progress.
+            const chunkLoaded: Record<number, number> = {};
+            parts.forEach(p => {
+                const s = (p.PartNumber - 1) * CHUNK_SIZE;
+                const e = Math.min(s + CHUNK_SIZE, file.size);
+                chunkLoaded[p.PartNumber] = e - s;
+            });
+            const reportProgress = () => {
+                const loaded = Object.values(chunkLoaded).reduce((a, b) => a + b, 0);
+                const overall = file.size > 0 ? Math.min(99, Math.round((loaded / file.size) * 100)) : 0;
+                updateFileState(file.name, { progress: overall });
+            };
+            reportProgress();
+
+            const uploadOneChunk = async (chunkNumber: number) => {
+                if (state.fileStates[file.name]?.isAborting) {
                     throw new Error('Upload aborted');
                 }
-                if (parts.some(part => part.PartNumber === chunkNumber + 1)) {
-                    continue;
-                }
-
+                const partNumber = chunkNumber + 1;
                 const start = chunkNumber * CHUNK_SIZE;
                 const end = Math.min(start + CHUNK_SIZE, file.size);
                 const chunk = file.slice(start, end);
@@ -373,26 +391,53 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     key: key!,
                     chunk,
                     metadata: {
-                        chunkNumber: chunkNumber + 1,
+                        chunkNumber: partNumber,
                         totalChunks,
                         fileSize: file.size,
                         originalFileName: file.name,
                         mimeType: file.type,
                     },
                     onUploadProgress: (progressEvent) => {
-                        if (progressEvent.total) {
-                            const chunkProgress = progressEvent.loaded / progressEvent.total;
-                            const overallProgress = Math.round(((chunkNumber + chunkProgress) / totalChunks) * 100);
-                            updateFileState(file.name, { progress: overallProgress });
+                        if (progressEvent.loaded != null) {
+                            chunkLoaded[partNumber] = Math.min(progressEvent.loaded, end - start);
+                            reportProgress();
                         }
                     },
                 });
 
                 parts.push({ PartNumber: chunkResponse.PartNumber, ETag: chunkResponse.ETag });
-                updateFileState(file.name, { lastUploadedChunk: chunkNumber + 1 });
-            }
+                chunkLoaded[partNumber] = end - start;
+                updateFileState(file.name, {
+                    lastUploadedChunk: Math.max(...parts.map(p => p.PartNumber)),
+                });
+                reportProgress();
+            };
 
-            updateFileState(file.name, { status: 'processing', error: null });
+            // Bounded-concurrency worker pool — true parallel uploads with a
+            // safe cap to avoid spawning hundreds of XHRs for large files.
+            let cursor = 0;
+            type Failure = { chunkNumber: number; error: any };
+            const failureRef: { current: Failure | null } = { current: null };
+            const worker = async () => {
+                while (failureRef.current === null) {
+                    const idx = cursor++;
+                    if (idx >= pendingChunks.length) return;
+                    const chunkNumber = pendingChunks[idx];
+                    try {
+                        await uploadOneChunk(chunkNumber);
+                    } catch (error: any) {
+                        failureRef.current = { chunkNumber, error };
+                        return;
+                    }
+                }
+            };
+            const workerCount = Math.max(1, Math.min(UPLOAD_CONCURRENCY, pendingChunks.length));
+            await Promise.all(Array.from({ length: workerCount }, worker));
+
+            if (failureRef.current) {
+                throw failureRef.current.error;
+            }
+            updateFileState(file.name, { status: 'processing', error: null, progress: 100 });
 
             try {
                 const completeResponse = await completeUploadMutation.mutateAsync({
