@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import type { VideoData } from "@/pages/videos-page"
 import { useLikedVideos } from "@/hooks/useLikedVideos"
+import { toast } from "sonner"
 
 // Lazy load VideoPlayerModal to avoid bundling video.js until needed
 const VideoPlayerModal = lazy(() => import("@/components/player/VideoPlayerModal").then(module => ({ default: module.VideoPlayerModal })))
@@ -52,7 +53,9 @@ export function VideoListItem({ video, index }: VideoListItemProps) {
 
   const handleLikeClick = (e: React.MouseEvent) => {
     e.stopPropagation()
-    toggleLike(video)
+    void toggleLike(video).catch((err: any) => {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to update liked video")
+    })
   }
 
   return (

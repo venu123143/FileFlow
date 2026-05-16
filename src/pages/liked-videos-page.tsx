@@ -14,17 +14,25 @@ type ViewMode = 'grid' | 'list'
 
 export function LikedVideosPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
-  const { likedVideos, removeLikedVideo, clearLikedVideos } = useLikedVideos()
+  const { likedVideos, isLoading, error, loadLikedVideos, removeLikedVideo, clearLikedVideos } = useLikedVideos()
 
-  const handleRemoveLikedVideo = (videoKey: string) => {
-    removeLikedVideo(videoKey)
-    toast.success("Video removed from liked videos")
+  const handleRemoveLikedVideo = async (videoKey: string) => {
+    try {
+      await removeLikedVideo(videoKey)
+      toast.success("Video removed from liked videos")
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to remove liked video")
+    }
   }
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     if (window.confirm("Are you sure you want to remove all liked videos?")) {
-      clearLikedVideos()
-      toast.success("All liked videos cleared")
+      try {
+        await clearLikedVideos()
+        toast.success("All liked videos cleared")
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || err?.message || "Failed to clear liked videos")
+      }
     }
   }
 
@@ -103,7 +111,33 @@ export function LikedVideosPage() {
 
         {/* Main Content */}
         <div className="w-full">
-          {likedVideos.length === 0 ? (
+          {error && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg p-4 mb-6"
+            >
+              <p className="text-red-800 dark:text-red-300 text-sm">{error}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void loadLikedVideos(true)}
+                className="mt-2"
+              >
+                Retry
+              </Button>
+            </motion.div>
+          )}
+
+          {isLoading && likedVideos.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center justify-center py-12 text-center"
+            >
+              <div className="animate-spin rounded-full h-10 w-10 border-4 border-slate-300 border-t-slate-900 dark:border-slate-700 dark:border-t-white" />
+            </motion.div>
+          ) : likedVideos.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -155,7 +189,7 @@ export function LikedVideosPage() {
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleRemoveLikedVideo(video.key)
+                              void handleRemoveLikedVideo(video.key)
                             }}
                             className="h-8 w-8 p-0 rounded-full bg-white/90 dark:bg-black/80 backdrop-blur-sm hover:bg-red-100 dark:hover:bg-red-900/80 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                           >
@@ -198,7 +232,7 @@ export function LikedVideosPage() {
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleRemoveLikedVideo(video.key)
+                              void handleRemoveLikedVideo(video.key)
                             }}
                             className="h-8 w-8 p-0 rounded-full bg-white/90 dark:bg-black/80 backdrop-blur-sm hover:bg-red-100 dark:hover:bg-red-900/80 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                           >
