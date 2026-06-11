@@ -2,6 +2,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Home, ArrowLeft } from "lucide-react";
+import { Seo } from "@/components/seo/Seo";
 
 const NotFound = () => {
   // const location = useLocation();
@@ -16,6 +17,8 @@ const NotFound = () => {
         backgroundRepeat: "no-repeat"
       }}
     >
+      <Seo title="Page not found" noindex />
+
       {/* Overlay for better text readability */}
       <div className="absolute inset-0" style={{ backgroundColor: 'hsl(var(--background) / 0.8)', backdropFilter: 'blur(4px)' }}></div>
 

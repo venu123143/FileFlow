@@ -1,0 +1,22 @@
+# FileFlow — https://fileflow.nerchuko.in
+# The app is authentication-gated; only the public pages should be crawled.
+
+User-agent: *
+Allow: /$
+Allow: /login
+Allow: /register
+
+# Keep private/app routes out of the index
+Disallow: /all-files
+Disallow: /deleted-files
+Disallow: /private-files
+Disallow: /shared-files
+Disallow: /settings
+Disallow: /notifications
+Disallow: /videos
+Disallow: /images
+Disallow: /documents
+Disallow: /liked-videos
+Disallow: /unauthorized
+
+Sitemap: https://fileflow.nerchuko.in/sitemap.xml

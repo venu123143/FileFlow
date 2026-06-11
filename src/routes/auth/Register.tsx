@@ -12,6 +12,7 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '
 import { useAuth } from '@/contexts/useAuth'
 import type { SignupDto } from '@/types/user.types'
 import { useNavigate } from 'react-router-dom'
+import { Seo } from '@/components/seo/Seo'
 
 const registerSchema = z.object({
   name: z.string()
@@ -98,6 +99,11 @@ const Register = () => {
   //    dark:to-gray-900
   return (
     <div className='h-screen overflow-y-auto p-4 bg-gradient-to-br from-purple-100 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800' >
+      <Seo
+        title="Create your account"
+        path="/register"
+        description="Create a free FileFlow account to upload, organize, share, and manage your files, videos, images, and documents in the cloud."
+      />
       <div className=" flex items-center justify-center ">
         <div className="w-full max-w-lg">
           <Card className="shadow-xl border-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm">

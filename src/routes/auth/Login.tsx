@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
 import { useAuth } from '@/contexts/useAuth'
 import { useNavigate } from 'react-router-dom'
+import { Seo } from '@/components/seo/Seo'
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -62,6 +63,11 @@ const Login = () => {
 
   return (
     <div className="login-register-page min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
+      <Seo
+        title="Sign in"
+        path="/login"
+        description="Sign in to FileFlow to upload, organize, and share your files, videos, images, and documents securely from anywhere."
+      />
       <div className="w-full max-w-md">
         <Card className="shadow-xl border-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
           <CardHeader className="text-center pb-4">
