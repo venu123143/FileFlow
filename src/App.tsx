@@ -6,6 +6,7 @@ import { Routes, Route } from "react-router-dom";
 import Login from "@/routes/auth/Login";
 import Register from "@/routes/auth/Register";
 import UploadPopup from "@/components/upload/UploadPopup";
+import RoleBasedRedirect from "@/routes/RoleBasedRedirect";
 
 // Lazy load routes
 const NotFound = lazy(() => import("@/routes/Notfound"));
@@ -35,10 +36,11 @@ function App() {
     <>
       <Suspense fallback={<Loading />}>
         <Routes>
+          <Route path="/" element={<RoleBasedRedirect />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route element={<ProtectedRoute roles={[USER_ROLES.USER]} />}>
-            <Route path='/' element={<Home />} />
+            <Route path='/home' element={<Home />} />
             <Route path='/all-files' element={<AllFiles />} />
             <Route path='/deleted-files' element={<DeletedFiles />} />
             <Route path='/private-files' element={<PrivateFiles />} />

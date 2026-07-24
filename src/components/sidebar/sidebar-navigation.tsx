@@ -18,7 +18,7 @@ interface SidebarNavigationProps {
 }
 
 const BASE_NAV_ITEMS: NavItem[] = [
-  { icon: Home, label: "Home", href: "/" },
+  { icon: Home, label: "Home", href: "/home" },
   { icon: FolderOpen, label: "All files", href: "/all-files" },
   { icon: Lock, label: "Private files", href: "/private-files" },
   { icon: Users, label: "Shared with me", href: "/shared-files" },

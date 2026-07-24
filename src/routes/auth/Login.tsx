@@ -9,7 +9,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Input } from '@/components/ui/input'
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
 import { useAuth } from '@/contexts/useAuth'
-import { useNavigate } from 'react-router-dom'
+import { useRoleBasedNavigation } from '@/hooks/useRoleBasedNavigation'
 import { Seo } from '@/components/seo/Seo'
 
 const loginSchema = z.object({
@@ -22,7 +22,7 @@ type LoginFormData = z.infer<typeof loginSchema>
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false)
   const { login, loading: isLoading, user } = useAuth()
-  const navigate = useNavigate()
+  const { navigateBasedOnRole } = useRoleBasedNavigation()
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -33,9 +33,9 @@ const Login = () => {
 
   useEffect(() => {
     if (user?.id) {
-      navigate(user.role === 'ADMIN' ? '/videos' : '/')
+      navigateBasedOnRole()
     }
-  }, [user?.id, user?.role, navigate])
+  }, [user?.id, navigateBasedOnRole])
 
   const onSubmit = async (data: LoginFormData) => {
     const result = await login(data.email, data.password)
