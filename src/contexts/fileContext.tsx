@@ -11,6 +11,8 @@ import {
     type FileSystemNode,
     type SharedFileSystemNode,
     type AccessLevel,
+    type SharePermission,
+    type BulkErrorPayload,
     ACCESS_LEVEL,
 } from '@/types/file.types';
 import { USER_ROLES } from '@/types/user.types';
@@ -90,7 +92,34 @@ interface FileContextType extends FileState {
     restoreFileOrFolder: (id: string) => MutationResult;
     emptyTrash: () => MutationResult;
     updateFileAccessLevel: (id: string, data: { access_level: AccessLevel }) => MutationResult;
+    bulkDeleteFilesOrFolders: (fileIds: string[]) => MutationResult;
+    bulkMoveFilesOrFolders: (fileIds: string[], targetFolderId: string | null) => MutationResult;
+    bulkShareFilesOrFolders: (
+        fileIds: string[],
+        userIds: string[],
+        permissionLevel: SharePermission,
+        extra?: { message?: string; expires_at?: Date },
+    ) => MutationResult;
 }
+
+/**
+ * Bulk endpoints are all-or-nothing and answer 404/409/422 with the ids that
+ * caused the rejection. Fold those into one sentence the user can act on.
+ */
+const describeBulkError = (error: unknown, fallback: string): string => {
+    const err = error as { response?: { data?: BulkErrorPayload }; message?: string } | undefined;
+    const payload = err?.response?.data;
+    if (!payload?.message) return err?.message || fallback;
+
+    const parts: string[] = [payload.message];
+    if (payload.missing_file_ids?.length) {
+        parts.push(`${payload.missing_file_ids.length} item(s) no longer exist - refresh and try again.`);
+    }
+    if (payload.missing_user_ids?.length) {
+        parts.push(`${payload.missing_user_ids.length} recipient(s) could not be found.`);
+    }
+    return parts.join(' ');
+};
 
 const FileContext = createContext<FileContextType | undefined>(undefined);
 
@@ -588,6 +617,105 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         },
     });
 
+    // 🔹 Bulk mutations
+    const { mutateAsync: bulkDeleteMutationFn } = useMutation({
+        mutationFn: async (fileIds: string[]) => {
+            const result = await fileApi.bulkDeleteFilesOrFolders({ file_ids: fileIds });
+            return result.data;
+        },
+        retry: false,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
+            queryClient.invalidateQueries({ queryKey: ['privateFiles'] });
+            queryClient.invalidateQueries({ queryKey: ['trash'] });
+            dispatch({ type: 'SET_LOADING', loading: false });
+        },
+        onError: () => {
+            dispatch({ type: 'SET_LOADING', loading: false });
+        },
+    });
+
+    const { mutateAsync: bulkMoveMutationFn } = useMutation({
+        mutationFn: async ({ fileIds, targetFolderId }: { fileIds: string[]; targetFolderId: string | null }) => {
+            const result = await fileApi.bulkMoveFilesOrFolders({ file_ids: fileIds, target_folder_id: targetFolderId });
+            return result.data;
+        },
+        retry: false,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['fileSystemTree'] });
+            queryClient.invalidateQueries({ queryKey: ['privateFiles'] });
+            dispatch({ type: 'SET_LOADING', loading: false });
+        },
+        onError: () => {
+            dispatch({ type: 'SET_LOADING', loading: false });
+        },
+    });
+
+    const { mutateAsync: bulkShareMutationFn } = useMutation({
+        mutationFn: async ({ fileIds, userIds, permissionLevel, extra }: {
+            fileIds: string[];
+            userIds: string[];
+            permissionLevel: SharePermission;
+            extra?: { message?: string; expires_at?: Date };
+        }) => {
+            const result = await fileApi.bulkShareFilesOrFolders({
+                file_ids: fileIds,
+                shared_with_user_ids: userIds,
+                permission_level: permissionLevel,
+                ...extra,
+            });
+            return result.data;
+        },
+        retry: false,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['sharedFiles'] });
+            queryClient.invalidateQueries({ queryKey: ['sharedFilesByMe'] });
+            queryClient.invalidateQueries({ queryKey: ['sharedFilesWithMe'] });
+            dispatch({ type: 'SET_LOADING', loading: false });
+        },
+        onError: () => {
+            dispatch({ type: 'SET_LOADING', loading: false });
+        },
+    });
+
+    const bulkDeleteFilesOrFolders = async (fileIds: string[]) => {
+        try {
+            dispatch({ type: 'SET_LOADING', loading: true });
+            await bulkDeleteMutationFn(fileIds);
+            return { success: true };
+        } catch (error) {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            return { success: false, error: describeBulkError(error, 'Failed to delete the selected items.') };
+        }
+    };
+
+    const bulkMoveFilesOrFolders = async (fileIds: string[], targetFolderId: string | null) => {
+        try {
+            dispatch({ type: 'SET_LOADING', loading: true });
+            await bulkMoveMutationFn({ fileIds, targetFolderId });
+            return { success: true };
+        } catch (error) {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            return { success: false, error: describeBulkError(error, 'Failed to move the selected items.') };
+        }
+    };
+
+    const bulkShareFilesOrFolders = async (
+        fileIds: string[],
+        userIds: string[],
+        permissionLevel: SharePermission,
+        extra?: { message?: string; expires_at?: Date },
+    ) => {
+        try {
+            dispatch({ type: 'SET_LOADING', loading: true });
+            await bulkShareMutationFn({ fileIds, userIds, permissionLevel, extra });
+            return { success: true };
+        } catch (error) {
+            dispatch({ type: 'SET_LOADING', loading: false });
+            return { success: false, error: describeBulkError(error, 'Failed to share the selected items.') };
+        }
+    };
+
     const updateFileAccessLevel = async (id: string, data: { access_level: AccessLevel }) => {
         try {
             dispatch({ type: 'SET_LOADING', loading: true });
@@ -620,6 +748,9 @@ export const FileProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         restoreFileOrFolder,
         emptyTrash,
         updateFileAccessLevel,
+        bulkDeleteFilesOrFolders,
+        bulkMoveFilesOrFolders,
+        bulkShareFilesOrFolders,
     };
 
     return <FileContext.Provider value={value}>{children}</FileContext.Provider>;

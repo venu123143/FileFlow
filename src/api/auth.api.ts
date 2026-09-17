@@ -83,6 +83,14 @@ const getSession = async () => {
 };
 
 /**
+ * Clear the PIN session (re-lock private files). Does not affect the login session.
+ */
+const revokePinSession = async () => {
+    const response = await apiClient.post('/auth/user/revoke-session', {}, { withCredentials: true });
+    return response.data;
+};
+
+/**
  * Refresh access token using refresh token
  */
 const refreshToken = async (refreshToken: string) => {
@@ -141,6 +149,7 @@ export default {
     verifyPin,
     changePin,
     getSession,
+    revokePinSession,
     refreshToken,
     revokeToken,
     revokeAllTokens,

@@ -128,3 +128,63 @@ export interface SharedFileSystemNode {
     // Recursive children
     children: SharedFileSystemNode[];
 }
+// ---------------------------------------------------------------------------
+// Bulk operations
+//
+// Every bulk endpoint is all-or-nothing: if any id in the batch is rejected the
+// server rolls the transaction back and nothing is changed. The error payload
+// names the offending ids so the UI can say which ones were at fault.
+// ---------------------------------------------------------------------------
+
+/** Server-side caps, mirrored here so the UI can refuse oversized batches early. */
+export const BULK_MAX_FILES = 200;
+export const BULK_MAX_RECIPIENTS = 50;
+
+export interface BulkDeleteInput {
+    file_ids: string[];
+}
+
+export interface BulkMoveInput {
+    file_ids: string[];
+    target_folder_id: string | null;
+}
+
+export interface BulkShareInput {
+    file_ids: string[];
+    shared_with_user_ids: string[];
+    permission_level: SharePermission;
+    message?: string;
+    expires_at?: Date;
+}
+
+export interface BulkFileSummary {
+    id: string;
+    name: string;
+    is_folder: boolean;
+}
+
+export interface BulkDeleteResult {
+    deletedCount: number;
+    files: BulkFileSummary[];
+}
+
+export interface BulkMoveResult {
+    movedCount: number;
+    files: BulkFileSummary[];
+    target_folder_id: string | null;
+}
+
+export interface BulkShareResult {
+    sharedCount: number;
+    files: BulkFileSummary[];
+    recipients: Array<{ id: string; email: string; display_name: string }>;
+}
+
+/** Shape of the 404/409/422 bodies returned by the bulk endpoints. */
+export interface BulkErrorPayload {
+    message: string;
+    missing_file_ids?: string[];
+    missing_user_ids?: string[];
+    shared_with_user_ids?: string[];
+    target_folder_id?: string;
+}

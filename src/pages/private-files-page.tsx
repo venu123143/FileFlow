@@ -10,9 +10,11 @@ import {
   SortAsc,
   SortDesc,
   Download,
+  FolderInput,
   Trash2,
   Upload,
   Lock,
+  LockKeyhole,
   EyeOff,
 } from "lucide-react"
 
@@ -33,6 +35,8 @@ import { useSocket } from "@/contexts/SocketContext"
 import { ArrowLeft } from "lucide-react"
 import { ACCESS_LEVEL, type AccessLevel } from "@/types/file.types"
 import { AddNewFolder } from "@/components/file-manager/AddNewFolder"
+import { MoveFileModal } from "@/components/file-manager/MoveFileModal"
+import { BulkDeleteDialog } from "@/components/file-manager/BulkDeleteDialog"
 import { useNavigate } from "react-router-dom"
 
 export function PrivateFilesPage() {
@@ -48,8 +52,17 @@ export function PrivateFilesPage() {
   const [isCheckingSession, setIsCheckingSession] = useState(true)
   const hasCheckedSession = useRef(false)
 
-  const { deleteFileOrFolder, privateFiles, createFolder, updateFileAccessLevel } = useFile()
-  const { user, getPinSession } = useAuth()
+  // Bulk action state
+  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false)
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false)
+  const [isBulkBusy, setIsBulkBusy] = useState(false)
+  const [isLocking, setIsLocking] = useState(false)
+
+  const {
+    deleteFileOrFolder, privateFiles, createFolder, updateFileAccessLevel,
+    bulkDeleteFilesOrFolders, bulkMoveFilesOrFolders,
+  } = useFile()
+  const { user, getPinSession, revokePinSession } = useAuth()
   const navigate = useNavigate()
 
   const handlePinModalClose = () => {
@@ -257,6 +270,63 @@ export function PrivateFilesPage() {
     }
   }
 
+  // ---------------------------------------------------------------------
+  // Bulk actions. Each endpoint is all-or-nothing, so on failure the
+  // selection is left intact for the user to retry or adjust.
+  // ---------------------------------------------------------------------
+
+  const selectedItems = useMemo(
+    () => filteredFiles.filter((file) => selectedFiles.includes(file.id)),
+    [filteredFiles, selectedFiles]
+  )
+
+  const handleBulkMoveSubmit = async (fileIds: string[], targetFolderId: string | null): Promise<{ success: boolean; error?: string }> => {
+    const result = await bulkMoveFilesOrFolders(fileIds, targetFolderId);
+    if (result.success) {
+      setSelectedFiles([]);
+      toast.success(`${fileIds.length} item(s) moved`);
+    } else {
+      toast.error(result.error || "Failed to move the selected items");
+    }
+    return result;
+  }
+
+  const handleBulkDeleteConfirm = async () => {
+    const ids = selectedItems.map((file) => file.id);
+    if (ids.length === 0) return;
+
+    setIsBulkBusy(true);
+    const result = await bulkDeleteFilesOrFolders(ids);
+    setIsBulkBusy(false);
+
+    if (result.success) {
+      setSelectedFiles([]);
+      setIsBulkDeleteOpen(false);
+      toast.success(`${ids.length} item(s) moved to trash`);
+    } else {
+      toast.error(result.error || "Failed to delete the selected items");
+    }
+  }
+
+  /**
+   * Clear the PIN session and drop straight back to the verify prompt. The
+   * login session is untouched, so this only re-locks this page.
+   */
+  const handleLock = async () => {
+    setIsLocking(true)
+    const result = await revokePinSession()
+    setIsLocking(false)
+
+    if (!result.success) return
+
+    // Let the mount-time check run again next time the page is opened.
+    hasCheckedSession.current = false
+    setSelectedFiles([])
+    setIsPinVerified(false)
+    setShowPinModal(true)
+    toast.success("Private files locked")
+  }
+
   const actionHandlers: FileActionHandlers = {
     onFileSelect: toggleFileSelection,
     onItemClick: handleItemClick,
@@ -340,6 +410,18 @@ export function PrivateFilesPage() {
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              {user?.pin_hash && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLock}
+                  disabled={isLocking}
+                  title="Clear your PIN session and re-lock private files"
+                >
+                  <LockKeyhole className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">{isLocking ? "Locking..." : "Lock"}</span>
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -477,11 +559,28 @@ export function PrivateFilesPage() {
               </span>
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
-              <Button variant="outline" size="sm" className="flex-1 sm:flex-initial">
+              {/* No bulk-download endpoint exists yet, so this stays inert. */}
+              <Button variant="outline" size="sm" className="flex-1 sm:flex-initial" disabled>
                 <Download className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Download</span>
               </Button>
-              <Button variant="outline" size="sm" className="flex-1 sm:flex-initial">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 sm:flex-initial"
+                onClick={() => setIsMoveModalOpen(true)}
+                disabled={isBulkBusy}
+              >
+                <FolderInput className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Move</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 sm:flex-initial"
+                onClick={() => setIsBulkDeleteOpen(true)}
+                disabled={isBulkBusy}
+              >
                 <Trash2 className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Delete</span>
               </Button>
@@ -498,6 +597,24 @@ export function PrivateFilesPage() {
           actionHandlers={actionHandlers}
           viewMode={viewMode}
           onCreateFolder={handleCreateFolder}
+        />
+
+        {/* Bulk Move Modal */}
+        <MoveFileModal
+          isOpen={isMoveModalOpen}
+          onClose={() => setIsMoveModalOpen(false)}
+          filesToMove={selectedItems}
+          fileSystemTree={transformedPrivateFiles}
+          onMoveFile={handleBulkMoveSubmit}
+        />
+
+        {/* Bulk Delete Confirmation */}
+        <BulkDeleteDialog
+          isOpen={isBulkDeleteOpen}
+          onOpenChange={setIsBulkDeleteOpen}
+          filesToDelete={selectedItems}
+          isDeleting={isBulkBusy}
+          onConfirm={handleBulkDeleteConfirm}
         />
       </div>
     </>

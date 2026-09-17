@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Download, Share2, Trash2 } from "lucide-react";
+import { Download, FolderInput, Share2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -7,9 +7,23 @@ interface BulkActionsBarProps {
   selectedFilesCount: number;
   totalFilesCount: number;
   onSelectAll: () => void;
+  /** Omit a handler to leave that action out of the bar. */
+  onMove?: () => void;
+  onShare?: () => void;
+  onDelete?: () => void;
+  /** Disables every action while a bulk request is in flight. */
+  isBusy?: boolean;
 }
 
-export function BulkActionsBar({ selectedFilesCount, totalFilesCount, onSelectAll }: BulkActionsBarProps) {
+export function BulkActionsBar({
+  selectedFilesCount,
+  totalFilesCount,
+  onSelectAll,
+  onMove,
+  onShare,
+  onDelete,
+  isBusy = false,
+}: BulkActionsBarProps) {
   if (selectedFilesCount === 0) return null;
 
   return (
@@ -24,18 +38,29 @@ export function BulkActionsBar({ selectedFilesCount, totalFilesCount, onSelectAl
         <span className="text-sm font-medium">{selectedFilesCount} items selected</span>
       </div>
       <div className="flex items-center gap-2 ml-auto">
-        <Button variant="outline" size="sm">
+        {/* No bulk-download endpoint exists yet, so this stays inert. */}
+        <Button variant="outline" size="sm" disabled>
           <Download className="h-4 w-4 mr-2" />
           Download
         </Button>
-        <Button variant="outline" size="sm">
-          <Share2 className="h-4 w-4 mr-2" />
-          Share
-        </Button>
-        <Button variant="outline" size="sm">
-          <Trash2 className="h-4 w-4 mr-2" />
-          Delete
-        </Button>
+        {onMove && (
+          <Button variant="outline" size="sm" onClick={onMove} disabled={isBusy}>
+            <FolderInput className="h-4 w-4 mr-2" />
+            Move
+          </Button>
+        )}
+        {onShare && (
+          <Button variant="outline" size="sm" onClick={onShare} disabled={isBusy}>
+            <Share2 className="h-4 w-4 mr-2" />
+            Share
+          </Button>
+        )}
+        {onDelete && (
+          <Button variant="outline" size="sm" onClick={onDelete} disabled={isBusy}>
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete
+          </Button>
+        )}
       </div>
     </motion.div>
   );

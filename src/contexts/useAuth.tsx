@@ -28,7 +28,7 @@ type AuthAction =
     | { type: 'LOGOUT' }
     | { type: 'REGISTER_START' }
     | { type: 'SET_LOADING'; loading: boolean }
-    | { type: 'SET_PIN_SESSION'; pinSession: PinSessionData };
+    | { type: 'SET_PIN_SESSION'; pinSession: PinSessionData | null };
 
 const initialState: AuthState = {
     user: user,
@@ -74,6 +74,7 @@ interface AuthContextType extends AuthState {
     isPinSessionValid: () => boolean;
     getActiveSessions: () => Promise<any[]>;
     revokeToken: (refreshToken: string) => Promise<{ success: boolean; error?: string }>;
+    revokePinSession: () => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -365,6 +366,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
+    /**
+     * Clears the PIN session so private files re-lock. The login session is
+     * untouched. Safe to call when no PIN session is active -- the server
+     * treats it as a no-op.
+     */
+    const revokePinSession = async () => {
+        try {
+            await authApi.revokePinSession();
+            dispatch({ type: 'SET_PIN_SESSION', pinSession: null });
+            return { success: true };
+        } catch (error) {
+            const err = error as { response?: { data?: { message?: string } }; message?: string } | undefined;
+            const errorMessage = err?.response?.data?.message || err?.message || "Failed to lock private files";
+            toast.error(errorMessage);
+            return { success: false, error: errorMessage };
+        }
+    };
+
     const getPinSession = useCallback(async (): Promise<{ success: true; user: IUser; session: PinSessionData } | { success: false; error: string }> => {
         try {
             dispatch({ type: 'SET_LOADING', loading: true });
@@ -411,6 +430,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isPinSessionValid,
         getActiveSessions,
         revokeToken,
+        revokePinSession,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

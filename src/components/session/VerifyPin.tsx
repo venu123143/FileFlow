@@ -114,7 +114,7 @@ export function VerifyPinModal({
               <Label htmlFor="pin-input">Enter 4-Digit PIN</Label>
               <Input
                 id="pin-input"
-                type="text"
+                type="password"
                 inputMode="numeric"
                 maxLength={4}
                 placeholder="0000"

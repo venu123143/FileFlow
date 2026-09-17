@@ -1,4 +1,5 @@
 import apiClient from "@/api/axios";
+import type { BulkDeleteInput, BulkMoveInput, BulkShareInput } from "@/types/file.types";
 
 const createFolder = async (data: any) => {
     const response = await apiClient.post("/file-flow/folder", data);
@@ -88,6 +89,26 @@ const updateFileAccessLevel = async (id: string, data: any) => {
     return response.data;
 };
 
+// ---------------------------------------------------------------------------
+// Bulk operations -- mounted as a sibling of /file-flow on the backend.
+// Each call is all-or-nothing: a rejected id rolls the whole batch back.
+// ---------------------------------------------------------------------------
+
+const bulkDeleteFilesOrFolders = async (data: BulkDeleteInput) => {
+    const response = await apiClient.post("/file-flow-bulk/delete", data);
+    return response.data;
+};
+
+const bulkMoveFilesOrFolders = async (data: BulkMoveInput) => {
+    const response = await apiClient.post("/file-flow-bulk/move", data);
+    return response.data;
+};
+
+const bulkShareFilesOrFolders = async (data: BulkShareInput) => {
+    const response = await apiClient.post("/file-flow-bulk/share", data);
+    return response.data;
+};
+
 export default {
     createFolder,
     renameFolder,
@@ -106,4 +127,7 @@ export default {
     emptyTrash,
     getRecents,
     updateFileAccessLevel,
+    bulkDeleteFilesOrFolders,
+    bulkMoveFilesOrFolders,
+    bulkShareFilesOrFolders,
 };

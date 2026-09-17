@@ -10,6 +10,7 @@ import { FileManager } from "@/components/file-manager/FileManager"
 import { AddNewFolder } from "@/components/file-manager/AddNewFolder"
 import { MoveFileModal } from "@/components/file-manager/MoveFileModal"
 import { ShareFileModal } from "@/components/file-manager/ShareFileModal"
+import { BulkDeleteDialog } from "@/components/file-manager/BulkDeleteDialog"
 import { standardPageConfig, defaultViewConfig } from "@/config/page-configs"
 
 import { useFile } from "@/contexts/fileContext"
@@ -17,6 +18,7 @@ import { transformFileSystemNodesToFileItems, quickSort, sizeToBytes } from "@/l
 import { useNavigate } from "react-router-dom"
 import { useSocket } from "@/contexts/SocketContext";
 import { useFileDownload } from "@/hooks/useFileDownload";
+import { toast } from "sonner";
 
 export default function AllFilesPage() {
   const { socket } = useSocket();
@@ -28,13 +30,22 @@ export default function AllFilesPage() {
   // Rename popup state
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false)
   const [fileToRename, setFileToRename] = useState<FileItem | null>(null)
-  // Move file popup state
+  // Move file popup state -- shared by the single-item and bulk flows
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false)
-  const [fileToMove, setFileToMove] = useState<FileItem | null>(null)
-  // Share file popup state
+  const [moveTargets, setMoveTargets] = useState<FileItem[]>([])
+  const [moveIsBulk, setMoveIsBulk] = useState(false)
+  // Share file popup state -- shared by the single-item and bulk flows
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
-  const [fileToShare, setFileToShare] = useState<FileItem | null>(null)
-  const { createFolder, fileSystemTree, deleteFileOrFolder, renameFolder, moveFileOrFolder, shareFileOrFolder, updateFileAccessLevel } = useFile();
+  const [shareTargets, setShareTargets] = useState<FileItem[]>([])
+  const [shareIsBulk, setShareIsBulk] = useState(false)
+  // Bulk delete confirmation
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false)
+  const [isBulkBusy, setIsBulkBusy] = useState(false)
+  const {
+    createFolder, fileSystemTree, deleteFileOrFolder, renameFolder, moveFileOrFolder,
+    shareFileOrFolder, updateFileAccessLevel,
+    bulkDeleteFilesOrFolders, bulkMoveFilesOrFolders, bulkShareFilesOrFolders,
+  } = useFile();
   const { downloadFile } = useFileDownload();
   const navigate = useNavigate();
 
@@ -79,6 +90,13 @@ export default function AllFilesPage() {
 
     return filtered;
   }, [currentItems, searchQuery, sortDirection])
+
+  // The selection can outlive a folder change or a search, so resolve ids
+  // against what is actually on screen before acting on them.
+  const selectedItems = useMemo(
+    () => filteredFiles.filter((file) => selectedFiles.includes(file.id)),
+    [filteredFiles, selectedFiles]
+  )
 
   const toggleFileSelection = (fileId: string) => {
     setSelectedFiles((prev) => (prev.includes(fileId) ? prev.filter((id) => id !== fileId) : [...prev, fileId]))
@@ -186,11 +204,14 @@ export default function AllFilesPage() {
   }
 
   const handleMoveFile = (file: FileItem) => {
-    setFileToMove(file);
+    setMoveTargets([file]);
+    setMoveIsBulk(false);
     setIsMoveModalOpen(true);
   }
 
-  const handleMoveFileToFolder = async (fileId: string, targetFolderId: string | null): Promise<{ success: boolean; error?: string }> => {
+  const handleMoveFileToFolder = async (fileIds: string[], targetFolderId: string | null): Promise<{ success: boolean; error?: string }> => {
+    const fileId = fileIds[0];
+    if (!fileId) return { success: false, error: "No file selected" };
     try {
       const result = await moveFileOrFolder(fileId, {
         target_folder_id: targetFolderId
@@ -210,15 +231,19 @@ export default function AllFilesPage() {
 
   const handleCloseMoveModal = () => {
     setIsMoveModalOpen(false);
-    setFileToMove(null);
+    setMoveTargets([]);
+    setMoveIsBulk(false);
   }
 
   const handleShareFile = (file: FileItem) => {
-    setFileToShare(file);
+    setShareTargets([file]);
+    setShareIsBulk(false);
     setIsShareModalOpen(true);
   }
 
-  const handleShareFileWithUsers = async (fileId: string, userIds: string[], permissionLevel: SharePermission): Promise<{ success: boolean; error?: string }> => {
+  const handleShareFileWithUsers = async (fileIds: string[], userIds: string[], permissionLevel: SharePermission): Promise<{ success: boolean; error?: string }> => {
+    const fileId = fileIds[0];
+    if (!fileId) return { success: false, error: "No file selected" };
     try {
       // Share the file with each selected user
       const sharePromises = userIds.map(userId =>
@@ -247,11 +272,70 @@ export default function AllFilesPage() {
 
   const handleCloseShareModal = () => {
     setIsShareModalOpen(false);
-    setFileToShare(null);
+    setShareTargets([]);
+    setShareIsBulk(false);
   }
 
   const handleChangeAccessLevel = async (file: FileItem, accessLevel: string) => {
     await updateFileAccessLevel(file.id, { access_level: accessLevel as AccessLevel });
+  }
+
+  // ---------------------------------------------------------------------
+  // Bulk actions. Each endpoint is all-or-nothing, so on failure the
+  // selection is left intact for the user to retry or adjust.
+  // ---------------------------------------------------------------------
+
+  const handleBulkMoveClick = () => {
+    if (selectedItems.length === 0) return;
+    setMoveTargets(selectedItems);
+    setMoveIsBulk(true);
+    setIsMoveModalOpen(true);
+  }
+
+  const handleBulkMoveSubmit = async (fileIds: string[], targetFolderId: string | null): Promise<{ success: boolean; error?: string }> => {
+    const result = await bulkMoveFilesOrFolders(fileIds, targetFolderId);
+    if (result.success) {
+      setSelectedFiles([]);
+      toast.success(`${fileIds.length} item(s) moved`);
+    } else {
+      toast.error(result.error || "Failed to move the selected items");
+    }
+    return result;
+  }
+
+  const handleBulkShareClick = () => {
+    if (selectedItems.length === 0) return;
+    setShareTargets(selectedItems);
+    setShareIsBulk(true);
+    setIsShareModalOpen(true);
+  }
+
+  const handleBulkShareSubmit = async (fileIds: string[], userIds: string[], permissionLevel: SharePermission): Promise<{ success: boolean; error?: string }> => {
+    const result = await bulkShareFilesOrFolders(fileIds, userIds, permissionLevel);
+    if (result.success) {
+      setSelectedFiles([]);
+      toast.success(`${fileIds.length} item(s) shared with ${userIds.length} user(s)`);
+    } else {
+      toast.error(result.error || "Failed to share the selected items");
+    }
+    return result;
+  }
+
+  const handleBulkDeleteConfirm = async () => {
+    const ids = selectedItems.map((file) => file.id);
+    if (ids.length === 0) return;
+
+    setIsBulkBusy(true);
+    const result = await bulkDeleteFilesOrFolders(ids);
+    setIsBulkBusy(false);
+
+    if (result.success) {
+      setSelectedFiles([]);
+      setIsBulkDeleteOpen(false);
+      toast.success(`${ids.length} item(s) moved to trash`);
+    } else {
+      toast.error(result.error || "Failed to delete the selected items");
+    }
   }
 
   const actionHandlers: FileActionHandlers = {
@@ -294,6 +378,10 @@ export default function AllFilesPage() {
           selectedFilesCount={selectedFiles.length}
           totalFilesCount={filteredFiles.length}
           onSelectAll={selectAllFiles}
+          onMove={handleBulkMoveClick}
+          onShare={handleBulkShareClick}
+          onDelete={() => setIsBulkDeleteOpen(true)}
+          isBusy={isBulkBusy}
         />
 
         <FileManager
@@ -323,17 +411,26 @@ export default function AllFilesPage() {
         <MoveFileModal
           isOpen={isMoveModalOpen}
           onClose={handleCloseMoveModal}
-          fileToMove={fileToMove}
+          filesToMove={moveTargets}
           fileSystemTree={transformedFileSystem}
-          onMoveFile={handleMoveFileToFolder}
+          onMoveFile={moveIsBulk ? handleBulkMoveSubmit : handleMoveFileToFolder}
         />
 
         {/* Share File Modal */}
         <ShareFileModal
           isOpen={isShareModalOpen}
           onClose={handleCloseShareModal}
-          fileToShare={fileToShare}
-          onShareFile={handleShareFileWithUsers}
+          filesToShare={shareTargets}
+          onShareFile={shareIsBulk ? handleBulkShareSubmit : handleShareFileWithUsers}
+        />
+
+        {/* Bulk Delete Confirmation */}
+        <BulkDeleteDialog
+          isOpen={isBulkDeleteOpen}
+          onOpenChange={setIsBulkDeleteOpen}
+          filesToDelete={selectedItems}
+          isDeleting={isBulkBusy}
+          onConfirm={handleBulkDeleteConfirm}
         />
       </div>
     </div>

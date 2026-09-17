@@ -11,9 +11,10 @@ import type { FileItem } from "@/types/file-manager"
 interface MoveFileModalProps {
   isOpen: boolean
   onClose: () => void
-  fileToMove: FileItem | null
+  /** One item for the single-file flow, many for the bulk flow. */
+  filesToMove: FileItem[]
   fileSystemTree: FileItem[]
-  onMoveFile: (fileId: string, targetFolderId: string | null) => Promise<{ success: boolean; error?: string }>
+  onMoveFile: (fileIds: string[], targetFolderId: string | null) => Promise<{ success: boolean; error?: string }>
 }
 
 interface FolderNode {
@@ -27,7 +28,7 @@ interface FolderNode {
 export function MoveFileModal({
   isOpen,
   onClose,
-  fileToMove,
+  filesToMove,
   fileSystemTree,
   onMoveFile
 }: MoveFileModalProps) {
@@ -52,6 +53,17 @@ export function MoveFileModal({
     return transformToFolderTree(fileSystemTree)
   }, [fileSystemTree])
 
+  // A folder in the selection cannot be its own destination; the server rejects
+  // this too, but hiding it avoids an avoidable round trip.
+  const movingIds = useMemo(() => new Set(filesToMove.map(f => f.id)), [filesToMove])
+
+  const movingLabel = useMemo(() => {
+    if (filesToMove.length === 0) return ""
+    if (filesToMove.length === 1) return filesToMove[0].name
+    const names = filesToMove.slice(0, 2).map(f => f.name).join(", ")
+    return `${names} and ${filesToMove.length - 2} more`
+  }, [filesToMove])
+
   // Get current folder items based on current path
   const currentItems = useMemo(() => {
     let items: FolderNode[] = folderTree
@@ -61,8 +73,8 @@ export function MoveFileModal({
         items = foundFolder.children
       }
     }
-    return items
-  }, [currentPath, folderTree])
+    return items.filter(item => !movingIds.has(item.id))
+  }, [currentPath, folderTree, movingIds])
 
   // Filter items based on search query
   const filteredItems = useMemo(() => {
@@ -98,13 +110,13 @@ export function MoveFileModal({
   }
 
   const handleMoveToFolder = async (targetFolderId: string | null) => {
-    if (!fileToMove) return
+    if (filesToMove.length === 0) return
 
     setIsLoading(true)
     setError("")
 
     try {
-      const result = await onMoveFile(fileToMove.id, targetFolderId)
+      const result = await onMoveFile(filesToMove.map(f => f.id), targetFolderId)
       if (result.success) {
         onClose()
         setCurrentPath([])
@@ -140,7 +152,7 @@ export function MoveFileModal({
 
   return (
     <AnimatePresence>
-      {isOpen && fileToMove && (
+      {isOpen && filesToMove.length > 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -164,9 +176,11 @@ export function MoveFileModal({
                   <FolderOpen className="h-5 w-5 text-primary" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-lg sm:text-xl font-semibold">Move File</h3>
+                  <h3 className="text-lg sm:text-xl font-semibold">
+                    {filesToMove.length === 1 ? "Move File" : `Move ${filesToMove.length} Items`}
+                  </h3>
                   <p className="text-sm text-muted-foreground truncate">
-                    Moving: <span className="font-medium">{fileToMove.name}</span>
+                    Moving: <span className="font-medium">{movingLabel}</span>
                   </p>
                 </div>
               </div>
@@ -285,7 +299,7 @@ export function MoveFileModal({
                     disabled={isLoading}
                     className="flex-1 sm:flex-none"
                   >
-                    {isLoading ? "Moving..." : "Move Here"}
+                    {isLoading ? "Moving..." : filesToMove.length === 1 ? "Move Here" : `Move ${filesToMove.length} Here`}
                   </Button>
                 </div>
               </div>

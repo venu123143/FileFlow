@@ -14,14 +14,15 @@ import { SHARE_PERMISSION, type SharePermission } from "@/types/file.types"
 interface ShareFileModalProps {
   isOpen: boolean
   onClose: () => void
-  fileToShare: FileItem | null
-  onShareFile: (fileId: string, userIds: string[], permissionLevel: SharePermission) => Promise<{ success: boolean; error?: string }>
+  /** One item for the single-file flow, many for the bulk flow. */
+  filesToShare: FileItem[]
+  onShareFile: (fileIds: string[], userIds: string[], permissionLevel: SharePermission) => Promise<{ success: boolean; error?: string }>
 }
 
 export function ShareFileModal({
   isOpen,
   onClose,
-  fileToShare,
+  filesToShare,
   onShareFile
 }: ShareFileModalProps) {
   const [searchQuery, setSearchQuery] = useState("")
@@ -74,6 +75,13 @@ export function ShareFileModal({
   }, [searchQuery])
 
   // Filter out already selected users and current user
+  const sharingLabel = useMemo(() => {
+    if (filesToShare.length === 0) return ""
+    if (filesToShare.length === 1) return filesToShare[0].name
+    const names = filesToShare.slice(0, 2).map(f => f.name).join(", ")
+    return `${names} and ${filesToShare.length - 2} more`
+  }, [filesToShare])
+
   const availableUsers = useMemo(() => {
     return users.filter(user =>
       !selectedUsers.some(selected => selected.id === user.id) &&
@@ -92,14 +100,14 @@ export function ShareFileModal({
   }
 
   const handleShare = async () => {
-    if (!fileToShare || selectedUsers.length === 0) return
+    if (filesToShare.length === 0 || selectedUsers.length === 0) return
 
     setIsLoading(true)
     setError("")
 
     try {
       const userIds = selectedUsers.map(user => user.id)
-      const result = await onShareFile(fileToShare.id, userIds, permissionLevel)
+      const result = await onShareFile(filesToShare.map(f => f.id), userIds, permissionLevel)
       if (result.success) {
         onClose()
         setSelectedUsers([])
@@ -148,7 +156,7 @@ export function ShareFileModal({
 
   return (
     <AnimatePresence>
-      {isOpen && fileToShare && (
+      {isOpen && filesToShare.length > 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -172,9 +180,11 @@ export function ShareFileModal({
                   <Share2 className="h-5 w-5 text-primary" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-lg sm:text-xl font-semibold">Share File</h3>
+                  <h3 className="text-lg sm:text-xl font-semibold">
+                    {filesToShare.length === 1 ? "Share File" : `Share ${filesToShare.length} Items`}
+                  </h3>
                   <p className="text-sm text-muted-foreground truncate">
-                    Sharing: <span className="font-medium">{fileToShare.name}</span>
+                    Sharing: <span className="font-medium">{sharingLabel}</span>
                   </p>
                 </div>
               </div>
@@ -288,7 +298,7 @@ export function ShareFileModal({
                         No users selected yet
                       </p>
                       <p className="text-muted-foreground text-xs mt-1">
-                        Search and select users to share this file with
+                        Search and select users to share {filesToShare.length === 1 ? "this file" : "these items"} with
                       </p>
                     </div>
                   </div>
@@ -355,7 +365,7 @@ export function ShareFileModal({
                     onClick={handleShare}
                     disabled={isLoading || selectedUsers.length === 0}
                   >
-                    {isLoading ? "Sharing..." : "Share File"}
+                    {isLoading ? "Sharing..." : filesToShare.length === 1 ? "Share File" : `Share ${filesToShare.length} Items`}
                   </Button>
                 </div>
               </div>
