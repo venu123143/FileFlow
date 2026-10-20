@@ -35,6 +35,7 @@ export function TopBar({ onSidebarToggle }: TopBarProps) {
       'private-files': 'Private Files',
       'shared-files': 'Shared Files',
       'settings': 'Settings',
+      'analytics': 'Analytics',
       'videos': 'Videos',
       'admin': 'Admin Panel'
     }

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
-import { Home, FolderOpen, Lock, Users, Trash2, Bell, Settings } from "lucide-react"
+import { Home, FolderOpen, Lock, Users, Trash2, Bell, Settings, BarChart3 } from "lucide-react"
 import { SidebarNavItem } from "./sidebar-nav-item"
 import { useNavigate, useLocation } from "react-router-dom"
 import { useNotifications } from "@/contexts/NotificationContext"
@@ -23,6 +23,7 @@ const BASE_NAV_ITEMS: NavItem[] = [
   { icon: Lock, label: "Private files", href: "/private-files" },
   { icon: Users, label: "Shared with me", href: "/shared-files" },
   { icon: Trash2, label: "Deleted files", href: "/deleted-files" },
+  { icon: BarChart3, label: "Analytics", href: "/analytics" },
   { icon: Bell, label: "Notifications", href: "/notifications" },
   { icon: Settings, label: "Settings", href: "/settings" },
 ]

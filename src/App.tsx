@@ -11,6 +11,7 @@ import RoleBasedRedirect from "@/routes/RoleBasedRedirect";
 // Lazy load routes
 const NotFound = lazy(() => import("@/routes/Notfound"));
 const Home = lazy(() => import("@/routes/Home"));
+const Analytics = lazy(() => import("@/pages/Analytics"));
 const DeletedFiles = lazy(() => import("@/routes/DeletedFiles"));
 const AllFiles = lazy(() => import("@/routes/AllFiles"));
 const PrivateFiles = lazy(() => import("@/routes/PrivateFiles"));
@@ -41,6 +42,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route element={<ProtectedRoute roles={[USER_ROLES.USER]} />}>
             <Route path='/home' element={<Home />} />
+            <Route path='/analytics' element={<Analytics />} />
             <Route path='/all-files' element={<AllFiles />} />
             <Route path='/deleted-files' element={<DeletedFiles />} />
             <Route path='/private-files' element={<PrivateFiles />} />
