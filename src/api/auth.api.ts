@@ -103,11 +103,11 @@ const refreshToken = async (refreshToken: string) => {
 };
 
 /**
- * Revoke a specific refresh token (logout from single device)
+ * Revoke one of the user's sessions by id (logout from a single device)
  */
-const revokeToken = async (refreshToken: string) => {
+const revokeSession = async (sessionId: string) => {
     try {
-        const response = await apiClient.post('/auth/revoke', { refresh_token: refreshToken });
+        const response = await apiClient.delete(`/auth/sessions/${sessionId}`);
         return response.data;
     } catch (error) {
         throw error;
@@ -151,7 +151,7 @@ export default {
     getSession,
     revokePinSession,
     refreshToken,
-    revokeToken,
+    revokeSession,
     revokeAllTokens,
     getActiveSessions
 };

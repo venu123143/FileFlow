@@ -73,7 +73,7 @@ interface AuthContextType extends AuthState {
     getPinSession: () => Promise<{ success: boolean; user: IUser; session: PinSessionData } | { success: false; error: string }>;
     isPinSessionValid: () => boolean;
     getActiveSessions: () => Promise<any[]>;
-    revokeToken: (refreshToken: string) => Promise<{ success: boolean; error?: string }>;
+    revokeSession: (sessionId: string) => Promise<{ success: boolean; error?: string }>;
     revokePinSession: () => Promise<{ success: boolean; error?: string }>;
 }
 
@@ -355,9 +355,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return result.data?.sessions || [];
     };
 
-    const revokeToken = async (refreshToken: string) => {
+    const revokeSession = async (sessionId: string) => {
         try {
-            await authApi.revokeToken(refreshToken);
+            await authApi.revokeSession(sessionId);
             return { success: true };
         } catch (error: any) {
             const errorMessage = error?.response?.data?.message || error?.message || "Failed to revoke session";
@@ -429,7 +429,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         getPinSession,
         isPinSessionValid,
         getActiveSessions,
-        revokeToken,
+        revokeSession,
         revokePinSession,
     };
 

@@ -10,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/contexts/useAuth"
 import { useTheme } from "@/contexts/ThemeContext"
+import { useDashboard } from "@/contexts/DashboardContext"
+import { formatFileSize } from "@/lib/utils"
 import {
   User,
   Shield,
@@ -38,6 +40,10 @@ interface SettingsContentProps {
 export function SettingsContent({ activeTab }: SettingsContentProps) {
   const { user, setPin, changePin, setPinLoading, changePinLoading, saveUser } = useAuth()
   const { theme, setTheme, resolvedTheme } = useTheme()
+  const { storageOverview, isLoading: storageLoading } = useDashboard()
+  const storageUsed = storageOverview?.storageUsed ?? 0
+  const storageQuota = storageOverview?.storageQuota ?? 0
+  const storagePercent = storageQuota > 0 ? Math.min((storageUsed / storageQuota) * 100, 100) : 0
   const [pin, setPinValue] = useState("")
   const [confirmPin, setConfirmPin] = useState("")
   const [oldPin, setOldPin] = useState("")
@@ -181,18 +187,6 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
                 className="bg-muted cursor-not-allowed"
               />
             </div>
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Key className="h-4 w-4 text-muted-foreground" />
-                User ID
-              </Label>
-              <Input
-                id="userId"
-                value={user?.id || ""}
-                readOnly
-                className="bg-muted font-mono text-xs cursor-not-allowed"
-              />
-            </div>
             {user?.last_login && (
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
@@ -258,15 +252,19 @@ export function SettingsContent({ activeTab }: SettingsContentProps) {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Storage Used</span>
-            <span className="text-sm font-medium">45.2 GB / 100 GB</span>
+            <span className="text-sm font-medium">
+              {storageOverview
+                ? `${formatFileSize(storageUsed)} / ${formatFileSize(storageQuota)}`
+                : storageLoading ? "Loading..." : "Unavailable"}
+            </span>
           </div>
           <div className="w-full bg-muted rounded-full h-2">
-            <div className="bg-primary h-2 rounded-full" style={{ width: '45.2%' }}></div>
+            <div className="bg-primary h-2 rounded-full" style={{ width: `${storagePercent}%` }}></div>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <Badge variant="secondary">Free Plan</Badge>
             <span className="hidden sm:inline">•</span>
-            <span>100 GB total storage</span>
+            {storageOverview && <span>{formatFileSize(storageQuota)} total storage</span>}
           </div>
         </CardContent>
       </Card>
