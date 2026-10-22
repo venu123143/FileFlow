@@ -2,12 +2,11 @@
 
 import { useState, useMemo, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Share2, Search, X, User } from "lucide-react"
+import { Search, X, User, Loader2, AlertCircle, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
 import { useAuth } from "@/contexts/useAuth"
 import type { FileItem } from "@/types/file-manager"
+import { formatFileSize } from "@/lib/utils"
 import type { IUserListItem } from "@/types/user.types"
 import { SHARE_PERMISSION, type SharePermission } from "@/types/file.types"
 
@@ -19,6 +18,43 @@ interface ShareFileModalProps {
   onShareFile: (fileIds: string[], userIds: string[], permissionLevel: SharePermission) => Promise<{ success: boolean; error?: string }>
 }
 
+const PERMISSION_HINTS: Record<SharePermission, string> = {
+  [SHARE_PERMISSION.VIEW]: "Can view only",
+  [SHARE_PERMISSION.EDIT]: "Can view and edit",
+  [SHARE_PERMISSION.ADMIN]: "Full access, including sharing",
+}
+
+const MIN_QUERY_LENGTH = 2
+
+/** Total bytes and file count, including everything inside shared folders. */
+function measure(items: FileItem[]): { bytes: number; files: number } {
+  let bytes = 0
+  let files = 0
+  for (const item of items) {
+    if (item.type === "folder") {
+      const inner = measure(item.children ?? [])
+      bytes += inner.bytes
+      files += inner.files
+    } else {
+      bytes += item.file_info?.file_size ?? 0
+      files += 1
+    }
+  }
+  return { bytes, files }
+}
+
+function UserAvatar({ user, className = "h-8 w-8" }: { user: IUserListItem; className?: string }) {
+  return (
+    <span className={`${className} rounded-full bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden`}>
+      {user.avatar_url ? (
+        <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
+      ) : (
+        <User className="h-4 w-4 text-muted-foreground" />
+      )}
+    </span>
+  )
+}
+
 export function ShareFileModal({
   isOpen,
   onClose,
@@ -27,347 +63,284 @@ export function ShareFileModal({
 }: ShareFileModalProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedUsers, setSelectedUsers] = useState<IUserListItem[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [isSearching, setIsSearching] = useState(false)
-  const [error, setError] = useState("")
   const [users, setUsers] = useState<IUserListItem[]>([])
-  const [showDropdown, setShowDropdown] = useState(false)
+  const [isSearching, setIsSearching] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
   const [permissionLevel, setPermissionLevel] = useState<SharePermission>(SHARE_PERMISSION.VIEW)
 
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
   const { getAllUsers, user: currentUser } = useAuth()
 
-  // Search users when query changes
+  const query = searchQuery.trim()
+  const isSearchActive = query.length >= MIN_QUERY_LENGTH
+
+  // Debounced user search. `cancelled` drops responses that arrive after the query changed.
   useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current)
-    }
-
-    if (searchQuery.trim().length >= 2) {
-      setIsSearching(true)
-      searchTimeoutRef.current = setTimeout(async () => {
-        try {
-          const result = await getAllUsers({
-            search: searchQuery.trim(),
-            page: 1,
-            limit: 20,
-            is_active: true,
-            email_verified: false
-          })
-          setUsers(Array.isArray(result) ? result : [])
-          setShowDropdown(true)
-        } catch (error) {
-          setUsers([])
-        } finally {
-          setIsSearching(false)
-        }
-      }, 300)
-    } else {
+    if (!isSearchActive) {
       setUsers([])
-      setShowDropdown(false)
+      setIsSearching(false)
+      return
     }
-
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current)
+    let cancelled = false
+    setIsSearching(true)
+    const timer = setTimeout(async () => {
+      try {
+        const result = await getAllUsers({
+          search: query,
+          page: 1,
+          limit: 20,
+          is_active: true,
+          email_verified: false
+        })
+        if (!cancelled) setUsers(Array.isArray(result) ? result : [])
+      } catch {
+        if (!cancelled) setUsers([])
+      } finally {
+        if (!cancelled) setIsSearching(false)
       }
+    }, 300)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
     }
-  }, [searchQuery])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query])
 
-  // Filter out already selected users and current user
-  const sharingLabel = useMemo(() => {
-    if (filesToShare.length === 0) return ""
-    if (filesToShare.length === 1) return filesToShare[0].name
-    const names = filesToShare.slice(0, 2).map(f => f.name).join(", ")
-    return `${names} and ${filesToShare.length - 2} more`
-  }, [filesToShare])
+  const availableUsers = useMemo(
+    () => users.filter(u => u.id !== currentUser?.id && !selectedUsers.some(s => s.id === u.id)),
+    [users, selectedUsers, currentUser]
+  )
 
-  const availableUsers = useMemo(() => {
-    return users.filter(user =>
-      !selectedUsers.some(selected => selected.id === user.id) &&
-      user.id !== currentUser?.id
-    )
-  }, [users, selectedUsers, currentUser])
+  const count = filesToShare.length
+  const title = count === 1 ? `Share "${filesToShare[0]?.name}"` : `Share ${count} items`
+  const { bytes: totalBytes, files: totalFiles } = useMemo(() => measure(filesToShare), [filesToShare])
+  const sizeSummary = `${formatFileSize(totalBytes)} · ${totalFiles} ${totalFiles === 1 ? "file" : "files"}`
+  const noun = count === 1 ? "this item" : "these items"
 
-  const handleUserSelect = (user: IUserListItem) => {
-    setSelectedUsers(prev => [...prev, user])
+  const reset = () => {
+    setSelectedUsers([])
     setSearchQuery("")
-    setShowDropdown(false)
+    setError("")
+    setIsLoading(false)
+    setPermissionLevel(SHARE_PERMISSION.VIEW)
   }
 
-  const handleUserRemove = (userId: string) => {
-    setSelectedUsers(prev => prev.filter(user => user.id !== userId))
+  const handleClose = () => {
+    if (isLoading) return
+    onClose()
+    reset()
+  }
+
+  useEffect(() => {
+    if (!isOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return
+      // First Escape clears the search, the next one closes.
+      if (searchQuery) setSearchQuery("")
+      else handleClose()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, isLoading, searchQuery])
+
+  useEffect(() => {
+    if (isOpen) searchRef.current?.focus()
+  }, [isOpen])
+
+  const addUser = (user: IUserListItem) => {
+    setSelectedUsers(prev => [...prev, user])
+    setSearchQuery("")
+    searchRef.current?.focus()
+  }
+
+  const removeUser = (userId: string) => {
+    setSelectedUsers(prev => prev.filter(u => u.id !== userId))
   }
 
   const handleShare = async () => {
-    if (filesToShare.length === 0 || selectedUsers.length === 0) return
-
+    if (count === 0 || selectedUsers.length === 0) return
     setIsLoading(true)
     setError("")
-
     try {
-      const userIds = selectedUsers.map(user => user.id)
-      const result = await onShareFile(filesToShare.map(f => f.id), userIds, permissionLevel)
+      const result = await onShareFile(filesToShare.map(f => f.id), selectedUsers.map(u => u.id), permissionLevel)
       if (result.success) {
         onClose()
-        setSelectedUsers([])
-        setSearchQuery("")
-        setPermissionLevel(SHARE_PERMISSION.VIEW)
+        reset()
       } else {
-        setError(result.error || "Failed to share file")
+        setError(result.error || "Couldn't share. Try again.")
       }
-    } catch (error: any) {
-      setError(error?.message || "An unexpected error occurred")
+    } catch (err: any) {
+      setError(err?.message || "Couldn't share. Try again.")
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleClose = () => {
-    onClose()
-    setSelectedUsers([])
-    setSearchQuery("")
-    setError("")
-    setIsLoading(false)
-    setShowDropdown(false)
-    setPermissionLevel(SHARE_PERMISSION.VIEW)
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") {
-      if (showDropdown) {
-        setShowDropdown(false)
-        setSearchQuery("")
-      } else {
-        handleClose()
-      }
-    }
-  }
-
-  const handleClickOutside = () => {
-    if (showDropdown) {
-      setShowDropdown(false)
-    }
-  }
-
-  const getSelectedUsersData = () => {
-    return selectedUsers
-  }
+  const shareLabel = selectedUsers.length === 0
+    ? "Share"
+    : `Share with ${selectedUsers.length} ${selectedUsers.length === 1 ? "person" : "people"}`
 
   return (
     <AnimatePresence>
-      {isOpen && filesToShare.length > 0 && (
+      {isOpen && count > 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          transition={{ duration: 0.15 }}
+          className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-50 flex items-end sm:items-center justify-center sm:p-4"
           onClick={handleClose}
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ duration: 0.2 }}
-            className="bg-background border border-border rounded-lg shadow-lg w-full max-w-2xl max-h-[85vh] flex flex-col relative"
+            role="dialog"
+            aria-modal="true"
+            aria-label={title}
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="bg-background border border-border shadow-xl w-full sm:max-w-md h-[85dvh] sm:h-[34rem] max-h-[100dvh] rounded-t-2xl sm:rounded-xl flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-border flex-shrink-0">
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <Share2 className="h-5 w-5 text-primary" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-lg sm:text-xl font-semibold">
-                    {filesToShare.length === 1 ? "Share File" : `Share ${filesToShare.length} Items`}
-                  </h3>
-                  <p className="text-sm text-muted-foreground truncate">
-                    Sharing: <span className="font-medium">{sharingLabel}</span>
-                  </p>
-                </div>
+            {/* Header */}
+            <div className="flex items-center justify-between gap-3 px-4 pt-4 pb-3">
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold truncate" title={title}>{title}</h2>
+                <p className="text-xs text-muted-foreground">{sizeSummary}</p>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0 hover:bg-muted flex-shrink-0"
+                className="h-8 w-8 p-0 flex-shrink-0 text-muted-foreground"
                 onClick={handleClose}
+                aria-label="Close"
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
 
-            {/* Search Section */}
-            <div className="p-1 sm:p-2 border-b border-border flex-shrink-0 relative" onClick={handleClickOutside}>
+            {/* Search + chosen people */}
+            <div className="px-4 pb-3 space-y-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search users to share with..."
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <input
+                  ref={searchRef}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  className="pl-10 h-10"
+                  placeholder="Search people by name or email"
+                  aria-label="Search people"
+                  className="w-full h-10 sm:h-9 pl-9 pr-9 rounded-md border border-input bg-transparent text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-ring"
                 />
                 {isSearching && (
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                  </div>
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" aria-label="Searching" />
                 )}
               </div>
 
-              {/* Search Results Dropdown */}
-              {showDropdown && availableUsers.length > 0 && (
-                <div className="absolute z-20 left-4 right-4 mt-2 bg-background border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                  {availableUsers.map((user) => (
-                    <div
-                      key={user.id}
-                      className="flex items-center gap-3 p-3 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
-                      onClick={() => handleUserSelect(user)}
+              {selectedUsers.length > 0 && (
+                <ul className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto" aria-label="Selected people">
+                  {selectedUsers.map(u => (
+                    <li
+                      key={u.id}
+                      className="inline-flex items-center gap-1.5 max-w-full rounded-full bg-muted pl-1 pr-1 py-1 text-sm"
                     >
-                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                        {user.avatar_url ? (
-                          <img
-                            src={user.avatar_url}
-                            alt={user.display_name || 'User'}
-                            className="w-8 h-8 rounded-full object-cover"
-                          />
-                        ) : (
-                          <User className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{user.display_name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                      </div>
-                    </div>
+                      <UserAvatar user={u} className="h-5 w-5" />
+                      <span className="truncate max-w-[10rem]">{u.display_name || u.email}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeUser(u.id)}
+                        aria-label={`Remove ${u.display_name || u.email}`}
+                        className="h-5 w-5 rounded-full flex items-center justify-center text-muted-foreground hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </li>
                   ))}
-                </div>
-              )}
-
-              {showDropdown && searchQuery.length >= 2 && availableUsers.length === 0 && !isSearching && (
-                <div className="absolute z-20 left-4 right-4 mt-2 bg-background border border-border rounded-lg shadow-lg p-3">
-                  <p className="text-sm text-muted-foreground text-center">No users found</p>
-                </div>
+                </ul>
               )}
             </div>
 
-            {/* Permission Level Selector */}
-            <div className="p-1 sm:p-2 border-b border-border flex-shrink-0">
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-muted-foreground">
-                  Permission Level
-                </h4>
-                <div className="grid grid-cols-3 gap-2">
-                  {Object.entries(SHARE_PERMISSION).map(([key, value]) => (
-                    <Button
-                      key={value}
-                      variant={permissionLevel === value ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setPermissionLevel(value)}
-                      className="text-xs"
-                    >
-                      {key.charAt(0) + key.slice(1).toLowerCase()}
-                    </Button>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {permissionLevel === SHARE_PERMISSION.VIEW && "Users can only view the file"}
-                  {permissionLevel === SHARE_PERMISSION.EDIT && "Users can view and edit the file"}
-                  {permissionLevel === SHARE_PERMISSION.ADMIN && "Users have full administrative access"}
-                </p>
-              </div>
-            </div>
-
-            {/* Selected Users */}
-            <div className="flex-1 p-2 overflow-y-auto">
-              {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-600">{error}</p>
-                </div>
-              )}
-
-              {selectedUsers.length === 0 ? (
-                <div className="flex items-center justify-center h-full min-h-[300px]">
-                  <div className="text-center space-y-3">
-                    <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto">
-                      <Share2 className="h-8 w-8 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-sm font-medium">
-                        No users selected yet
-                      </p>
-                      <p className="text-muted-foreground text-xs mt-1">
-                        Search and select users to share {filesToShare.length === 1 ? "this file" : "these items"} with
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <h4 className="font-medium text-sm text-muted-foreground">
-                    Selected Users ({selectedUsers.length})
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {getSelectedUsersData().map((user) => (
-                      <Card key={user.id} className="group">
-                        <CardContent className="p-3 flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                            {user.avatar_url ? (
-                              <img
-                                src={user.avatar_url}
-                                alt={user.display_name || 'User'}
-                                className="w-8 h-8 rounded-full object-cover"
-                              />
-                            ) : (
-                              <User className="h-4 w-4 text-muted-foreground" />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{user.display_name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleUserRemove(user.id)}
-                            className="h-6 w-6 p-0 text-muted-foreground hover:text-red-600"
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </CardContent>
-                      </Card>
+            {/* Results / hint */}
+            <div className="flex-1 min-h-0 overflow-y-auto border-y border-border px-2 py-1">
+              {isSearchActive ? (
+                availableUsers.length > 0 ? (
+                  <ul aria-label="Search results">
+                    {availableUsers.map(u => (
+                      <li key={u.id}>
+                        <button
+                          type="button"
+                          onClick={() => addUser(u)}
+                          className="w-full min-h-12 flex items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-muted focus-visible:outline-none focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50"
+                        >
+                          <UserAvatar user={u} className="h-9 w-9" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm truncate">{u.display_name}</span>
+                            <span className="block text-xs text-muted-foreground truncate">{u.email}</span>
+                          </span>
+                        </button>
+                      </li>
                     ))}
+                  </ul>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-center px-6">
+                    <p className="text-sm text-muted-foreground" role="status">
+                      {isSearching ? "Searching…" : `No people match "${query}"`}
+                    </p>
                   </div>
+                )
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center px-6">
+                  <Users className="h-8 w-8 text-muted-foreground/60 mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    {selectedUsers.length === 0
+                      ? `Search for people to share ${noun} with.`
+                      : "Search to add more people."}
+                  </p>
                 </div>
               )}
             </div>
 
-            {/* Modal Footer */}
-            <div className="p-4 sm:p-5 border-t border-border flex-shrink-0">
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-sm text-muted-foreground">
-                  {selectedUsers.length > 0 && (
-                    <span>
-                      {selectedUsers.length} user{selectedUsers.length !== 1 ? 's' : ''} selected
-                    </span>
-                  )}
+            {/* Permission + actions */}
+            <div className="px-4 pt-3 pb-4 sm:pb-3 space-y-3">
+              <div>
+                <div role="radiogroup" aria-label="Permission" className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
+                  {Object.entries(SHARE_PERMISSION).map(([key, value]) => {
+                    const active = permissionLevel === value
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => setPermissionLevel(value)}
+                        className={`h-8 rounded-md text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${
+                          active ? "bg-background font-medium shadow-sm" : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {key.charAt(0) + key.slice(1).toLowerCase()}
+                      </button>
+                    )
+                  })}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={handleClose}
-                    disabled={isLoading}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleShare}
-                    disabled={isLoading || selectedUsers.length === 0}
-                  >
-                    {isLoading ? "Sharing..." : filesToShare.length === 1 ? "Share File" : `Share ${filesToShare.length} Items`}
-                  </Button>
+                <p className="mt-1.5 text-xs text-muted-foreground">{PERMISSION_HINTS[permissionLevel]}</p>
+              </div>
+
+              {error && (
+                <div role="alert" className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
+                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span>{error}</span>
                 </div>
+              )}
+
+              <div className="flex items-center gap-2 sm:justify-end [&>button]:flex-1 sm:[&>button]:flex-none">
+                <Button variant="outline" size="sm" onClick={handleClose} disabled={isLoading}>
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={handleShare} disabled={isLoading || selectedUsers.length === 0}>
+                  {isLoading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                  {isLoading ? "Sharing" : shareLabel}
+                </Button>
               </div>
             </div>
           </motion.div>

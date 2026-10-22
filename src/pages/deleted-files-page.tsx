@@ -13,7 +13,9 @@ import {
   Trash2,
   AlertTriangle,
   RefreshCw,
+  Loader2,
 } from "lucide-react"
+import { EmptyTrashDialog } from "@/components/file-manager/EmptyTrashDialog"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -32,6 +34,9 @@ export function DeletedFilesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("ASC")
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
+  const [isEmptyTrashOpen, setIsEmptyTrashOpen] = useState(false)
+  const [isEmptying, setIsEmptying] = useState(false)
+  const [emptyTrashError, setEmptyTrashError] = useState("")
   const { deleteFileOrFolder, trash, restoreFileOrFolder, emptyTrash } = useFile()
 
   // Transform dynamic data to DeletedFileItem format
@@ -91,6 +96,19 @@ export function DeletedFilesPage() {
     }
   }
 
+  const handleEmptyTrash = async () => {
+    setIsEmptying(true)
+    setEmptyTrashError("")
+    const result = await emptyTrash()
+    setIsEmptying(false)
+    if (result.success) {
+      setIsEmptyTrashOpen(false)
+      setSelectedFiles([])
+    } else {
+      setEmptyTrashError(result.error ?? "Couldn't empty trash. Try again.")
+    }
+  }
+
   const actionHandlers: FileActionHandlers = {
     onFileSelect: toggleFileSelection,
     onItemClick: (item) => console.log("Clicked on deleted item:", item.name),
@@ -117,9 +135,15 @@ export function DeletedFilesPage() {
               <RefreshCw className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Refresh</span>
             </Button>
-            <Button onClick={emptyTrash} variant="destructive" size="sm" className="flex-1 sm:flex-initial">
-              <Trash2 className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Empty Trash</span>
+            <Button
+              onClick={() => { setEmptyTrashError(""); setIsEmptyTrashOpen(true) }}
+              disabled={trash.length === 0 || isEmptying}
+              variant="destructive"
+              size="sm"
+              className="flex-1 sm:flex-initial"
+            >
+              {isEmptying ? <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 sm:mr-2" />}
+              <span className="hidden sm:inline">{isEmptying ? "Emptying" : "Empty Trash"}</span>
             </Button>
           </div>
         </div>
@@ -251,6 +275,15 @@ export function DeletedFilesPage() {
         viewConfig={defaultViewConfig}
         actionHandlers={actionHandlers}
         viewMode={viewMode}
+      />
+
+      <EmptyTrashDialog
+        isOpen={isEmptyTrashOpen}
+        onOpenChange={setIsEmptyTrashOpen}
+        itemCount={trash.length}
+        isEmptying={isEmptying}
+        error={emptyTrashError}
+        onConfirm={handleEmptyTrash}
       />
     </div>
   )

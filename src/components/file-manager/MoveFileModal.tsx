@@ -1,11 +1,9 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { FolderOpen, ChevronRight, Home, X, Search } from "lucide-react"
+import { Folder, ChevronRight, Home, X, Search, Loader2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
 import type { FileItem } from "@/types/file-manager"
 
 interface MoveFileModalProps {
@@ -20,9 +18,12 @@ interface MoveFileModalProps {
 interface FolderNode {
   id: string
   name: string
-  type: "folder"
-  children?: FolderNode[]
-  parentPath: string[]
+  children: FolderNode[]
+}
+
+interface PathEntry {
+  id: string
+  name: string
 }
 
 export function MoveFileModal({
@@ -32,123 +33,119 @@ export function MoveFileModal({
   fileSystemTree,
   onMoveFile
 }: MoveFileModalProps) {
-  const [currentPath, setCurrentPath] = useState<Array<{ id: string; name: string }>>([])
+  const [currentPath, setCurrentPath] = useState<PathEntry[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const searchRef = useRef<HTMLInputElement>(null)
 
-  // Transform FileItem tree to FolderNode tree (only folders)
-  const folderTree = useMemo(() => {
-    const transformToFolderTree = (items: FileItem[], parentPath: string[] = []): FolderNode[] => {
-      return items
-        .filter(item => item.type === "folder")
-        .map(item => ({
-          id: item.id,
-          name: item.name,
-          type: "folder" as const,
-          parentPath,
-          children: item.children ? transformToFolderTree(item.children, [...parentPath, item.name]) : undefined
-        }))
-    }
-    return transformToFolderTree(fileSystemTree)
-  }, [fileSystemTree])
-
-  // A folder in the selection cannot be its own destination; the server rejects
-  // this too, but hiding it avoids an avoidable round trip.
+  // A folder in the selection cannot be its own destination (nor can anything inside it);
+  // the server rejects this too, but hiding it avoids an avoidable round trip.
   const movingIds = useMemo(() => new Set(filesToMove.map(f => f.id)), [filesToMove])
 
-  const movingLabel = useMemo(() => {
-    if (filesToMove.length === 0) return ""
-    if (filesToMove.length === 1) return filesToMove[0].name
-    const names = filesToMove.slice(0, 2).map(f => f.name).join(", ")
-    return `${names} and ${filesToMove.length - 2} more`
-  }, [filesToMove])
+  // Folders only, with the moving items and their subtrees pruned out.
+  const folderTree = useMemo(() => {
+    const toFolders = (items: FileItem[]): FolderNode[] =>
+      items
+        .filter(item => item.type === "folder" && !movingIds.has(item.id))
+        .map(item => ({ id: item.id, name: item.name, children: toFolders(item.children ?? []) }))
+    return toFolders(fileSystemTree)
+  }, [fileSystemTree, movingIds])
 
-  // Get current folder items based on current path
-  const currentItems = useMemo(() => {
-    let items: FolderNode[] = folderTree
-    for (const folder of currentPath) {
-      const foundFolder = items.find((item) => item.id === folder.id)
-      if (foundFolder?.children) {
-        items = foundFolder.children
+  // Every folder with its full path, used for searching across all levels.
+  const flatFolders = useMemo(() => {
+    const out: Array<{ node: FolderNode; path: PathEntry[] }> = []
+    const walk = (nodes: FolderNode[], path: PathEntry[]) => {
+      for (const node of nodes) {
+        const nodePath = [...path, { id: node.id, name: node.name }]
+        out.push({ node, path: nodePath })
+        walk(node.children, nodePath)
       }
     }
-    return items.filter(item => !movingIds.has(item.id))
-  }, [currentPath, folderTree, movingIds])
+    walk(folderTree, [])
+    return out
+  }, [folderTree])
 
-  // Filter items based on search query
-  const filteredItems = useMemo(() => {
-    if (!searchQuery.trim()) return currentItems
-
-    const searchLower = searchQuery.toLowerCase()
-    const searchInTree = (items: FolderNode[]): FolderNode[] => {
-      return items.filter(item => {
-        const matchesSearch = item.name.toLowerCase().includes(searchLower)
-        const hasMatchingChildren = item.children ? searchInTree(item.children).length > 0 : false
-        return matchesSearch || hasMatchingChildren
-      }).map(item => ({
-        ...item,
-        children: item.children ? searchInTree(item.children) : undefined
-      }))
+  const currentFolders = useMemo(() => {
+    let items = folderTree
+    for (const step of currentPath) {
+      items = items.find(item => item.id === step.id)?.children ?? []
     }
+    return items
+  }, [currentPath, folderTree])
 
-    return searchInTree(currentItems)
-  }, [currentItems, searchQuery])
+  const query = searchQuery.trim().toLowerCase()
+  const searchResults = useMemo(
+    () => (query ? flatFolders.filter(({ node }) => node.name.toLowerCase().includes(query)) : []),
+    [flatFolders, query]
+  )
 
-  const handleFolderClick = (folder: FolderNode) => {
-    setCurrentPath([...currentPath, { id: folder.id, name: folder.name }])
-    setSearchQuery("")
-  }
+  const title = filesToMove.length === 1 ? `Move "${filesToMove[0].name}"` : `Move ${filesToMove.length} items`
+  const destinationName = currentPath.length > 0 ? currentPath[currentPath.length - 1].name : "All files"
 
-  const handleBreadcrumbNavigate = (index: number) => {
-    if (index === -1) {
-      setCurrentPath([])
-    } else {
-      setCurrentPath(currentPath.slice(0, index + 1))
-    }
-    setSearchQuery("")
-  }
-
-  const handleMoveToFolder = async (targetFolderId: string | null) => {
-    if (filesToMove.length === 0) return
-
-    setIsLoading(true)
-    setError("")
-
-    try {
-      const result = await onMoveFile(filesToMove.map(f => f.id), targetFolderId)
-      if (result.success) {
-        onClose()
-        setCurrentPath([])
-        setSearchQuery("")
-      } else {
-        setError(result.error || "Failed to move file")
-      }
-    } catch (error: any) {
-      setError(error?.message || "An unexpected error occurred")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleClose = () => {
-    onClose()
+  const reset = () => {
     setCurrentPath([])
     setSearchQuery("")
     setError("")
     setIsLoading(false)
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") {
-      handleClose()
+  const handleClose = () => {
+    if (isLoading) return
+    onClose()
+    reset()
+  }
+
+  useEffect(() => {
+    if (!isOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose()
+    }
+    window.addEventListener("keydown", onKey)
+    searchRef.current?.focus()
+    return () => window.removeEventListener("keydown", onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, isLoading])
+
+  const openFolder = (path: PathEntry[]) => {
+    setCurrentPath(path)
+    setSearchQuery("")
+    setError("")
+  }
+
+  const goToCrumb = (index: number) => openFolder(currentPath.slice(0, index + 1))
+
+  const handleMove = async () => {
+    if (filesToMove.length === 0) return
+    setIsLoading(true)
+    setError("")
+    try {
+      const targetId = currentPath.length > 0 ? currentPath[currentPath.length - 1].id : null
+      const result = await onMoveFile(filesToMove.map(f => f.id), targetId)
+      if (result.success) {
+        onClose()
+        reset()
+      } else {
+        setError(result.error || "Couldn't move the items. Try again.")
+      }
+    } catch (err: any) {
+      setError(err?.message || "Couldn't move the items. Try again.")
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const getCurrentPathString = () => {
-    if (currentPath.length === 0) return "Root"
-    return currentPath.map(folder => folder.name).join(" / ")
-  }
+  const rows = query
+    ? searchResults.map(({ node, path }) => ({
+        node,
+        path,
+        hint: path.length > 1 ? path.slice(0, -1).map(p => p.name).join(" / ") : "All files",
+      }))
+    : currentFolders.map(node => ({
+        node,
+        path: [...currentPath, { id: node.id, name: node.name }],
+        hint: node.children.length > 0 ? `${node.children.length} ${node.children.length === 1 ? "folder" : "folders"}` : "",
+      }))
 
   return (
     <AnimatePresence>
@@ -157,149 +154,129 @@ export function MoveFileModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4"
+          transition={{ duration: 0.15 }}
+          className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-50 flex items-end sm:items-center justify-center sm:p-4"
           onClick={handleClose}
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ duration: 0.2 }}
-            className="bg-background border border-border rounded-lg shadow-lg w-full max-w-4xl h-[85vh] sm:h-[80vh] flex flex-col"
+            role="dialog"
+            aria-modal="true"
+            aria-label={title}
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="bg-background border border-border shadow-xl w-full sm:max-w-md h-[85dvh] sm:h-[34rem] max-h-[100dvh] rounded-t-2xl sm:rounded-xl flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-border flex-shrink-0">
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <FolderOpen className="h-5 w-5 text-primary" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-lg sm:text-xl font-semibold">
-                    {filesToMove.length === 1 ? "Move File" : `Move ${filesToMove.length} Items`}
-                  </h3>
-                  <p className="text-sm text-muted-foreground truncate">
-                    Moving: <span className="font-medium">{movingLabel}</span>
-                  </p>
-                </div>
-              </div>
+            {/* Header */}
+            <div className="flex items-center justify-between gap-3 px-4 pt-4 pb-3">
+              <h2 className="text-base font-semibold truncate" title={title}>{title}</h2>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0 hover:bg-muted flex-shrink-0"
+                className="h-8 w-8 p-0 flex-shrink-0 text-muted-foreground"
                 onClick={handleClose}
+                aria-label="Close"
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
 
-            {/* Search Bar */}
-            <div className="p-2 border-b border-border flex-shrink-0">
+            {/* Search */}
+            <div className="px-4 pb-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search folders..."
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <input
+                  ref={searchRef}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  className="pl-10 h-10"
+                  placeholder="Search all folders"
+                  className="w-full h-10 sm:h-9 pl-9 pr-3 rounded-md border border-input bg-transparent text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-ring"
                 />
               </div>
             </div>
 
-            {/* Breadcrumb Navigation */}
-            <div className="p-2 border-b border-border flex-shrink-0">
-              <div className="flex items-center gap-1 sm:gap-2 text-sm overflow-x-auto">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleBreadcrumbNavigate(-1)}
-                  className="h-7 px-2 text-muted-foreground hover:text-foreground flex-shrink-0"
+            {/* Breadcrumb */}
+            {!query && (
+              <nav aria-label="Folder path" className="px-4 pb-2 flex items-center gap-0.5 text-sm overflow-x-auto whitespace-nowrap">
+                <button
+                  type="button"
+                  onClick={() => openFolder([])}
+                  className={`inline-flex items-center gap-1.5 rounded px-1.5 py-1 hover:bg-muted ${currentPath.length === 0 ? "font-medium text-foreground" : "text-muted-foreground"}`}
                 >
-                  <Home className="h-3 w-3 mr-1" />
-                  <span className="hidden sm:inline">Root</span>
-                </Button>
-                {currentPath.map((folder, index) => (
-                  <div key={folder.id} className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                    <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleBreadcrumbNavigate(index)}
-                      className="h-7 px-2 text-muted-foreground hover:text-foreground whitespace-nowrap"
+                  <Home className="h-3.5 w-3.5" />
+                  All files
+                </button>
+                {currentPath.map((step, index) => (
+                  <span key={step.id} className="inline-flex items-center gap-0.5">
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                    <button
+                      type="button"
+                      onClick={() => goToCrumb(index)}
+                      className={`rounded px-1.5 py-1 hover:bg-muted max-w-[10rem] truncate ${index === currentPath.length - 1 ? "font-medium text-foreground" : "text-muted-foreground"}`}
                     >
-                      {folder.name}
-                    </Button>
-                  </div>
+                      {step.name}
+                    </button>
+                  </span>
                 ))}
-              </div>
-            </div>
+              </nav>
+            )}
 
-            {/* Folder List */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-              {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-600">{error}</p>
-                </div>
-              )}
-
-              {filteredItems.length === 0 ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center">
-                    <FolderOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground text-sm sm:text-base">
-                      {searchQuery ? "No folders found matching your search" : "No folders available"}
-                    </p>
-                  </div>
+            {/* Folder list */}
+            <div className="flex-1 min-h-[12rem] overflow-y-auto border-y border-border px-2 py-1">
+              {rows.length === 0 ? (
+                <div className="h-full min-h-[12rem] flex flex-col items-center justify-center text-center px-6">
+                  <Folder className="h-8 w-8 text-muted-foreground/60 mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    {query
+                      ? `No folders match "${searchQuery.trim()}"`
+                      : "No folders here. You can still move your items into this location."}
+                  </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
-                  {filteredItems.map((folder) => (
-                    <Card
-                      key={folder.id}
-                      className="group w-full cursor-pointer hover:shadow-lg transition-all duration-200 border-2 hover:border-primary/20"
-                      onClick={() => handleFolderClick(folder)}
-                    >
-                      <CardContent className="py-2 flex flex-col items-center text-center space-y-2  ">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center flex-shrink-0 group-hover:from-primary/20 group-hover:to-primary/10 transition-all duration-200">
-                          <FolderOpen className="h-6 w-6 text-primary" />
-                        </div>
-                        <div className="w-full min-w-0">
-                          <p className="font-medium text-sm truncate" title={folder.name}>
-                            {folder.name}
-                          </p>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                      </CardContent>
-                    </Card>
+                <ul>
+                  {rows.map(({ node, path, hint }) => (
+                    <li key={node.id}>
+                      <button
+                        type="button"
+                        onClick={() => openFolder(path)}
+                        className="group w-full min-h-12 flex items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-muted focus-visible:outline-none focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50"
+                      >
+                        <span className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <Folder className="h-4.5 w-4.5 text-primary" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm truncate" title={node.name}>{node.name}</span>
+                          {hint && <span className="block text-xs text-muted-foreground truncate">{hint}</span>}
+                        </span>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground sm:opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity flex-shrink-0" />
+                      </button>
+                    </li>
                   ))}
-                </div>
+                </ul>
               )}
             </div>
 
-            {/* Modal Footer */}
-            <div className="p-1 sm:p-5 border-t border-border flex-shrink-0">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-                <div className="text-sm text-muted-foreground min-w-0 flex-1">
-                  <span className="hidden sm:inline">Current location: </span>
-                  <span className="font-medium truncate block sm:inline">{getCurrentPathString()}</span>
+            {/* Footer */}
+            <div className="px-4 pt-3 pb-4 sm:pb-3 space-y-3">
+              {error && (
+                <div role="alert" className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
+                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span>{error}</span>
                 </div>
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <Button
-                    variant="outline"
-                    onClick={handleClose}
-                    disabled={isLoading}
-                    className="flex-1 sm:flex-none"
-                  >
+              )}
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
+                <p className="text-xs text-muted-foreground min-w-0 truncate">
+                  Move to <span className="font-medium text-foreground">{destinationName}</span>
+                </p>
+                <div className="flex items-center gap-2 flex-shrink-0 [&>button]:flex-1 sm:[&>button]:flex-none">
+                  <Button variant="outline" size="sm" onClick={handleClose} disabled={isLoading}>
                     Cancel
                   </Button>
-                  <Button
-                    onClick={() => handleMoveToFolder(currentPath.length > 0 ? currentPath[currentPath.length - 1].id : null)}
-                    disabled={isLoading}
-                    className="flex-1 sm:flex-none"
-                  >
-                    {isLoading ? "Moving..." : filesToMove.length === 1 ? "Move Here" : `Move ${filesToMove.length} Here`}
+                  <Button size="sm" onClick={handleMove} disabled={isLoading}>
+                    {isLoading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                    {isLoading ? "Moving" : "Move here"}
                   </Button>
                 </div>
               </div>
